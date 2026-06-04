@@ -145,7 +145,7 @@ a:hover
 body
 {
     margin: 0px;
-    background-image: url("/Assets/Images/6.png");
+    background-image: url("/Assets/Images/bg.png");
     background-position: center;
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -229,6 +229,13 @@ body
 .link-item
 {
     text-align: center;
+}
+
+.link-item a
+{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* 右侧粘性容器 */
