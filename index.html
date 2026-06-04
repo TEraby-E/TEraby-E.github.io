@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Profile‌</title>
+  <link rel="shortcut icon" href="/Assets/Images/Aegleseeker.jpg">
+  <link rel="stylesheet" href="./style.css">
+  <base target="_blank">
+</head>
+
+<body>
+
+  <!-- 顶部横幅 -->
+  <header id="top" class="shadow blur">
+    <p class="top-title">Personal Profile</p>
+    <p class="top-subtitle">made by Terabyte</p>
+  </header>
+
+  <!-- 主体：左侧内容 + 右侧个人栏 -->
+  <main id="main">
+
+    <!-- 左列：资源链接 -->
+    <div id="content">
+      <div class="card">
+        <h2 class="title">Resource links</h2>
+        <p>1. <a href="https://github.com/">Github</a></p>
+        <p>CS开源精神的体现</p>
+        <p>2. <a href="https://z-library.sk/">Z-Library</a></p>
+        <p>世界上最全的电子书网站.</p>
+        <p>3. <a href="https://csdiy.wiki/">CS自学指南</a></p>
+        <p>北大高质量计算机学习资源汇总</p>
+        <p>4. <a href="https://fudan-nlp.feishu.cn/wiki/WFifwXxfQiI3PKkn9FEcy0wKnjh/">NLP</a></p>
+        <p>人工智能学习路线</p>
+        <h2></h2>
+      </div>
+    </div>
+
+    <!-- 右列：个人资料 -->
+    <div id="profile">
+      <div class="profile-sticky">
+
+        <!-- 头像卡片 -->
+        <div id="avatar" class="card">
+          <a href="">
+            <img src="/Assets/Images/Aegleseeker.jpg" class="avatar-img zoom shadow">
+          </a>
+          <p class="avatar-name">Terabyte</p>
+          <p class="avatar-bio"></p>
+        </div>
+
+        <!-- 社交链接卡片 -->
+        <div class="card">
+          <h2 class="title">My links</h2>
+          <div class="links-row">
+            <div class="link-item">
+              <a href="https://space.bilibili.com/104490454">
+                <img src="/Assets/Icons/bilibili.ico" class="icon">
+                <p class="icon-name">Bilibili</p>
+              </a>
+            </div>
+            <div class="link-item">
+              <a href="https://github.com/TEraby-E">
+                <img src="/Assets/Icons/github.ico" class="icon">
+                <p class="icon-name">Github</p>
+              </a>
+            </div>
+            <div class="link-item">
+              <a> 微信号:wxidterabyte
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- footer 占位（防止内容被固定 footer 遮住） -->
+  <div class="footer-spacer"></div>
+
+  <!-- 页脚 -->
+  <footer id="footer" class="shadow blur">
+    <a href="https://github.com/TEraby-E/TEraby-E.github.io" class="footer-link">Source Code</a>
+    <span class="footer-sep"></span>
+    <span class="footer-brand">made by Terabyte</span>
+  </footer>
+
+  <!-- 网易云音乐播放器（自动检测移动端） -->
+  <div id="musicplayer"></div>
+  <script src="./musicplayer.js"></script>
+
+</body>
+
+</html>
