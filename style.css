@@ -146,7 +146,7 @@ body
 {
     margin: 0px;
     background-image: url("/Assets/Images/bg.png");
-    background-position: center;
+    background-position: left center;
     background-attachment: fixed;
     background-repeat: no-repeat;
     background-size: cover;
