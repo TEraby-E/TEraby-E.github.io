@@ -145,7 +145,7 @@ a:hover
 body
 {
     margin: 0px;
-    background-image: url("/Assets/Images/bg.jpg");
+    background-image: url("/Assets/Images/bg.png");
     background-position: center;
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -157,7 +157,7 @@ body
 {
     color: white;
     font-family: "Pixel", serif;
-    font-size: 40px;   
+    font-size: 40px;
     margin: 0;
     letter-spacing: 0.05em;
 }
@@ -206,7 +206,7 @@ body
 .avatar-name
 {
     margin: 16px auto 8px;
-    font-size: 20px;  
+    font-size: 20px;   /* Pixel字体：10px的2倍 */
     font-family: "Pixel", cursive;
 }
 
