@@ -205,7 +205,8 @@ h2{font-size:21px;font-weight:650;line-height:1.45;margin:0;letter-spacing:.02em
 .chapter-heading p{font-size:10px;color:#aa95a0;margin:5px 0 0}
 .chapter-heading .text-button{font-size:10px;white-space:nowrap;padding-top:3px}
 .library-tasks{display:flex;flex-direction:column;gap:10px}
-.library-task{display:flex;align-items:flex-start;gap:12px;padding:15px;border:1px solid #eae2e6;border-radius:7px;cursor:pointer;transition:background .15s,border-color .15s}
+.library-task{display:flex;flex-direction:column;gap:12px;padding:15px;border:1px solid #eae2e6;border-radius:7px;transition:background .15s,border-color .15s}
+.library-task-select{display:flex;align-items:flex-start;gap:12px;cursor:pointer;min-width:0}
 .library-task:hover{border-color:#d7bac6}
 .library-task{background:#fffaf044}
 .library-task.selected{border-color:#c990a5;background:#f5e6e1}
@@ -217,6 +218,14 @@ h2{font-size:21px;font-weight:650;line-height:1.45;margin:0;letter-spacing:.02em
 .task-metadata>span{padding:2px 6px;background:#f3eef0;border-radius:3px;max-width:100%;overflow-wrap:anywhere}
 .library-task.selected .task-metadata>span{background:#f4e7ed}
 .task-metadata .previously-done{background:#edf3ee!important;color:var(--green)}
+.library-task-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding-left:29px;flex-wrap:wrap}
+.library-mark-hint{font-size:10px;color:#8c7a77}
+.library-complete-button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;padding:5px 10px;border:1px solid #cfaeaa;border-radius:5px;background:#fff6eb;color:var(--red);font-size:10px;white-space:nowrap}
+.library-complete-button .icon{width:13px;height:13px}
+.library-complete-button:hover{border-color:var(--red);background:#f5e3df}
+.library-complete-button[aria-pressed=true]{background:#e7ede4;border-color:#a7b5a0;color:var(--green)}
+.library-complete-button[aria-pressed=true]:hover{background:#dce5d8}
+@media(max-width:600px){.library-task-select{gap:8px}.library-task-actions{gap:7px;padding-left:23px}.library-mark-hint{font-size:8px}.library-complete-button{min-height:32px;padding:5px 8px;font-size:9px}}
 .selection-summary{color:#9a8390;font-size:12px}
 .selection-summary strong{color:var(--red);font-weight:650}
 .empty-state{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:220px;text-align:center;padding:24px;color:#b39fa9;font-size:12px;gap:12px}

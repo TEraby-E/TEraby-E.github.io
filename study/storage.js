@@ -119,6 +119,12 @@
     return { revision: 1, current: { date: validateDate(date), assignments: [] }, archives: [] };
   }
 
+  function normaliseLibraryCompletedIds(value, index) {
+    if (!Array.isArray(value) || value.length > index.size + (index.retired?.size || 0)) throw new StoreError('任务库完成标记的格式不正确。');
+    if (value.some((id) => typeof id !== 'string' || id.length > 200 || (!index.has(id) && !index.retired?.has(id)))) throw new StoreError('任务库中未找到已标记的任务，请重新载入后再试。');
+    return [...new Set(value)].sort();
+  }
+
   function hydrateRecordEstimates(record, index) {
     const next = copy(record);
     let changed = false;
@@ -140,7 +146,7 @@
   function stateOf(record) {
     const completed = new Set();
     for (const day of [record.current, ...record.archives]) for (const task of day.assignments) if (task.done) completed.add(task.task_id);
-    return copy({ date: record.current.date, revision: record.revision, assignments: record.current.assignments, history: record.archives.map((day) => ({ date: day.date, total: day.assignments.length, completed: day.assignments.filter((task) => task.done).length })).sort((a, b) => b.date.localeCompare(a.date)), completed_ids: [...completed].sort() });
+    return copy({ date: record.current.date, revision: record.revision, assignments: record.current.assignments, history: record.archives.map((day) => ({ date: day.date, total: day.assignments.length, completed: day.assignments.filter((task) => task.done).length })).sort((a, b) => b.date.localeCompare(a.date)), completed_ids: [...completed].sort(), library_completed_ids: Array.isArray(record.library_completed_ids) ? record.library_completed_ids : [] });
   }
 
   function checkRevision(record, payload) {
@@ -151,7 +157,8 @@
   function saveRecord(record, payload, index) {
     checkRevision(record, payload);
     const assignments = normaliseAssignments(payload.assignments, index);
-    return { ...copy(record), revision: record.revision + 1, current: { date: record.current.date, assignments } };
+    const markers = Object.hasOwn(payload, 'library_completed_ids') ? { library_completed_ids: normaliseLibraryCompletedIds(payload.library_completed_ids, index) } : {};
+    return { ...copy(record), ...markers, revision: record.revision + 1, current: { date: record.current.date, assignments } };
   }
 
   function archiveRecord(record, payload) {
@@ -162,7 +169,7 @@
     const archives = record.archives.filter((day) => day.date !== record.current.date && day.date !== next);
     archives.push(copy(record.current));
     const carried = payload.carry_pending === false ? [] : record.current.assignments.filter((task) => !task.done);
-    return { revision: record.revision + 1, current: { date: next, assignments: mergeTasks(existingTomorrow?.assignments || [], carried) }, archives };
+    return { ...copy(record), revision: record.revision + 1, current: { date: next, assignments: mergeTasks(existingTomorrow?.assignments || [], carried) }, archives };
   }
 
   function validateBackup(value, index) {
@@ -179,7 +186,8 @@
       dates.add(result.date);
       return result;
     });
-    return { current, archives };
+    const library_completed_ids = Object.hasOwn(value, 'library_completed_ids') ? normaliseLibraryCompletedIds(value.library_completed_ids, index) : [];
+    return { current, archives, library_completed_ids };
   }
 
   function mergeTasks(existing, incoming) {
@@ -203,7 +211,9 @@
   function importRecord(record, incoming, options = {}) {
     if (!Number.isSafeInteger(options.revision) || options.revision !== record.revision || record.revision >= Number.MAX_SAFE_INTEGER) throw new StoreError('内容已在另一个页面更新，请刷新后再导入。', 409);
     if ('replace' in options && typeof options.replace !== 'boolean') throw new StoreError('备份导入选项不正确。');
-    if (options.replace || (!record.current.assignments.length && !record.archives.length)) return { revision: record.revision + 1, ...copy(incoming) };
+    const existingMarkers = Array.isArray(record.library_completed_ids) ? record.library_completed_ids : [];
+    const incomingMarkers = Array.isArray(incoming.library_completed_ids) ? incoming.library_completed_ids : [];
+    if (options.replace || (!record.current.assignments.length && !record.archives.length && !existingMarkers.length)) return { revision: record.revision + 1, ...copy(incoming), library_completed_ids: [...incomingMarkers] };
     const merged = new Map(record.archives.map((day) => [day.date, copy(day)]));
     const current = copy(record.current);
     for (const day of [...incoming.archives, incoming.current]) {
@@ -213,7 +223,7 @@
         merged.set(day.date, { date: day.date, assignments: previous ? mergeTasks(previous.assignments, day.assignments) : copy(day.assignments) });
       }
     }
-    return { revision: record.revision + 1, current, archives: [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)) };
+    return { ...copy(record), revision: record.revision + 1, current, archives: [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)), library_completed_ids: [...new Set([...existingMarkers, ...incomingMarkers])].sort() };
   }
 
   function storageError(error) {
@@ -333,7 +343,7 @@
     }
 
     async function exportBackup() {
-      return transact((record) => ({ result: { format: BACKUP_FORMAT, version: 1, exported_at: new Date().toISOString(), current: copy(record.current), archives: copy(record.archives) } }));
+      return transact((record) => ({ result: { format: BACKUP_FORMAT, version: 1, exported_at: new Date().toISOString(), current: copy(record.current), archives: copy(record.archives), library_completed_ids: copy(Array.isArray(record.library_completed_ids) ? record.library_completed_ids : []) } }));
     }
 
     async function importBackup(value, options = {}) {
@@ -348,6 +358,6 @@
   const api = createStore();
   api.createStore = createStore;
   api.StoreError = StoreError;
-  api.helpers = Object.freeze({ validateDate, nextDate, localDate, namespace, libraryIndex, normaliseAssignments, initialRecord, hydrateRecordEstimates, stateOf, saveRecord, archiveRecord, validateBackup, mergeTasks, importRecord, storageError });
+  api.helpers = Object.freeze({ validateDate, nextDate, localDate, namespace, libraryIndex, normaliseAssignments, normaliseLibraryCompletedIds, initialRecord, hydrateRecordEstimates, stateOf, saveRecord, archiveRecord, validateBackup, mergeTasks, importRecord, storageError });
   return api;
 });

@@ -44,7 +44,7 @@
     if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value.date) || !Array.isArray(value.assignments)) {
       throw new Error('学习记录的格式不正确，请重新载入。');
     }
-    return { ...value, history: Array.isArray(value.history) ? value.history : [], completed_ids: Array.isArray(value.completed_ids) ? value.completed_ids : [], assignments: value.assignments.map((assignment) => ({ ...assignment, done: Boolean(assignment.done) })) };
+    return { ...value, history: Array.isArray(value.history) ? value.history : [], completed_ids: Array.isArray(value.completed_ids) ? value.completed_ids : [], library_completed_ids: Array.isArray(value.library_completed_ids) ? value.library_completed_ids : [], assignments: value.assignments.map((assignment) => ({ ...assignment, done: Boolean(assignment.done) })) };
   }
 
   function dateParts(date) {
@@ -393,7 +393,7 @@
     }
     if (!dirty || !state) return;
     const version = changeVersion;
-    const snapshot = { date: state.date, revision: state.revision, assignments: cloneAssignments() };
+    const snapshot = { date: state.date, revision: state.revision, assignments: cloneAssignments(), library_completed_ids: [...state.library_completed_ids] };
     setStatus('saving', '正在保存');
     savePromise = (async () => {
       try {
@@ -442,7 +442,7 @@
     const available = new Set(subject.chapters.flatMap((chapter) => chapter.tasks.map((task) => task.id)));
     const selected = new Set(subjectAssignments(id).filter((assignment) => available.has(assignment.task_id)).map((assignment) => assignment.task_id));
     const firstSelected = subject.chapters.find((chapter) => chapter.tasks.some((task) => selected.has(task.id)));
-    const completed = new Set(state.completed_ids);
+    const completed = new Set([...state.completed_ids, ...state.library_completed_ids]);
     const nextChapter = subject.chapters.find((chapter) => chapter.tasks.some((task) => !completed.has(task.id)));
     subjectDraft = { subject, selected, chapterId: firstSelected?.id || nextChapter?.id || subject.chapters[0]?.id, query: '', phase: '' };
     $('library-title').textContent = `${subject.name} · 选择学习任务`;
@@ -494,12 +494,17 @@
     const tasks = visibleTasks(chapter);
     const allChosen = tasks.length && tasks.every((task) => subjectDraft.selected.has(task.id));
     const completed = new Set(state.completed_ids);
+    const marked = new Set(state.library_completed_ids);
+    const today = new Map(subjectAssignments(subjectDraft.subject.id).map((task) => [task.task_id, task]));
     $('chapter-content').innerHTML = `<div class="chapter-heading"><div><h3>${escape(chapter.title)}</h3><p>${subjectDraft.query ? `找到 ${tasks.length} 项任务` : `${tasks.length} 项学习任务`}</p></div>${tasks.length ? `<button class="text-button" id="toggle-chapter" type="button">${allChosen ? '取消本章全选' : '全选本章'}</button>` : ''}</div><div class="library-tasks">${tasks.map((task) => {
       const selected = subjectDraft.selected.has(task.id);
+      const assignment = today.get(task.id);
+      const done = Boolean(assignment?.done);
+      const libraryDone = marked.has(task.id);
       const metadata = [task.kind, task.quantity, task.reference].filter((value) => value != null && String(value).trim()).map((value) => `<span>${escape(value)}</span>`);
-      metadata.unshift(estimateBadge(task, 'library-task-estimate'));
-      if (completed.has(task.id)) metadata.push('<span class="previously-done">已完成过</span>');
-      return `<label class="library-task ${selected ? 'selected' : ''}"><input type="checkbox" data-library-task="${escape(task.id)}" ${selected ? 'checked' : ''}><span class="library-task-copy"><span class="library-task-title">${escape(task.title)}</span>${task.detail && task.detail !== task.title ? `<span class="library-task-detail">${escape(task.detail)}</span>` : ''}${metadata.length ? `<span class="task-metadata">${metadata.join('')}</span>` : ''}${task.remarks ? `<span class="library-task-detail">${escape(task.remarks)}</span>` : ''}</span></label>`;
+      metadata.unshift(estimateBadge(assignment || task, 'library-task-estimate'));
+      if (done || completed.has(task.id)) metadata.push(`<span class="previously-done">${done ? '今日已完成' : '已完成过'}</span>`);
+      return `<div class="library-task ${selected ? 'selected' : ''} ${libraryDone ? 'is-complete' : ''}"><label class="library-task-select"><input type="checkbox" data-library-task="${escape(task.id)}" ${selected ? 'checked' : ''}><span class="library-task-copy"><span class="library-task-title">${escape(task.title)}</span>${task.detail && task.detail !== task.title ? `<span class="library-task-detail">${escape(task.detail)}</span>` : ''}${metadata.length ? `<span class="task-metadata">${metadata.join('')}</span>` : ''}${task.remarks ? `<span class="library-task-detail">${escape(task.remarks)}</span>` : ''}</span></label><div class="library-task-actions"><span class="library-mark-hint">仅标记任务库进度</span><button type="button" class="library-complete-button" data-library-complete="${escape(task.id)}" aria-pressed="${libraryDone}" aria-label="${libraryDone ? '取消完成标记' : '标记完成'}：${escape(task.title)}" title="${libraryDone ? '取消任务库完成标记' : '标记已学或跳过的内容，不加入今日清单'}">${icon('check')}<span>${libraryDone ? '已标记完成' : '标记完成'}</span></button></div></div>`;
     }).join('')}</div>`;
   }
 
@@ -509,6 +514,38 @@
     renderLibraryNavigation();
     renderLibraryContent();
     updateSelectionSummary();
+  }
+
+  function refreshLibraryCompletion(taskId) {
+    const scrollTop = $('chapter-content').scrollTop;
+    const restoreFocus = document.activeElement?.dataset.libraryComplete === taskId;
+    renderLibrary();
+    $('chapter-content').scrollTop = scrollTop;
+    if (restoreFocus) [...$('chapter-content').querySelectorAll('[data-library-complete]')].find((button) => button.dataset.libraryComplete === taskId)?.focus({ preventScroll: true });
+  }
+
+  async function toggleLibraryCompletion(taskId) {
+    if (!state || !subjectDraft || actionBusy || !$('library-dialog').open) return;
+    const draft = subjectDraft;
+    const chapter = draft.subject.chapters.find((item) => item.tasks.some((task) => task.id === taskId));
+    const task = chapter?.tasks.find((item) => item.id === taskId);
+    if (!task) return;
+    const marked = new Set(state.library_completed_ids);
+    const complete = !marked.has(taskId);
+    if (complete) marked.add(taskId);
+    else marked.delete(taskId);
+    state.library_completed_ids = [...marked];
+    changed();
+    const version = changeVersion;
+    refreshLibraryCompletion(taskId);
+    try {
+      await flushAutosave();
+      if (version !== changeVersion || subjectDraft !== draft || !$('library-dialog').open) return;
+      refreshLibraryCompletion(taskId);
+      showToast(complete ? '已保存任务库完成标记，不计入今日清单。' : '已取消任务库完成标记。', null, 3500);
+    } catch (error) {
+      if (error.status !== 409) showToast('本次修改尚未保存，请查看页面提示后重试。', null, 6500);
+    }
   }
 
   function applyLibrary() {
@@ -823,6 +860,8 @@
     $('toggle-chapter').textContent = tasks.every((task) => subjectDraft.selected.has(task.id)) ? '取消本章全选' : '全选本章';
   });
   $('chapter-content').addEventListener('click', (event) => {
+    const completion = event.target.closest('[data-library-complete]');
+    if (completion) { toggleLibraryCompletion(completion.dataset.libraryComplete); return; }
     if (!event.target.closest('#toggle-chapter') || !subjectDraft) return;
     const chapter = subjectDraft.subject.chapters.find((item) => item.id === subjectDraft.chapterId);
     const tasks = visibleTasks(chapter);
