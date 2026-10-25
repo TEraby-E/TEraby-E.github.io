@@ -1,0 +1,17 @@
+node_modules/
+__pycache__/
+.DS_Store
+Thumbs.db
+.playwright-mcp/
+test-results/
+tests/artifacts/
+_site/
+*.log
+*.zip
+*.sqlite*
+runtime.json
+/backups/
+/private/
+/data/
+*学习记录备份*.json
+*迁移备份*.json

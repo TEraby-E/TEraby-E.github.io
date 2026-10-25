@@ -1,0 +1,85 @@
+# Terabyte 主页与交大学习手账
+
+学习打卡程序已整合到现有个人网站的 `study/` 目录。主页保留原有资源、社交链接与素材，并提供学习手账入口。网站全部使用静态 HTML、CSS 和 JavaScript，部署后不需要启动 Python、本地服务或 OneNote。
+
+主页入口统一标为“每日打卡记录”。打卡界面的主标题为“饮水思源 · 爱国荣校”，下方为“不要把梦想埋没”。Terabyte 的数据流标志以共用竖干的 T、B 与输入数据块组成，矢量源文件位于 `Assets/Icons/terabyte-flow.svg`；页眉、页脚与浏览器图标已统一使用这个标志。
+
+发布后的入口：
+
+- 个人主页：<https://terabyte.top/>
+- 学习手账：<https://terabyte.top/study/>
+
+正式域名沿用 `CNAME` 中的 `terabyte.top`。页面更新以 GitHub Pages 的部署结果为准。
+
+## 发布到现有 GitHub Pages
+
+如果仓库已经通过 **Deploy from a branch** 发布，可保留现有分支与根目录发布设置。将本次文件提交并推送到该发布分支后，主页和 `study/` 会一同更新，无需更换域名或重建网站。
+
+也可以使用项目提供的 Actions 工作流，只需配置一次：
+
+1. 在仓库 **Settings → Pages → Build and deployment** 中，把 **Source** 设为 **GitHub Actions**。
+2. 打开 **Actions → Deploy homepage and study check-in → Run workflow**，选择发布分支并运行。
+3. 等待检查和部署成功，打开部署结果给出的实际网址。之后推送 `main` 或 `master` 会自动更新。
+
+工作流先运行 `npm test`，再将 `index.html`、`style.css`、`CNAME`、`Assets/`、`study/` 和 `.nojekyll` 组装到 `_site/` 发布，不上传整个仓库根目录。开发测试、Git 元数据和个人迁移备份不会进入该发布包。发布方式依据 [GitHub Pages 自定义工作流文档](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)。
+
+## 每天使用
+
+打开固定网址，或从主页进入学习手账。主界面只显示当天任务，任务库和历史记录在点击后打开。
+
+1. 点击英语、高数、线代、概率论、数据结构、计组、操作系统或计网，按章节自由组合学习任务。
+2. 学完后再次点击科目可整科打卡，也可以逐项勾选。
+3. 点击 **导出今日图片**，保存当天清单。
+4. 点击 **保存并进入下一天**，当天内容进入历史；未完成任务可以选择带到下一天。
+
+任务和完成状态会自动保存在当前浏览器中。Chrome、Edge 等浏览器支持时，可以使用页面或地址栏的安装入口，将手账安装到桌面或任务栏。安装后直接像普通应用一样打开。首次完整载入并缓存完成后，可以离线继续使用；新设备第一次打开仍需联网。
+
+## 记录备份与迁移
+
+学习记录保存在当前浏览器的 IndexedDB 中，不会上传到 GitHub。关闭页面后，再用相同浏览器打开相同网址，就能继续使用已有记录。
+
+更换浏览器、设备、域名或应用路径时，记录不会自动同步；清除网站数据也会清除本机记录。进入 **记录管理** 导出备份，再到目标浏览器导入。导入前会检查格式，默认合并已有记录。
+
+旧本地程序的迁移备份作为独立文件交付，可在发布后的手账中导入。将个人备份保留在自己的电脑上，不要放进 `study/` 或上传到公开仓库。本项目包含章节任务库，不包含个人打卡数据。
+
+## 图片保存位置
+
+点击 **导出今日图片** 后，浏览器直接生成 PNG；历史记录也能再次导出。长清单会拆成多张图片，保留全部任务和备注。普通下载模式下，多张 PNG 会打包为一个 ZIP，解压后即可查看全部图片。
+
+在支持文件夹选择的 Chrome、Edge 中，可以先在 **记录管理** 选择一次导出文件夹，并选中桌面。浏览器仍保留授权时，之后会直接写入该文件夹；同名文件使用新名称。如果浏览器不支持目录选择，或目录授权已失效，则使用普通下载，保存位置由浏览器下载设置决定。
+
+## 文件结构
+
+```text
+index.html                    现有主页与学习手账入口
+style.css                     主页样式
+Assets/                       现有头像、图标等素材
+CNAME                         保留域名 terabyte.top
+study/                        完整学习打卡程序
+  index.html                  当天清单与隐藏任务库
+  styles.css                  红黑背景与暖色纸面卡片
+  app.js                      选任务、打卡、归档与记录管理
+  storage.js                  浏览器本地记录
+  export-image.js             PNG 绘制与保存
+  data/library.json           八科章节任务库
+  assets/                     交大校徽与静态纹理
+  manifest.webmanifest        安装信息
+  sw.js                       离线缓存
+.github/workflows/pages.yml   检查、组装与部署
+tests/                        Node.js 原生测试
+package.json                  测试命令，无运行依赖
+```
+
+## 开发验证
+
+不需要 `npm install`，也没有前端编译步骤。安装 Node.js 22 或更高版本后，在仓库根目录运行：
+
+```sh
+npm test
+```
+
+修改主页时编辑根目录 `index.html` 和 `style.css`；修改打卡程序时编辑 `study/`。任务库在 `study/data/library.json`，不要在该文件中写入个人学习记录。
+
+开发预览可以使用任意静态 HTTP 服务。例如在仓库根目录运行 `python -m http.server 8767`，然后访问 `http://127.0.0.1:8767/` 或 `http://127.0.0.1:8767/study/`。正式使用时打开发布后的固定网址即可。
+
+校徽来自[上海交通大学视觉形象识别系统](https://vi.sjtu.edu.cn/index.php/articles/bulletin/13)。学习任务来自已有资料；手账背景与纸纹为项目内的静态 SVG。

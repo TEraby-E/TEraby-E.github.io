@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#9e1b32">
+  <meta name="description" content="安排章节任务，记录每天的学习进展。">
+  <title>交大学习手账 · 每日任务</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="icon" href="./assets/sjtu-emblem.ico">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/app-icon-192.png">
+  <script src="./storage.js" defer></script>
+  <script src="./export-image.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7m2-4v5l3 2"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m21 15-5-5L5 21"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h5l3 3h6a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1m0-15c3-2 6-2 9-1v15c-3-1-6-1-9 1V5Z"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18"/></symbol>
+  </svg>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="./" aria-label="交大学习手账首页">
+        <img class="university-emblem" src="./assets/sjtu-emblem.png" alt="上海交通大学校徽" width="60" height="60">
+        <span class="brand-rule" aria-hidden="true"></span>
+        <span class="brand-copy"><strong>交大学习手账</strong><span>SJTU</span></span>
+      </a>
+      <div class="header-actions">
+      <a class="button button-quiet history-trigger" href="../" aria-label="返回主页" title="返回 Terabyte 主页"><svg class="icon home-arrow" aria-hidden="true"><use href="#i-arrow"/></svg><span>主页</span></a>
+      <button class="button button-quiet history-trigger" id="data-button" type="button" aria-label="记录管理" disabled>
+        <svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg><span>记录管理</span>
+      </button>
+      <button class="button button-quiet history-trigger" id="history-button" type="button" aria-label="历史记录" disabled>
+        <svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><span>历史记录</span>
+      </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="page-heading" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">饮水思源<span class="motto-separator"> · </span>爱国荣校</h1>
+        <p class="page-description">不要把梦想埋没</p>
+      </div>
+      <div class="date-block"><span class="date-label">学习日期</span><time id="study-date">正在载入</time><span id="study-weekday" class="date-weekday"></span></div>
+    </section>
+
+    <div class="notice notice-error" id="error-banner" role="alert" hidden><span id="error-text"></span><button type="button" id="retry-button" class="text-button">重试</button></div>
+
+    <section class="task-sheet" aria-labelledby="sheet-title" aria-busy="true" id="task-sheet">
+      <div class="sheet-heading">
+        <div class="sheet-heading-title"><span class="sheet-index" aria-hidden="true">01</span><h2 id="sheet-title">今天的任务</h2><span id="task-total" class="count-pill">— 项</span></div>
+        <div class="save-status" id="save-status" role="status" aria-live="polite"><span class="status-dot"></span><span id="save-status-text">正在载入</span></div>
+      </div>
+      <div class="table-scroll">
+        <table class="daily-table">
+          <caption class="visually-hidden">每日学习任务表。点击科目可完成该科全部任务，点击加号可选择章节任务。</caption>
+          <thead><tr><th scope="col" class="subject-column">科目</th><th scope="col">今日安排</th><th scope="col" class="progress-column">完成</th></tr></thead>
+          <tbody id="daily-tbody"><tr><td colspan="3" class="initial-loading"><span class="loading-spinner" aria-hidden="true"></span>正在载入你的学习清单</td></tr></tbody>
+        </table>
+      </div>
+      <div class="sheet-bottom">
+        <div class="completion-summary"><span class="completion-symbol" aria-hidden="true"><svg class="icon"><use href="#i-check"/></svg></span><div><span id="completion-text">今天，从一项任务开始</span><div class="summary-progress" aria-hidden="true"><span id="summary-progress-fill"></span></div></div></div>
+        <p class="sheet-hint">点科目整科打卡 · 点 <span aria-hidden="true">＋</span> 选择章节任务</p>
+      </div>
+    </section>
+
+    <div class="day-actions">
+      <p class="action-note" id="action-note">任务会自动保存，可以随时回来继续。</p>
+      <div class="action-buttons">
+        <button class="button button-secondary" id="export-button" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg><span>导出今日图片</span></button>
+        <button class="button button-primary" id="archive-button" type="button" disabled><span>保存并进入下一天</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+      </div>
+    </div>
+
+    <footer class="page-footer"><span>饮水思源 · 爱国荣校</span><span>学有所得，日有所进</span></footer>
+  </main>
+
+  <dialog class="modal library-modal" id="library-dialog" aria-labelledby="library-title">
+    <div class="modal-heading"><div><p class="eyebrow">CHAPTER LIBRARY</p><h2 id="library-title">选择学习任务</h2><p class="modal-description">按今天的进度，自由选择章节和任务。</p></div><button type="button" class="icon-button close-button" data-close="library-dialog" aria-label="关闭任务库"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="library-search-wrap"><label class="search-field"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="library-search" type="search" autocomplete="off" placeholder="搜索章节或任务" aria-label="搜索当前科目的章节或任务"></label><label class="phase-filter"><span class="visually-hidden">筛选学习阶段</span><select id="library-phase" aria-label="筛选学习阶段"><option value="">全部阶段</option></select></label><span id="library-subject-count" class="muted"></span></div>
+    <div class="library-layout"><nav class="chapter-list" id="chapter-list" aria-label="选择章节"></nav><section class="chapter-content" id="chapter-content" aria-live="polite"></section></div>
+    <div class="modal-footer"><span class="selection-summary" id="selection-summary">已选 0 项任务</span><div class="modal-footer-buttons"><button type="button" class="button button-secondary" data-close="library-dialog">取消</button><button type="button" class="button button-primary" id="apply-library">加入今日清单<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div></div>
+  </dialog>
+
+  <dialog class="modal history-modal" id="history-dialog" aria-labelledby="history-title">
+    <div class="modal-heading"><div><p class="eyebrow">STUDY ARCHIVE</p><h2 id="history-title">学习记录</h2><p class="modal-description">保存过的每一天，都在这里。</p></div><button type="button" class="icon-button close-button" data-close="history-dialog" aria-label="关闭历史记录"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="history-layout"><nav class="history-list" id="history-list" aria-label="选择历史日期"></nav><section id="history-content" class="history-content" aria-live="polite"></section></div>
+    <div class="modal-footer"><span id="history-summary" class="muted"></span><button class="button button-secondary" id="export-history-button" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>导出这天图片</button></div>
+  </dialog>
+
+  <dialog class="modal archive-modal" id="archive-dialog" aria-labelledby="archive-title">
+    <div class="modal-heading"><div><p class="eyebrow">NEXT DAY</p><h2 id="archive-title">收好今天，继续向前</h2></div><button type="button" class="icon-button close-button" data-close="archive-dialog" aria-label="关闭"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="archive-content"><p id="archive-description"></p><label class="carry-option"><input type="checkbox" id="carry-pending" checked><span><strong>将未完成任务带到下一天</strong><span>今天的完成情况会保留在历史记录中。</span></span></label></div>
+    <div class="modal-footer"><button type="button" class="button button-secondary" data-close="archive-dialog">继续今天</button><button type="button" class="button button-primary" id="confirm-archive">保存并进入下一天<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+  </dialog>
+
+  <dialog class="modal data-modal" id="data-dialog" aria-labelledby="data-title">
+    <div class="modal-heading"><div><p class="eyebrow">YOUR STUDY, KEPT SAFE</p><h2 id="data-title">记录管理</h2><p class="modal-description">换设备前，先把学习记录带上。</p></div><button type="button" class="icon-button close-button" data-close="data-dialog" aria-label="关闭记录管理"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="data-sections">
+      <section class="data-section"><h3>学习记录备份</h3><p>清单和历史保存在当前浏览器。导出备份后，可以在其他设备或新网址中导入，继续学习。</p><div class="data-section-actions"><button class="button button-secondary" id="backup-button" type="button">导出全部记录</button><button class="button button-secondary" id="import-button" type="button">导入记录备份</button></div><p class="data-hint">导入会合并记录，保留已有的任务和打卡进度。</p><input id="backup-file" type="file" accept=".json,application/json" hidden></section>
+      <section class="data-section"><h3>打卡图片保存位置</h3><p id="directory-status">图片将按浏览器的下载设置保存。</p><div class="data-section-actions"><button class="button button-secondary" id="directory-button" type="button">选择桌面或其他文件夹</button><button class="text-button" id="clear-directory-button" type="button" hidden>恢复普通下载</button></div><p class="data-hint" id="directory-hint">选择一次文件夹，之后导出图片会优先保存到这里。</p></section>
+      <section class="data-section"><h3>随时打开</h3><p id="offline-status">把这个网址收藏起来，之后直接打开就能继续打卡。</p><button class="button button-primary" id="install-button" type="button" hidden>安装到桌面</button></section>
+    </div>
+    <div class="modal-footer"><span class="muted">备份包含当前清单与全部历史</span><button class="button button-secondary" type="button" data-close="data-dialog">完成</button></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toast-message"></span><button type="button" id="toast-action" hidden>继续<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button><button type="button" class="toast-close" id="toast-close" aria-label="关闭提示"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+</body>
+</html>

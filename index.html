@@ -3,86 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Computer  Science‌</title>
-  <link rel="shortcut icon" href="/Assets/Images/Aegleseeker.jpg">
+  <meta name="theme-color" content="#101b26">
+  <meta name="description" content="Terabyte 的个人主页：计算机科学学习资源、交大学习手账与个人链接。">
+  <title>Terabyte · Computer Science</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="./Assets/Icons/terabyte-favicon.png">
+  <link rel="icon" type="image/svg+xml" href="./Assets/Icons/terabyte-favicon.svg">
+  <link rel="apple-touch-icon" href="./Assets/Icons/terabyte-touch-icon.png">
   <link rel="stylesheet" href="./style.css">
-  <base target="_blank">
 </head>
 <body>
-  <header id="top" class="shadow blur">
-    <p class="top-title">Computer  Science</p>
+  <a class="skip-link" href="#resources">跳转到学习资源</a>
+  <header class="site-header shell" id="top">
+    <a class="brand" href="#top" aria-label="Terabyte 首页"><img class="brand-mark" src="./Assets/Icons/terabyte-flow.svg" alt="" width="38" height="38">TERABYTE</a>
+    <nav aria-label="主导航"><a class="nav-github" href="https://github.com/TEraby-E" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a></nav>
   </header>
-  <main id="main">
-    <!-- 左列：资源链接 -->
-    <div id="content">
-      <div class="card">
-        <h2 class="title">Resource links</h2>
-        <p>1. <a href="https://github.com/">Github</a></p>
-        <p>Open Source Is All You Need.</p>
-        <p>2. <a href="https://z-library.sk/">Z-Library</a></p>
-        <p>The most comprehensive e-book site in the world.</p>
-        <p>3. <a href="https://csdiy.wiki/">CS自学指南</a></p>
-        <p>北大高质量计算机学习资源汇总</p>
-        <p>4. <a href="https://fudan-nlp.feishu.cn/wiki/WFifwXxfQiI3PKkn9FEcy0wKnjh/">NLP</a></p>
-        <p>自然语言训练</p>
-        <h2></h2>
+  <main class="shell">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-content">
+        <h1 id="hero-title">Computer<br><span>Science</span><span class="cursor" aria-hidden="true">_</span></h1>
+        <p class="hero-description">在代码与知识之间，保持好奇。</p>
+        <a class="hero-link" href="#resources">探索学习资源 <span aria-hidden="true">↘</span></a>
       </div>
-    </div>
-    <!-- 右列：个人资料 -->
-    <div id="profile">
-      <div class="profile-sticky">
-        <div id="avatar" class="card">
-          <a href="">
-            <img src="/Assets/Images/Aegleseeker.jpg" class="avatar-img zoom shadow">
-          </a>
-          <p class="avatar-name">Terabyte</p>
-          <p class="avatar-bio"></p>
+    </section>
+    <section class="study-entry" aria-labelledby="study-entry-title">
+      <img class="study-entry-emblem" src="./study/assets/sjtu-emblem.png" alt="上海交通大学校徽" width="62" height="62">
+      <div class="study-entry-copy"><p class="eyebrow">SJTU</p><h2 id="study-entry-title">交大学习手账</h2><p>不要把梦想埋没</p></div>
+      <div class="study-entry-action"><span>章节任务 · 每日打卡 · 学习记录</span><a href="./study/">每日打卡记录 <span aria-hidden="true">→</span></a></div>
+    </section>
+    <div class="content-grid">
+      <section class="resources" id="resources" aria-labelledby="resources-title">
+        <div class="section-heading"><h2 id="resources-title">学习资源</h2></div>
+        <div class="resource-list">
+          <a class="resource" href="https://github.com/" target="_blank" rel="noopener noreferrer"><span class="resource-number">01</span><span class="resource-body"><span class="resource-title">GitHub <span class="tag">开源</span></span><span class="resource-description">Open Source Is All You Need.</span><span class="resource-domain">github.com</span></span><span class="resource-arrow" aria-hidden="true">↗</span></a>
+          <a class="resource" href="https://z-library.sk/" target="_blank" rel="noopener noreferrer"><span class="resource-number">02</span><span class="resource-body"><span class="resource-title">Z-Library <span class="tag">阅读</span></span><span class="resource-description">书籍与知识的另一扇门。</span><span class="resource-domain">z-library.sk</span></span><span class="resource-arrow" aria-hidden="true">↗</span></a>
+          <a class="resource" href="https://csdiy.wiki/" target="_blank" rel="noopener noreferrer"><span class="resource-number">03</span><span class="resource-body"><span class="resource-title">CS 自学指南 <span class="tag">计算机</span></span><span class="resource-description">计算机科学的自学路线与课程资源。</span><span class="resource-domain">csdiy.wiki</span></span><span class="resource-arrow" aria-hidden="true">↗</span></a>
+          <a class="resource" href="https://fudan-nlp.feishu.cn/wiki/WFifwXxfQiI3PKkn9FEcy0wKnjh/" target="_blank" rel="noopener noreferrer"><span class="resource-number">04</span><span class="resource-body"><span class="resource-title">NLP <span class="tag">自然语言处理</span></span><span class="resource-description">自然语言处理学习资料。</span><span class="resource-domain">fudan-nlp.feishu.cn</span></span><span class="resource-arrow" aria-hidden="true">↗</span></a>
         </div>
-        <div class="card">
-          <h2 class="title">My links</h2>
-          <div class="links-row">
-            <div class="link-item">
-              <a href="https://space.bilibili.com/104490454">
-                <img src="/Assets/Icons/bilibili.ico" class="icon">
-                <p class="icon-name">Bilibili</p>
-              </a>
-            </div>
-            <div class="link-item">
-              <a href="https://github.com/TEraby-E">
-                <img src="/Assets/Icons/github.ico" class="icon">
-                <p class="icon-name">Github</p>
-              </a>
-            </div>
+        <p class="collection-note"><span aria-hidden="true">↗</span> 所有资源将在新标签页打开</p>
+      </section>
+      <aside id="profile" aria-labelledby="profile-title">
+        <section class="profile-card">
+          <div class="profile-intro"><img class="avatar" src="./Assets/Images/Aegleseeker.jpg" width="72" height="72" alt="Terabyte 的头像"><div><h2 id="profile-title">Terabyte</h2><p class="profile-handle">@TEraby-E</p></div></div>
+          <div class="profile-divider"></div>
+          <h3>在这些地方找到我</h3>
+          <div class="social-grid">
+            <a href="https://space.bilibili.com/104490454" target="_blank" rel="noopener noreferrer"><img src="./Assets/Icons/bilibili.ico" alt="" width="20" height="20">Bilibili<span aria-hidden="true">↗</span></a>
+            <a href="https://github.com/TEraby-E" target="_blank" rel="noopener noreferrer"><img src="./Assets/Icons/github.ico" alt="" width="20" height="20">GitHub<span aria-hidden="true">↗</span></a>
+            <a href="https://codeforces.com/profile/_Eraby_E" target="_blank" rel="noopener noreferrer"><img src="./Assets/Icons/codeforce.ico" alt="" width="20" height="20">Codeforces<span aria-hidden="true">↗</span></a>
+            <a href="https://bgm.tv/user/terabyte" target="_blank" rel="noopener noreferrer"><img src="./Assets/Icons/bangumi.ico" alt="" width="20" height="20">Bangumi<span aria-hidden="true">↗</span></a>
           </div>
-          <div class="links-row">
-            <div class="link-item">
-              <a href="https://codeforces.com/profile/_Eraby_E">
-                <img src="/Assets/Icons/codeforce.ico" class="icon">
-                <p class="icon-name">Codeforce</p>
-              </a>
-            </div>
-            <div class="link-item">
-              <a href="https://bgm.tv/user/terabyte">
-                <img src="/Assets/Icons/bangumi.ico" class="icon">
-                <p class="icon-name">Bangumi</p>
-              </a>
-            </div>
-          </div>
-          <div class="links-row">
-            <div class="link-item">
-              <p><a>微信号:wxidterabyte</a></p>
-              <p><a>QQ号:1149458000</a></p>
-            </div>
-          </div>
-        </div>
-      </div>
+          <dl class="contact-list"><div><dt>微信</dt><dd>wxidterabyte</dd></div><div><dt>QQ</dt><dd>1149458000</dd></div></dl>
+        </section>
+      </aside>
     </div>
   </main>
-  <!-- footer 占位（防止内容被固定 footer 遮住） -->
-  <div class="footer-spacer"></div>
-  <!-- 页脚 -->
-  <footer id="footer" class="shadow blur">
-    <a href="https://github.com/TEraby-E/TEraby-E.github.io" class="footer-link">Source Code</a>
-  </footer>
+  <footer class="site-footer shell"><p><img class="footer-mark" src="./Assets/Icons/terabyte-flow.svg" alt="" width="24" height="24">Terabyte</p><a href="https://github.com/TEraby-E/TEraby-E.github.io" target="_blank" rel="noopener noreferrer">网站源码 <span aria-hidden="true">↗</span></a></footer>
 </body>
 </html>

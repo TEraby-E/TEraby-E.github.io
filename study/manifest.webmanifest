@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "交大学习手账",
+  "short_name": "交大手账",
+  "description": "选择章节任务，记录学习进展，保存每一天。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#efede8",
+  "theme_color": "#3b1d2b",
+  "icons": [
+    { "src": "./assets/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

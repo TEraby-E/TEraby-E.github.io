@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="620" viewBox="0 0 1600 620" fill="none">
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" stroke="#F2DEE2" stroke-opacity=".065"/>
+      <circle cx="0" cy="0" r="1" fill="#F2DEE2" fill-opacity=".12"/>
+    </pattern>
+    <linearGradient id="beam" x1="1240" y1="0" x2="1010" y2="425" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EC697E" stop-opacity="0"/>
+      <stop offset=".44" stop-color="#D34461" stop-opacity=".24"/>
+      <stop offset="1" stop-color="#AA2443" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="line" x1="1400" y1="0" x2="1080" y2="460" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F2A5AF" stop-opacity="0"/>
+      <stop offset=".45" stop-color="#F2A5AF" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#F2A5AF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#grid)" d="M0 0H1600V620H0z"/>
+  <path d="M1145-120H1297L947 560H795zM1350-120H1435L1085 560H1000z" fill="url(#beam)"/>
+  <path d="M1297-120 947 560M1435-120 1085 560M1543-120 1193 560" stroke="url(#line)"/>
+  <g stroke="#F2A5AF" stroke-opacity=".13">
+    <circle cx="1410" cy="295" r="226"/>
+    <circle cx="1410" cy="295" r="246"/>
+    <circle cx="1410" cy="295" r="322" stroke-dasharray="1 11"/>
+    <path d="M1047 295H1600M1410-15V620M1179 64 1600 485" stroke-opacity=".52"/>
+    <path d="M1156 289V301M1164 289V301M1172 287V303M1416 41H1404M1416 49H1404M1418 57H1402"/>
+    <path d="M1070 285V305M1060 295H1080M1400 551H1420M1410 541V561" stroke-opacity=".8"/>
+  </g>
+</svg>
