@@ -162,11 +162,12 @@
     const entries = [...groups.values()].map((rows) => ({ taskIds: rows.map((task) => task.task_id), rows }));
     completionDraft = { date: state.date, version: changeVersion, mode, entries };
     $('completion-title').textContent = mode === 'edit' ? '记录实际用时' : '完成任务，记下实际用时';
-    $('completion-description').textContent = mode === 'edit' ? '填写这次完成任务实际花费的时间。' : entries.length > 1 ? `请分别填写这 ${entries.length} 项任务实际花费的时间，保存后完成打卡。` : '填写这项任务实际花费的时间，保存后完成打卡。';
+    $('completion-description').textContent = mode === 'edit' ? '可修改已记录的实际用时；尚未记录时默认填入预计时间。' : entries.length > 1 ? `这 ${entries.length} 项任务的实际用时默认按预计时间填写，可修改后保存打卡。` : '实际用时默认按预计时间填写，可修改后保存打卡。';
     $('completion-fields').innerHTML = entries.map(({ rows }, index) => {
       const task = rows[0];
       const recorded = rows.map(taskActual).filter((actual) => actual.recorded).map((actual) => actual.minutes);
-      const initial = recorded.length ? String(Math.max(...recorded)) : '';
+      const estimates = rows.map(taskEstimate).filter((estimate) => estimate.minutes !== null).map((estimate) => estimate.minutes);
+      const initial = recorded.length ? String(Math.max(...recorded)) : estimates.length ? String(Math.max(...estimates)) : '';
       const subjects = [...new Set(rows.map((item) => item.subject_name || library.find((subject) => subject.id === item.subject_id)?.name || ''))].filter(Boolean);
       return `<section class="completion-entry"><div class="completion-entry-copy"><h3>${escape(task.title)}</h3><p>${escape(subjects.join(' · '))}${rows.length > 1 ? ` · ${rows.length} 个共享条目，只计一次` : ''}</p><span class="completion-estimate">${escape(estimateText(task))}</span></div><label class="completion-input-label" for="actual-minutes-${index}">实际用时<span class="completion-input-row"><input id="actual-minutes-${index}" data-completion-index="${index}" type="number" min="0" max="525600" step="0.5" inputmode="decimal" required placeholder="填写实际分钟" value="${initial}" aria-describedby="completion-help completion-error"><span>分钟</span></span></label></section>`;
     }).join('');
