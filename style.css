@@ -19,7 +19,6 @@ nav a span { margin-left: 5px; color: var(--muted); }
 .nav-github { padding: 8px 0 8px 12px; }
 .hero { min-height: 396px; position: relative; display: flex; align-items: center; overflow: hidden; border: 1px solid #3b4b58; border-radius: 16px; background: linear-gradient(90deg, rgba(13,24,35,.96) 0%, rgba(13,24,35,.76) 35%, rgba(13,24,35,.12) 72%), url("./Assets/Images/bg.png") center 46% / cover; }
 .hero-content { position: relative; padding: 42px 48px 38px; }
-.eyebrow { font-family: Consolas, monospace; font-size: 10px; font-weight: 400; letter-spacing: 2px; color: var(--accent); margin: 0 0 15px; }
 h1 { font-size: clamp(45px, 5vw, 66px); font-weight: 650; line-height: 1.08; letter-spacing: -2.8px; margin: 0 0 18px; }
 h1 > span:not(.cursor) { color: var(--accent); }
 .cursor { color: var(--accent); font-family: "Pixel", monospace; font-size: .75em; margin-left: 5px; }
@@ -27,17 +26,6 @@ h1 > span:not(.cursor) { color: var(--accent); }
 .hero-link { display: inline-flex; align-items: center; gap: 32px; font-size: 12px; background: var(--accent); color: #152c29; border: 1px solid var(--accent); border-radius: 6px; padding: 10px 17px; transition: background .2s, transform .2s; }
 .hero-link:hover { background: #c7f5e4; transform: translateY(-2px); }
 .hero-link span { font-size: 19px; line-height: 1; }
-.study-entry { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 23px; max-width: 860px; margin: 24px auto 0; padding: 25px 30px; border: 1px solid #613f4c; border-left: 3px solid #a51c30; border-radius: 12px; background: linear-gradient(112deg, #39232c, #24232d 65%, #1b2a34); overflow: hidden; }
-.study-entry::after { content: ""; pointer-events: none; position: absolute; width: 280px; height: 280px; border: 1px solid #c8738c16; border-radius: 50%; right: 130px; top: -180px; box-shadow: 0 0 0 26px #c8738c08, 0 0 0 60px #c8738c04; }
-.study-entry-emblem { background: #fff; padding: 5px; border-radius: 8px; object-fit: contain; }
-.study-entry-copy, .study-entry-action { position: relative; z-index: 1; }
-.study-entry-copy .eyebrow { margin: 0 0 4px; color: #d898aa; font-size: 9px; letter-spacing: 2px; }
-.study-entry-copy h2 { color: #f8eeec; font-size: 22px; letter-spacing: 1px; }
-.study-entry-copy > p:last-child { margin: 5px 0 0; color: #c0a9ad; font-size: 11px; letter-spacing: 2px; }
-.study-entry-action { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-.study-entry-action > span { color: #b7a3ac; font-size: 10px; letter-spacing: .6px; }
-.study-entry-action > a { display: inline-flex; align-items: center; justify-content: center; gap: 35px; padding: 10px 17px; border: 1px solid #bd5269; border-radius: 6px; background: #a51c30; color: #fff4f0; font-size: 12px; transition: background .2s, border-color .2s; }
-.study-entry-action > a:hover { background: #bf2942; border-color: #dc788c; }
 .content-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 42px; margin-top: 44px; align-items: start; }
 .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 22px; }
 h2 { font-size: 23px; margin: 0; font-weight: 600; letter-spacing: -.5px; }
@@ -89,13 +77,6 @@ h3 { display: flex; justify-content: space-between; align-items: center; font-si
   h1 { font-size: 50px; }
   .hero-description { font-size: 12px; letter-spacing: 1px; }
   .content-grid { grid-template-columns: 1fr; gap: 30px; margin-top: 32px; }
-  .study-entry { grid-template-columns: auto minmax(0,1fr); padding: 21px; gap: 16px; margin-top: 18px; }
-  .study-entry-emblem { width: 53px; height: 53px; }
-  .study-entry-copy h2 { font-size: 19px; }
-  .study-entry-copy > p:last-child { font-size: 10px; }
-  .study-entry-action { grid-column: 1/-1; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #80505b44; padding-top: 16px; margin-top: 1px; }
-  .study-entry-action > span { font-size: 8px; letter-spacing: 0; }
-  .study-entry-action > a { gap: 17px; font-size: 10px; padding: 9px 11px; }
   .section-heading { margin-bottom: 17px; }
   h2 { font-size: 21px; }
   .resource { gap: 17px; padding-block: 21px; }

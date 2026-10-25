@@ -76,17 +76,19 @@ test('install manifest remains scoped to the deployed project', () => {
   for (const icon of manifest.icons || []) checkRelativeAsset(icon.src, path.relative(site, manifestFile));
 });
 
-test('homepage retains original resources and exposes the study application', () => {
+test('homepage retains original resources and the standalone study page remains available', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const links = [...html.matchAll(/\bhref\s*=\s*["']([^"']+)["']/gi)].map((match) => match[1]);
   const retainedLinks = [
     './style.css', 'https://github.com/', 'https://z-library.sk/', 'https://csdiy.wiki/',
     'https://fudan-nlp.feishu.cn/wiki/WFifwXxfQiI3PKkn9FEcy0wKnjh/',
     'https://space.bilibili.com/104490454', 'https://github.com/TEraby-E',
-    'https://codeforces.com/profile/_Eraby_E', 'https://bgm.tv/user/terabyte', './study/'
+    'https://codeforces.com/profile/_Eraby_E', 'https://bgm.tv/user/terabyte'
   ];
   for (const reference of retainedLinks) assert.ok(links.includes(reference), `homepage retains ${reference}`);
   assert.match(html, /\.\/Assets\/Images\/Aegleseeker\.jpg/);
+  assert.match(html, /\.\/Assets\/Icons\/terabyte-flow\.svg/);
+  assert.ok(fs.existsSync(path.join(site, 'index.html')), 'standalone study page remains available');
   assert.match(read('index.html'), /href=["']\.\.\/["']/);
   assert.equal(fs.readFileSync(path.join(root, 'CNAME'), 'utf8').trim(), 'terabyte.top');
   for (const match of html.matchAll(/\b(?:src|href)\s*=\s*["']([^"']+)["']/gi)) {
