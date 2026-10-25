@@ -122,7 +122,7 @@
   <dialog class="modal completion-modal" id="completion-dialog" aria-labelledby="completion-title">
     <div class="modal-heading"><div><h2 id="completion-title">完成任务，记下实际用时</h2><p class="modal-description" id="completion-description">填写这项任务实际花费的时间，保存后完成打卡。</p></div><button type="button" class="icon-button close-button" data-close="completion-dialog" aria-label="关闭实际用时记录"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <form id="completion-form" novalidate>
-      <div class="completion-content"><div id="completion-fields" class="completion-fields"></div><p class="completion-help" id="completion-help">按分钟填写，可按 0.5 分钟递增。共享的同一原任务只记录一次。</p><p class="completion-error" id="completion-error" role="alert" hidden></p></div>
+      <div class="completion-content"><div id="completion-fields" class="completion-fields"></div><p class="completion-help" id="completion-help">按分钟填写，支持小数。共享的同一原任务只记录一次。</p><p class="completion-error" id="completion-error" role="alert" hidden></p></div>
       <div class="modal-footer"><span class="muted">取消不会改变任务完成状态</span><div class="modal-footer-buttons"><button type="button" class="button button-secondary" data-close="completion-dialog">取消</button><button type="submit" class="button button-primary" id="save-completion">保存并打卡</button></div></div>
     </form>
   </dialog>

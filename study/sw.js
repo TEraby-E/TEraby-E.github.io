@@ -1,7 +1,7 @@
 'use strict';
 
 const PREFIX = `sjtu-checkin-${new URL(self.registration.scope).pathname}-`;
-const CACHE = `${PREFIX}v6`;
+const CACHE = `${PREFIX}v7`;
 const FILES = [
   './', './index.html', './styles.css', './app.js', './study-time.js', './storage.js', './export-image.js',
   './manifest.webmanifest', './data/library.json', './assets/sjtu-emblem.png',

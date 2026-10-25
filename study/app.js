@@ -169,7 +169,7 @@
       const estimates = rows.map(taskEstimate).filter((estimate) => estimate.minutes !== null).map((estimate) => estimate.minutes);
       const initial = recorded.length ? String(Math.max(...recorded)) : estimates.length ? String(Math.max(...estimates)) : '';
       const subjects = [...new Set(rows.map((item) => item.subject_name || library.find((subject) => subject.id === item.subject_id)?.name || ''))].filter(Boolean);
-      return `<section class="completion-entry"><div class="completion-entry-copy"><h3>${escape(task.title)}</h3><p>${escape(subjects.join(' · '))}${rows.length > 1 ? ` · ${rows.length} 个共享条目，只计一次` : ''}</p><span class="completion-estimate">${escape(estimateText(task))}</span></div><label class="completion-input-label" for="actual-minutes-${index}">实际用时<span class="completion-input-row"><input id="actual-minutes-${index}" data-completion-index="${index}" type="number" min="0" max="525600" step="0.5" inputmode="decimal" required placeholder="填写实际分钟" value="${initial}" aria-describedby="completion-help completion-error"><span>分钟</span></span></label></section>`;
+      return `<section class="completion-entry"><div class="completion-entry-copy"><h3>${escape(task.title)}</h3><p>${escape(subjects.join(' · '))}${rows.length > 1 ? ` · ${rows.length} 个共享条目，只计一次` : ''}</p><span class="completion-estimate">${escape(estimateText(task))}</span></div><label class="completion-input-label" for="actual-minutes-${index}">实际用时<span class="completion-input-row"><input id="actual-minutes-${index}" data-completion-index="${index}" type="number" min="0" max="525600" step="any" inputmode="decimal" required placeholder="填写实际分钟" value="${initial}" aria-describedby="completion-help completion-error"><span>分钟</span></span></label></section>`;
     }).join('');
     $('completion-error').hidden = true;
     $('save-completion').textContent = mode === 'edit' ? '保存实际用时' : '保存并打卡';
@@ -187,9 +187,9 @@
     }
     const inputs = [...$('completion-fields').querySelectorAll('input[data-completion-index]')];
     const values = inputs.map((input) => ({ input, raw: input.value.trim(), minutes: Number(input.value) }));
-    const invalid = values.find(({ input, raw, minutes }) => raw === '' || input.validity?.badInput || !Number.isFinite(minutes) || minutes < 0 || minutes > 525600 || Math.abs(minutes * 2 - Math.round(minutes * 2)) > 1e-8);
+    const invalid = values.find(({ input, raw, minutes }) => raw === '' || input.validity?.badInput || !Number.isFinite(minutes) || minutes < 0 || minutes > 525600);
     if (invalid || values.length !== draft.entries.length) {
-      $('completion-error').textContent = '请为每项任务填写实际分钟数，可按 0.5 分钟递增；没有耗时可填 0。';
+      $('completion-error').textContent = '请为每项任务填写 0 至 525600 的实际分钟数，支持小数；没有耗时可填 0。';
       $('completion-error').hidden = false;
       invalid?.input.focus();
       return;
