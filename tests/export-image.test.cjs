@@ -39,7 +39,7 @@ test('100 long Chinese tasks paginate without trimming any details', () => {
   assert(result.pages.length > 1);
   assert.equal(result.completed, 50);
   assert(result.pages.every(page => page.height <= image.MAX_HEIGHT));
-  const allLines = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).map(line => line.text).join('');
+  const allLines = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).filter(line => line.role !== 'estimate').map(line => line.text).join('');
   for (let index = 0; index < 100; index += 1) assert(allLines.includes(`第${index + 1}项综合题${long}`));
 });
 
@@ -49,8 +49,93 @@ test('a single exceptionally long task continues onto new pages', () => {
   assert(result.pages.length > 1);
   assert(result.pages.every(page => page.blocks[0].type === 'subject'));
   assert(result.pages[1].blocks[0].continued);
-  const merged = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).map(line => line.text).join('');
+  const merged = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).filter(line => line.role !== 'estimate').map(line => line.text).join('');
   assert.equal(merged, `链表综合题${detail}`);
+});
+
+test('export time summary counts shared papers once and keeps missing estimates visible', () => {
+  const assignments = [
+    task({ subject_id: 'calculus', estimated_minutes: 180, estimated_source: '原计划共享整卷', estimate_group: 'shared-paper' }),
+    task({ subject_id: 'linear', estimated_minutes: 180, estimated_source: '原计划共享整卷', estimate_group: 'shared-paper' }),
+    task({ estimated_minutes: 35, estimated_source: '原排课预计用时' }),
+    task({ subject_id: 'cn' }),
+  ];
+  const result = image.layoutDocument(assignments, measure);
+  assert.equal(result.timeSummary.minutes, 215);
+  assert.equal(result.timeSummary.unknown, 1);
+  assert.equal(result.timeSummary.groups, 2);
+  assert.equal(result.tasks.filter(item => item.estimate.minutes === 180).length, 2);
+  const estimateLines = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).filter(line => line.role === 'estimate').map(line => line.text).filter(Boolean);
+  assert.equal(estimateLines.length, assignments.length);
+  assert(estimateLines.some(label => label.includes('待补充')));
+});
+
+test('old records recover canonical estimates while saved estimates retain their snapshot', () => {
+  const canonical = { id: 'source-task', estimated_minutes: 75, estimated_source: '原排课预计用时', estimate_group: 'source-group' };
+  const library = { subjects: [{ chapters: [{ tasks: [canonical] }] }] };
+  const old = task({ task_id: canonical.id, title: '已归档标题', detail: '已归档备注' });
+  const recovered = image.hydrateEstimates([old], library)[0];
+  assert.equal(recovered.estimated_minutes, 75);
+  assert.equal(recovered.estimate_group, 'source-group');
+  assert.equal(recovered.title, old.title);
+  assert.equal(recovered.detail, old.detail);
+  const snapshot = image.hydrateEstimates([{ ...old, estimated_minutes: 45, estimated_source: '保存时的预计用时', estimate_group: 'source-group' }], library)[0];
+  assert.equal(snapshot.estimated_minutes, 45);
+  assert.equal(image.layoutDocument([snapshot], measure).timeSummary.minutes, 45);
+});
+
+test('estimated video time remains explicitly labelled as video time', () => {
+  const result = image.layoutDocument([task({ estimated_minutes: 12, estimated_source: '原视频时长' })], measure);
+  assert.equal(result.timeSummary.minutes, 12);
+  assert(result.tasks[0].estimate.label.includes('视频时长'));
+});
+
+test('actual zero is recorded while pending or missing actual time is never invented', () => {
+  const result = image.layoutDocument([
+    task({ task_id: 'zero', estimated_minutes: 20, actual_minutes: 0, done: true }),
+    task({ task_id: 'missing', estimated_minutes: 30, done: true }),
+    task({ task_id: 'pending', estimated_minutes: 40, actual_minutes: 15, done: false }),
+  ], measure);
+  assert.equal(result.timeSummary.minutes, 90);
+  assert.equal(result.timeSummary.actualMinutes, 0);
+  assert.equal(result.timeSummary.actualKnown, 1);
+  assert.equal(result.timeSummary.actualUnknown, 1);
+  assert.equal(result.tasks[0].actual.minutes, 0);
+  assert.equal(result.tasks[0].actual.recorded, true);
+  assert.equal(result.tasks[1].actual.minutes, null);
+  assert.equal(result.tasks[2].actual.minutes, null);
+  assert(result.tasks[0].timeComparison.includes('预计20分钟'));
+  assert(result.tasks[0].timeComparison.includes('实际0分钟'));
+  assert(result.tasks[1].timeComparison.includes('实际未记录'));
+  assert(result.tasks[2].timeComparison.includes('实际待完成'));
+});
+
+test('shared task copies export actual duration only once without losing each record', () => {
+  const assignments = ['calculus', 'linear', 'probability'].map((subject_id, index) => task({
+    task_id: `paper-${index}`, subject_id, estimated_minutes: 180,
+    estimate_group: 'shared-paper', actual_minutes: 200, done: true,
+  }));
+  const result = image.layoutDocument(assignments, measure);
+  assert.equal(result.timeSummary.minutes, 180);
+  assert.equal(result.timeSummary.actualMinutes, 200);
+  assert.equal(result.timeSummary.actualUnknown, 0);
+  assert.equal(result.tasks.length, 3);
+  assert(result.tasks.every(item => item.actual.minutes === 200));
+  const lines = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).filter(line => line.role === 'estimate').map(line => line.text).join('');
+  assert.equal(lines.match(/实际3小时20分钟/g).length, 3);
+});
+
+test('retired selectable cards still supply estimates to an old saved record without fabricating actual time', () => {
+  const library = { subjects: [], metadata: { retired_tasks: [{ id: 'retired', estimated_minutes: 35, estimated_source: '原计划', estimate_group: 'retired' }] } };
+  const old = task({ task_id: 'retired', title: '以前保存的任务', detail: '以前保存的笔记', done: true, actual_minutes: 22 });
+  const recovered = image.hydrateEstimates([old], library)[0];
+  assert.equal(recovered.estimated_minutes, 35);
+  assert.equal(recovered.actual_minutes, 22);
+  assert.equal(recovered.title, old.title);
+  assert.equal(recovered.detail, old.detail);
+  const noActual = image.hydrateEstimates([task({ task_id: 'retired', done: true })], library)[0];
+  assert.equal(Object.hasOwn(noActual, 'actual_minutes'), false);
+  assert.equal(image.layoutDocument([noActual], measure).timeSummary.actualUnknown, 1);
 });
 
 test('export retains metadata and nonduplicate remarks', () => {

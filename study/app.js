@@ -7,6 +7,7 @@
   const icon = (name, extraClass = '') => `<svg class="icon ${extraClass}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
   const cloneAssignments = () => state.assignments.map((assignment) => ({ ...assignment }));
   let library = [];
+  let retiredTasks = new Map();
   let state = null;
   let dirty = false;
   let changeVersion = 0;
@@ -22,6 +23,8 @@
   let historyRequest = 0;
   let loadRequest = 0;
   let installPrompt = null;
+  let estimateDraft = null;
+  let completionDraft = null;
   const dialogOpeners = new Map();
 
   class ApiError extends Error {
@@ -64,6 +67,217 @@
     return `<span class="${className}">${escape(chapterTitle)}</span>`;
   }
 
+  function canonicalTask(task) {
+    const id = task.task_id || task.id;
+    for (const subject of library) {
+      if (task.subject_id && subject.id !== task.subject_id) continue;
+      for (const chapter of subject.chapters) {
+        const found = chapter.tasks.find((item) => item.id === id);
+        if (found) return found;
+      }
+    }
+    return retiredTasks.get(id) || null;
+  }
+
+  function taskEstimate(task) {
+    return window.StudyTime?.getEstimate(task, canonicalTask(task)) || { minutes: null, source: '', group: null };
+  }
+
+  function timeSummary(tasks) {
+    return window.StudyTime?.summarize(tasks, library) || { minutes: 0, unknown: tasks.length, known: 0 };
+  }
+
+  function formattedTime(minutes) {
+    return window.StudyTime?.formatMinutes(minutes) || `${minutes}分钟`;
+  }
+
+  function estimateText(task) {
+    const estimate = taskEstimate(task);
+    return estimate.label || (estimate.minutes === null ? '预计用时待补充' : `预计 ${formattedTime(estimate.minutes)}`);
+  }
+
+  function estimateBadge(task, className = 'task-estimate') {
+    const estimate = taskEstimate(task);
+    return `<span class="${className}${estimate.minutes === null ? ' is-unknown' : ''}"${estimate.source ? ` title="${escape(estimate.source)}"` : ''}>${escape(estimateText(task))}</span>`;
+  }
+
+  function estimateButton(task) {
+    const estimate = taskEstimate(task);
+    const hint = [estimate.source, '点击安排今天计划投入的用时'].filter(Boolean).join('；');
+    return `<button type="button" class="task-estimate task-estimate-button${estimate.minutes === null ? ' is-unknown' : ''}" data-action="edit-time" data-task="${escape(task.task_id)}" aria-label="安排今日用时：${escape(task.title)}" title="${escape(hint)}">${escape(estimateText(task))}<span class="estimate-edit-hint">调整</span></button>`;
+  }
+
+  function taskActual(task) {
+    if (window.StudyTime?.getActual) return window.StudyTime.getActual(task);
+    const recorded = task.done && typeof task.actual_minutes === 'number' && Number.isFinite(task.actual_minutes) && task.actual_minutes >= 0;
+    return { minutes: recorded ? task.actual_minutes : null, recorded, label: !task.done ? '实际待完成' : recorded ? `实际${formattedTime(task.actual_minutes)}` : '实际未记录' };
+  }
+
+  function actualButton(task) {
+    const actual = taskActual(task);
+    return `<button type="button" class="task-estimate task-actual-button${actual.recorded ? ' is-recorded' : ' is-unknown'}" data-action="record-actual" data-task="${escape(task.task_id)}" aria-label="${task.done ? '修改' : '记录'}实际用时：${escape(task.title)}">${escape(actual.label)}<span class="estimate-edit-hint">${task.done ? actual.recorded ? '修改' : '补记' : '打卡'}</span></button>`;
+  }
+
+  function comparisonBadge(task) {
+    const label = window.StudyTime?.comparisonLabel?.(task, canonicalTask(task)) || `${estimateText(task)} / ${taskActual(task).label}`;
+    return `<span class="history-task-estimate">${escape(label)}</span>`;
+  }
+
+  function comparisonButtons(task) {
+    return `<span class="task-time-comparison">${estimateButton(task)}<span class="time-comparison-slash" aria-hidden="true">/</span>${actualButton(task)}</span>`;
+  }
+
+  function summaryText(tasks) {
+    const summary = timeSummary(tasks);
+    if (!summary.known && summary.unknown) return `预计用时待补充 · ${summary.unknown}项未设置`;
+    return `预计 ${formattedTime(summary.minutes)}${summary.unknown ? ` · 另${summary.unknown}项待补充` : ''}`;
+  }
+
+  function actualSummaryText(tasks) {
+    const summary = timeSummary(tasks);
+    if (!summary.actualKnown && summary.actualUnknown) return `实际用时待补记 · ${summary.actualUnknown}项未记录`;
+    return `实际 ${formattedTime(summary.actualMinutes || 0)}${summary.actualUnknown ? ` · 另${summary.actualUnknown}项未记录` : ''}`;
+  }
+
+  function completionKey(task) {
+    return taskEstimate(task).group || task.task_id;
+  }
+
+  function expandedCompletionTasks(tasks, mode = 'complete') {
+    const keys = new Set(tasks.map(completionKey));
+    return state.assignments.filter((task) => keys.has(completionKey(task)) && (mode !== 'edit' || task.done));
+  }
+
+  function openCompletion(taskIds, mode = 'complete') {
+    if (!state || actionBusy) return;
+    const requested = state.assignments.filter((task) => taskIds.includes(task.task_id) && (mode === 'edit' ? task.done : !task.done));
+    if (!requested.length) return;
+    const tasks = expandedCompletionTasks(requested, mode);
+    const groups = new Map();
+    tasks.forEach((task) => {
+      const key = completionKey(task);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(task);
+    });
+    const entries = [...groups.values()].map((rows) => ({ taskIds: rows.map((task) => task.task_id), rows }));
+    completionDraft = { date: state.date, version: changeVersion, mode, entries };
+    $('completion-title').textContent = mode === 'edit' ? '记录实际用时' : '完成任务，记下实际用时';
+    $('completion-description').textContent = mode === 'edit' ? '填写这次完成任务实际花费的时间。' : entries.length > 1 ? `请分别填写这 ${entries.length} 项任务实际花费的时间，保存后完成打卡。` : '填写这项任务实际花费的时间，保存后完成打卡。';
+    $('completion-fields').innerHTML = entries.map(({ rows }, index) => {
+      const task = rows[0];
+      const recorded = rows.map(taskActual).filter((actual) => actual.recorded).map((actual) => actual.minutes);
+      const initial = recorded.length ? String(Math.max(...recorded)) : '';
+      const subjects = [...new Set(rows.map((item) => item.subject_name || library.find((subject) => subject.id === item.subject_id)?.name || ''))].filter(Boolean);
+      return `<section class="completion-entry"><div class="completion-entry-copy"><h3>${escape(task.title)}</h3><p>${escape(subjects.join(' · '))}${rows.length > 1 ? ` · ${rows.length} 个共享条目，只计一次` : ''}</p><span class="completion-estimate">${escape(estimateText(task))}</span></div><label class="completion-input-label" for="actual-minutes-${index}">实际用时<span class="completion-input-row"><input id="actual-minutes-${index}" data-completion-index="${index}" type="number" min="0" max="525600" step="0.5" inputmode="decimal" required placeholder="填写实际分钟" value="${initial}" aria-describedby="completion-help completion-error"><span>分钟</span></span></label></section>`;
+    }).join('');
+    $('completion-error').hidden = true;
+    $('save-completion').textContent = mode === 'edit' ? '保存实际用时' : '保存并打卡';
+    openDialog('completion-dialog');
+    $('completion-fields').querySelector('input')?.focus({ preventScroll: true });
+  }
+
+  async function saveCompletion() {
+    if (!completionDraft || !state || actionBusy) return;
+    const draft = completionDraft;
+    if (draft.date !== state.date || draft.version !== changeVersion || draft.entries.some((entry) => entry.taskIds.some((id) => !state.assignments.some((task) => task.task_id === id)))) {
+      closeDialog('completion-dialog');
+      showToast('今日清单已更新，请重新选择任务记录实际用时。');
+      return;
+    }
+    const inputs = [...$('completion-fields').querySelectorAll('input[data-completion-index]')];
+    const values = inputs.map((input) => ({ input, raw: input.value.trim(), minutes: Number(input.value) }));
+    const invalid = values.find(({ input, raw, minutes }) => raw === '' || input.validity?.badInput || !Number.isFinite(minutes) || minutes < 0 || minutes > 525600 || Math.abs(minutes * 2 - Math.round(minutes * 2)) > 1e-8);
+    if (invalid || values.length !== draft.entries.length) {
+      $('completion-error').textContent = '请为每项任务填写实际分钟数，可按 0.5 分钟递增；没有耗时可填 0。';
+      $('completion-error').hidden = false;
+      invalid?.input.focus();
+      return;
+    }
+    draft.entries.forEach((entry, index) => entry.taskIds.forEach((id) => {
+      const task = state.assignments.find((item) => item.task_id === id);
+      if (draft.mode === 'complete') task.done = true;
+      task.actual_minutes = values[index].minutes;
+    }));
+    const count = draft.entries.reduce((sum, entry) => sum + entry.taskIds.length, 0);
+    const focusId = draft.entries[0].taskIds[0];
+    closeDialog('completion-dialog');
+    changed();
+    [...document.querySelectorAll('#daily-tbody input[data-task]')].find((input) => input.dataset.task === focusId)?.focus({ preventScroll: true });
+    try {
+      await flushAutosave();
+      showToast(draft.mode === 'edit' ? '实际用时已保存。' : `${count} 项任务已打卡，实际用时已保存。`, null, 4500);
+    } catch {
+      showToast('本次打卡尚未保存，请查看页面提示后重试。', null, 6500);
+    }
+  }
+
+  function undoCompletion(tasks) {
+    expandedCompletionTasks(tasks).forEach((task) => { task.done = false; task.actual_minutes = null; });
+    changed();
+  }
+
+  function openEstimate(taskId) {
+    if (!state || actionBusy) return;
+    const task = state.assignments.find((item) => item.task_id === taskId);
+    if (!task) return;
+    const estimate = taskEstimate(task);
+    const originalTask = canonicalTask(task);
+    const original = originalTask ? taskEstimate(originalTask) : { minutes: null, source: '', label: '原资料未提供用时' };
+    const related = estimate.group ? state.assignments.filter((item) => taskEstimate(item).group === estimate.group) : [task];
+    estimateDraft = { date: state.date, taskId };
+    $('estimate-task-title').textContent = task.title;
+    $('estimate-original').textContent = `${originalTask ? '原任务：' : ''}${original.label || '原资料未提供用时'}${original.source ? ` · ${original.source}` : ''}`;
+    $('estimate-minutes').value = estimate.minutes === null ? '' : String(estimate.minutes);
+    $('estimate-error').hidden = true;
+    $('estimate-group-note').hidden = related.length < 2;
+    $('estimate-group-note').textContent = related.length > 1 ? `这 ${related.length} 个条目属于同一原任务，会一并调整，今日总时长只计一次。` : '';
+    openDialog('estimate-dialog');
+    $('estimate-minutes').focus({ preventScroll: true });
+    $('estimate-minutes').select();
+  }
+
+  function editEstimate(restore = false) {
+    if (!estimateDraft || !state || actionBusy) return;
+    const task = state.assignments.find((item) => item.task_id === estimateDraft.taskId);
+    if (!task || state.date !== estimateDraft.date) {
+      closeDialog('estimate-dialog');
+      showToast('今日清单已更新，请重新选择任务安排用时。');
+      return;
+    }
+    const raw = $('estimate-minutes').value.trim();
+    const minutes = raw === '' ? null : Number(raw);
+    if (!restore && ($('estimate-minutes').validity?.badInput || (minutes !== null && (!Number.isFinite(minutes) || minutes < 0 || minutes > 525600 || Math.abs(minutes * 2 - Math.round(minutes * 2)) > 1e-8)))) {
+      $('estimate-error').textContent = '请填写 0 至 525600 分钟，可按 0.5 分钟递增；留空表示待补充。';
+      $('estimate-error').hidden = false;
+      $('estimate-minutes').focus();
+      return;
+    }
+    const group = taskEstimate(task).group;
+    const related = group ? state.assignments.filter((item) => taskEstimate(item).group === group) : [task];
+    related.forEach((item) => {
+      if (restore) {
+        delete item.estimated_minutes;
+        delete item.estimated_source;
+        delete item.estimate_group;
+        const original = canonicalTask(item);
+        if (original) {
+          item.estimated_minutes = original.estimated_minutes ?? null;
+          item.estimated_source = original.estimated_source || '';
+          item.estimate_group = original.estimate_group || null;
+        }
+      } else {
+        item.estimated_minutes = minutes;
+        item.estimated_source = '今日手动安排';
+        item.estimate_group = group || null;
+      }
+    });
+    const taskId = task.task_id;
+    closeDialog('estimate-dialog');
+    changed();
+    [...document.querySelectorAll('.task-estimate-button')].find((button) => button.dataset.task === taskId)?.focus({ preventScroll: true });
+    showToast(restore ? '已恢复原任务的预计用时。' : related.length > 1 ? `已更新 ${related.length} 个共享条目，今日总时长只计一次。` : minutes === null ? '今日用时已标为待补充。' : '今天计划投入的用时已更新。', null, 4500);
+  }
+
   function setStatus(status, message) {
     $('save-status').dataset.status = status;
     $('save-status-text').textContent = message;
@@ -101,6 +315,11 @@
     $('archive-button').disabled = unavailable;
     $('confirm-archive').disabled = unavailable;
     $('export-history-button').disabled = actionBusy || !historyRecord;
+    $('save-estimate').disabled = unavailable;
+    $('reset-estimate').disabled = unavailable;
+    $('estimate-minutes').disabled = unavailable;
+    $('save-completion').disabled = unavailable;
+    document.querySelectorAll('#completion-fields input').forEach((input) => { input.disabled = unavailable; });
     document.querySelectorAll('#daily-tbody button, #daily-tbody input').forEach((element) => { element.disabled = unavailable; });
     $('task-sheet').setAttribute('aria-busy', String(unavailable));
   }
@@ -114,6 +333,12 @@
     const total = state.assignments.length;
     const completed = state.assignments.filter((assignment) => assignment.done).length;
     $('task-total').textContent = `${total} 项`;
+    const duration = timeSummary(state.assignments);
+    const allUnknown = !duration.known && duration.unknown;
+    $('estimated-time').textContent = allUnknown ? '待补充' : formattedTime(duration.minutes);
+    $('estimated-time-note').textContent = allUnknown ? `${duration.unknown}项未设预计用时` : duration.unknown ? `另${duration.unknown}项待补充` : '按已选任务汇总';
+    $('actual-time').textContent = !duration.actualKnown && duration.actualUnknown ? '待补记' : formattedTime(duration.actualMinutes || 0);
+    $('actual-time-note').textContent = duration.actualUnknown ? `另${duration.actualUnknown}项实际用时未记录` : '按已完成任务汇总';
     $('daily-tbody').innerHTML = library.map((subject) => {
       const tasks = subjectAssignments(subject.id);
       const done = tasks.filter((task) => task.done).length;
@@ -122,7 +347,7 @@
       const subjectLabel = tasks.length ? `${subject.name}，${allDone ? '取消该科全部完成' : '完成该科全部任务'}` : `${subject.name}，选择章节任务`;
       return `<tr class="${tasks.length ? 'has-tasks' : ''} ${allDone ? 'is-complete' : ''}">
         <td class="subject-cell"><div class="subject-control"><button type="button" class="subject-button" data-action="subject" data-subject="${escape(subject.id)}" aria-label="${escape(subjectLabel)}"><strong>${escape(subject.name)}</strong><span class="subject-help">${subjectHelp}</span></button><button type="button" class="add-task-button" data-action="choose" data-subject="${escape(subject.id)}" aria-label="选择${escape(subject.name)}的章节任务" title="选择章节任务">${icon('plus')}</button></div></td>
-        <td>${tasks.length ? `<ul class="task-list">${tasks.map((task) => `<li class="task-item ${task.done ? 'done' : ''}"><label class="task-check"><input type="checkbox" data-task="${escape(task.task_id)}" ${task.done ? 'checked' : ''} aria-label="${escape(task.title)}，${task.done ? '已完成' : '未完成'}"><span class="task-copy">${chapterLine(task, 'task-chapter')}<span class="task-title">${escape(task.title)}</span>${task.detail && task.detail !== task.title ? `<span class="task-detail">${escape(task.detail)}</span>` : ''}</span></label><button type="button" class="remove-task" data-action="remove" data-task="${escape(task.task_id)}" aria-label="从今日清单移除：${escape(task.title)}" title="从今日清单移除">${icon('close')}</button></li>`).join('')}</ul>` : `<div class="empty-row"><span>还没有安排任务</span><button type="button" class="empty-choose" data-action="choose" data-subject="${escape(subject.id)}">选择章节任务${icon('chevron')}</button></div>`}</td>
+        <td>${tasks.length ? `<ul class="task-list">${tasks.map((task) => `<li class="task-item ${task.done ? 'done' : ''}"><div class="task-check"><input id="daily-task-${escape(task.task_id)}" type="checkbox" data-task="${escape(task.task_id)}" ${task.done ? 'checked' : ''} aria-label="${escape(task.title)}，${task.done ? '已完成' : '未完成'}"><div class="task-copy"><label class="task-content-label" for="daily-task-${escape(task.task_id)}">${chapterLine(task, 'task-chapter')}<span class="task-title">${escape(task.title)}</span>${task.detail && task.detail !== task.title ? `<span class="task-detail">${escape(task.detail)}</span>` : ''}</label>${comparisonButtons(task)}</div></div><button type="button" class="remove-task" data-action="remove" data-task="${escape(task.task_id)}" aria-label="从今日清单移除：${escape(task.title)}" title="从今日清单移除">${icon('close')}</button></li>`).join('')}</ul>` : `<div class="empty-row"><span>还没有安排任务</span><button type="button" class="empty-choose" data-action="choose" data-subject="${escape(subject.id)}">选择章节任务${icon('chevron')}</button></div>`}</td>
         <td class="row-progress">${allDone ? `<span class="all-done-icon" aria-label="${done} 项全部完成">${icon('check')}</span>` : tasks.length ? `<span class="done-count">${done}</span><span class="total-count"> / ${tasks.length}</span>` : '<span class="zero-count">—</span>'}</td>
       </tr>`;
     }).join('');
@@ -149,6 +374,10 @@
     changeVersion += 1;
     closeDialog('library-dialog');
     closeDialog('archive-dialog');
+    closeDialog('estimate-dialog');
+    closeDialog('completion-dialog');
+    estimateDraft = null;
+    completionDraft = null;
     renderDay();
     setStatus('saved', '已同步最新记录');
     showError('另一个窗口更新了学习记录，页面已同步。请确认清单后再操作。');
@@ -210,7 +439,8 @@
     if (actionBusy || !state) return;
     const subject = library.find((item) => item.id === id);
     if (!subject) return;
-    const selected = new Set(subjectAssignments(id).map((assignment) => assignment.task_id));
+    const available = new Set(subject.chapters.flatMap((chapter) => chapter.tasks.map((task) => task.id)));
+    const selected = new Set(subjectAssignments(id).filter((assignment) => available.has(assignment.task_id)).map((assignment) => assignment.task_id));
     const firstSelected = subject.chapters.find((chapter) => chapter.tasks.some((task) => selected.has(task.id)));
     const completed = new Set(state.completed_ids);
     const nextChapter = subject.chapters.find((chapter) => chapter.tasks.some((task) => !completed.has(task.id)));
@@ -242,7 +472,8 @@
 
   function updateSelectionSummary() {
     const size = subjectDraft.selected.size;
-    $('selection-summary').innerHTML = `已选 <strong>${size}</strong> 项任务`;
+    const selected = subjectDraft.subject.chapters.flatMap((chapter) => chapter.tasks.filter((task) => subjectDraft.selected.has(task.id)));
+    $('selection-summary').innerHTML = `已选 <strong>${size}</strong> 项任务<span class="selection-time">${escape(summaryText(selected))}</span>`;
     $('apply-library').innerHTML = `${subjectAssignments(subjectDraft.subject.id).length ? '更新今日清单' : '加入今日清单'}${icon('arrow')}`;
   }
 
@@ -266,6 +497,7 @@
     $('chapter-content').innerHTML = `<div class="chapter-heading"><div><h3>${escape(chapter.title)}</h3><p>${subjectDraft.query ? `找到 ${tasks.length} 项任务` : `${tasks.length} 项学习任务`}</p></div>${tasks.length ? `<button class="text-button" id="toggle-chapter" type="button">${allChosen ? '取消本章全选' : '全选本章'}</button>` : ''}</div><div class="library-tasks">${tasks.map((task) => {
       const selected = subjectDraft.selected.has(task.id);
       const metadata = [task.kind, task.quantity, task.reference].filter((value) => value != null && String(value).trim()).map((value) => `<span>${escape(value)}</span>`);
+      metadata.unshift(estimateBadge(task, 'library-task-estimate'));
       if (completed.has(task.id)) metadata.push('<span class="previously-done">已完成过</span>');
       return `<label class="library-task ${selected ? 'selected' : ''}"><input type="checkbox" data-library-task="${escape(task.id)}" ${selected ? 'checked' : ''}><span class="library-task-copy"><span class="library-task-title">${escape(task.title)}</span>${task.detail && task.detail !== task.title ? `<span class="library-task-detail">${escape(task.detail)}</span>` : ''}${metadata.length ? `<span class="task-metadata">${metadata.join('')}</span>` : ''}${task.remarks ? `<span class="library-task-detail">${escape(task.remarks)}</span>` : ''}</span></label>`;
     }).join('')}</div>`;
@@ -283,15 +515,20 @@
     if (!subjectDraft || actionBusy) return;
     const id = subjectDraft.subject.id;
     const existing = new Map(subjectAssignments(id).map((assignment) => [assignment.task_id, assignment]));
+    const available = new Set(subjectDraft.subject.chapters.flatMap((chapter) => chapter.tasks.map((task) => task.id)));
+    const preserved = subjectAssignments(id).filter((assignment) => !available.has(assignment.task_id));
     const replacement = [];
     subjectDraft.subject.chapters.forEach((chapter) => chapter.tasks.forEach((task) => {
-      if (subjectDraft.selected.has(task.id)) replacement.push({ ...(existing.get(task.id) || { task_id: task.id, subject_id: id, chapter_id: chapter.id, title: task.title, detail: task.detail || '', done: false }), subject_name: subjectDraft.subject.name, chapter_title: chapter.title });
+      if (subjectDraft.selected.has(task.id)) {
+        const estimate = taskEstimate(existing.get(task.id) || task);
+        replacement.push({ ...(existing.get(task.id) || { task_id: task.id, subject_id: id, chapter_id: chapter.id, title: task.title, detail: task.detail || '', done: false }), subject_name: subjectDraft.subject.name, chapter_title: chapter.title, estimated_minutes: estimate.minutes, estimated_source: estimate.source || '', estimate_group: estimate.group || null });
+      }
     }));
-    state.assignments = state.assignments.filter((assignment) => assignment.subject_id !== id).concat(replacement);
+    state.assignments = state.assignments.filter((assignment) => assignment.subject_id !== id).concat(replacement, preserved);
     closeDialog('library-dialog');
     changed();
     [...document.querySelectorAll('.add-task-button')].find((element) => element.dataset.subject === id)?.focus({ preventScroll: true });
-    showToast(replacement.length ? `${subjectDraft.subject.name}已安排 ${replacement.length} 项任务。` : `已清空${subjectDraft.subject.name}今天的任务。`, null, 3000);
+    showToast(replacement.length ? `${subjectDraft.subject.name}已安排 ${replacement.length} 项任务。${preserved.length ? '既有记录已保留。' : ''}` : preserved.length ? '可选任务已清空，既有记录已保留。' : `已清空${subjectDraft.subject.name}今天的任务。`, null, 3000);
   }
 
   function historyEntries() {
@@ -319,10 +556,10 @@
       historyRecord = record;
       const assignments = Array.isArray(record.assignments) ? record.assignments : [];
       const completed = assignments.filter((assignment) => assignment.done).length;
-      $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(date))}</h3><span>完成 ${completed} / ${assignments.length} 项任务</span></div>${assignments.length ? library.map((subject) => {
+      $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(date))}</h3><span>完成 ${completed} / ${assignments.length} 项任务<small class="history-time-line">${escape(summaryText(assignments))} / ${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? library.map((subject) => {
         const tasks = subjectAssignments(subject.id, assignments);
         if (!tasks.length) return '';
-        return `<section class="history-subject"><h4>${escape(subject.name)}</h4>${tasks.map((task) => `<div class="history-task"><span class="history-check ${task.done ? 'done' : ''}" aria-label="${task.done ? '已完成' : '未完成'}">${task.done ? icon('check') : ''}</span><span class="history-task-copy">${chapterLine(task, 'history-task-chapter')}<span>${escape(task.title)}</span>${task.detail && task.detail !== task.title ? `<small>${escape(task.detail)}</small>` : ''}</span></div>`).join('')}</section>`;
+        return `<section class="history-subject"><h4>${escape(subject.name)}</h4>${tasks.map((task) => `<div class="history-task"><span class="history-check ${task.done ? 'done' : ''}" aria-label="${task.done ? '已完成' : '未完成'}">${task.done ? icon('check') : ''}</span><span class="history-task-copy">${chapterLine(task, 'history-task-chapter')}<span>${escape(task.title)}</span>${task.detail && task.detail !== task.title ? `<small>${escape(task.detail)}</small>` : ''}${comparisonBadge(task)}</span></div>`).join('')}</section>`;
       }).join('') : `<div class="empty-state">${icon('book')}<strong>这一天没有安排任务</strong></div>`}`;
       $('export-history-button').hidden = !assignments.length;
       updateControls();
@@ -357,6 +594,8 @@
     if (actionBusy || !state) return;
     setBusy(true, 'archive');
     closeDialog('archive-dialog');
+    closeDialog('completion-dialog');
+    completionDraft = null;
     try {
       await flushAutosave();
       const previousDate = state.date;
@@ -470,18 +709,28 @@
       if (!canApply()) return;
       if (!Array.isArray(libraryResult.subjects)) throw new Error('章节任务库的格式不正确。');
       const freshLibrary = SUBJECT_NAMES.map((name) => libraryResult.subjects.find((subject) => subject.name === name)).filter(Boolean).map((subject) => ({ ...subject, chapters: Array.isArray(subject.chapters) ? subject.chapters.map((chapter) => ({ ...chapter, tasks: Array.isArray(chapter.tasks) ? chapter.tasks : [] })) : [] }));
+      const freshRetired = new Map((libraryResult.metadata?.retired_tasks || []).map((task) => [task.id, task]));
       if (freshLibrary.length !== SUBJECT_NAMES.length) throw new Error('章节任务库缺少科目，请重新载入任务库。');
       const fresh = normaliseState(stateResult);
       if (state && fresh.revision < state.revision) return;
       const externalUpdate = state && fresh.revision !== state.revision;
       if (externalUpdate) {
         const choosing = $('library-dialog').open;
+        const editingEstimate = $('estimate-dialog').open;
+        const recordingCompletion = $('completion-dialog').open;
         closeDialog('library-dialog');
         closeDialog('archive-dialog');
+        closeDialog('estimate-dialog');
+        closeDialog('completion-dialog');
         subjectDraft = null;
+        estimateDraft = null;
+        completionDraft = null;
         if (choosing) showToast('另一页面更新了学习记录，请按最新进度重新选择任务。', null, 6500);
+        else if (editingEstimate) showToast('另一页面更新了学习记录，请按最新清单重新安排用时。', null, 6500);
+        else if (recordingCompletion) showToast('另一页面更新了学习记录，请按最新清单重新打卡。', null, 6500);
       }
       library = freshLibrary;
+      retiredTasks = freshRetired;
       state = fresh;
       dirty = false;
       renderDay();
@@ -510,12 +759,17 @@
       if (!assignments.length) chooseSubject(subjectId);
       else {
         const allDone = assignments.every((assignment) => assignment.done);
-        assignments.forEach((assignment) => { assignment.done = !allDone; });
-        changed();
+        if (allDone) undoCompletion(assignments);
+        else openCompletion(assignments.filter((task) => !task.done).map((task) => task.task_id));
         const replacement = [...document.querySelectorAll('.subject-button')].find((element) => element.dataset.subject === subjectId);
         replacement?.focus({ preventScroll: true });
       }
-    } else if (action === 'remove') {
+    } else if (action === 'edit-time') openEstimate(taskId);
+    else if (action === 'record-actual') {
+      const task = state.assignments.find((item) => item.task_id === taskId);
+      if (task) openCompletion([taskId], task.done ? 'edit' : 'complete');
+    }
+    else if (action === 'remove') {
       const removedSubject = state.assignments.find((assignment) => assignment.task_id === taskId)?.subject_id;
       state.assignments = state.assignments.filter((assignment) => assignment.task_id !== taskId);
       changed();
@@ -528,9 +782,11 @@
     if (!input || actionBusy || !state) return;
     const assignment = state.assignments.find((item) => item.task_id === input.dataset.task);
     if (!assignment) return;
-    assignment.done = input.checked;
+    const complete = input.checked;
+    input.checked = assignment.done;
     const taskId = input.dataset.task;
-    changed();
+    if (complete) openCompletion([taskId]);
+    else undoCompletion([assignment]);
     [...document.querySelectorAll('#daily-tbody input[data-task]')].find((element) => element.dataset.task === taskId)?.focus({ preventScroll: true });
   });
 
@@ -577,6 +833,9 @@
   });
 
   $('apply-library').addEventListener('click', applyLibrary);
+  $('estimate-form').addEventListener('submit', (event) => { event.preventDefault(); editEstimate(false); });
+  $('completion-form').addEventListener('submit', (event) => { event.preventDefault(); saveCompletion(); });
+  $('reset-estimate').addEventListener('click', () => editEstimate(true));
   $('data-button').addEventListener('click', () => {
     openDialog('data-dialog');
     updateDirectoryInfo();
@@ -657,6 +916,8 @@
     });
     dialog.addEventListener('close', () => {
       if (dialog.id === 'history-dialog') historyRequest += 1;
+      if (dialog.id === 'estimate-dialog') estimateDraft = null;
+      if (dialog.id === 'completion-dialog') completionDraft = null;
       if (dialog.contains($('toast'))) {
         $('toast').hidden = true;
         $('toast').classList.remove('toast-in-dialog');

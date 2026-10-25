@@ -10,6 +10,7 @@
   <link rel="icon" href="./assets/sjtu-emblem.ico">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/app-icon-192.png">
+  <script src="./study-time.js" defer></script>
   <script src="./storage.js" defer></script>
   <script src="./export-image.js" defer></script>
   <script src="./app.js" defer></script>
@@ -54,7 +55,10 @@
         <h1 id="page-title">饮水思源<span class="motto-separator"> · </span>爱国荣校</h1>
         <p class="page-description">不要把梦想埋没</p>
       </div>
-      <div class="date-block"><span class="date-label">学习日期</span><time id="study-date">正在载入</time><span id="study-weekday" class="date-weekday"></span></div>
+      <div class="heading-meta">
+        <div class="duration-block" aria-live="polite"><span class="duration-label">今日学习时长</span><span class="duration-value-line"><span>预计</span><strong id="estimated-time">0分钟</strong></span><span class="duration-value-line is-actual"><span>实际</span><strong id="actual-time">0分钟</strong></span><span id="estimated-time-note" class="duration-note">按已选任务汇总</span><span id="actual-time-note" class="duration-note">按已完成任务汇总</span></div>
+        <div class="date-block"><span class="date-label">学习日期</span><time id="study-date">正在载入</time><span id="study-weekday" class="date-weekday"></span></div>
+      </div>
     </section>
 
     <div class="notice notice-error" id="error-banner" role="alert" hidden><span id="error-text"></span><button type="button" id="retry-button" class="text-button">重试</button></div>
@@ -105,6 +109,22 @@
     <div class="modal-heading"><div><p class="eyebrow">NEXT DAY</p><h2 id="archive-title">收好今天，继续向前</h2></div><button type="button" class="icon-button close-button" data-close="archive-dialog" aria-label="关闭"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="archive-content"><p id="archive-description"></p><label class="carry-option"><input type="checkbox" id="carry-pending" checked><span><strong>将未完成任务带到下一天</strong><span>今天的完成情况会保留在历史记录中。</span></span></label></div>
     <div class="modal-footer"><button type="button" class="button button-secondary" data-close="archive-dialog">继续今天</button><button type="button" class="button button-primary" id="confirm-archive">保存并进入下一天<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+  </dialog>
+
+  <dialog class="modal estimate-modal" id="estimate-dialog" aria-labelledby="estimate-title">
+    <div class="modal-heading"><div><h2 id="estimate-title">安排今日用时</h2><p class="modal-description">按今天准备投入的时间安排，原任务的预计用时会保留。</p></div><button type="button" class="icon-button close-button" data-close="estimate-dialog" aria-label="关闭用时安排"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <form id="estimate-form" novalidate>
+      <div class="estimate-content"><p id="estimate-task-title" class="estimate-task-title"></p><p id="estimate-original" class="estimate-original"></p><label class="estimate-input-label" for="estimate-minutes">今天计划投入（分钟）</label><div class="estimate-input-row"><input id="estimate-minutes" type="number" min="0" max="525600" step="0.5" inputmode="decimal" placeholder="待补充" aria-describedby="estimate-help estimate-group-note estimate-error"><span>分钟</span></div><p id="estimate-help" class="estimate-help">可以填写 0.5 分钟的倍数；留空表示暂未安排用时。</p><p id="estimate-group-note" class="estimate-group-note" hidden></p><p id="estimate-error" class="estimate-error" role="alert" hidden></p></div>
+      <div class="modal-footer"><button class="text-button" id="reset-estimate" type="button">恢复原预计</button><div class="modal-footer-buttons"><button class="button button-secondary" type="button" data-close="estimate-dialog">取消</button><button class="button button-primary" id="save-estimate" type="submit">保存今日安排</button></div></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal completion-modal" id="completion-dialog" aria-labelledby="completion-title">
+    <div class="modal-heading"><div><h2 id="completion-title">完成任务，记下实际用时</h2><p class="modal-description" id="completion-description">填写这项任务实际花费的时间，保存后完成打卡。</p></div><button type="button" class="icon-button close-button" data-close="completion-dialog" aria-label="关闭实际用时记录"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <form id="completion-form" novalidate>
+      <div class="completion-content"><div id="completion-fields" class="completion-fields"></div><p class="completion-help" id="completion-help">按分钟填写，可按 0.5 分钟递增。共享的同一原任务只记录一次。</p><p class="completion-error" id="completion-error" role="alert" hidden></p></div>
+      <div class="modal-footer"><span class="muted">取消不会改变任务完成状态</span><div class="modal-footer-buttons"><button type="button" class="button button-secondary" data-close="completion-dialog">取消</button><button type="submit" class="button button-primary" id="save-completion">保存并打卡</button></div></div>
+    </form>
   </dialog>
 
   <dialog class="modal data-modal" id="data-dialog" aria-labelledby="data-title">

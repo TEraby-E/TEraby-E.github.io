@@ -59,6 +59,11 @@
       }
     }
     if (new Set(library.subjects.map((subject) => subject.id)).size !== SUBJECT_ORDER.length) throw new StoreError('章节任务库缺少科目。');
+    index.retired = new Map();
+    for (const item of library.metadata?.retired_tasks || []) {
+      if (!item || typeof item.id !== 'string' || !SUBJECTS[item.subject_id] || index.has(item.id) || index.retired.has(item.id)) throw new StoreError('已停用任务的登记格式不正确。');
+      index.retired.set(item.id, item);
+    }
     return index;
   }
 
@@ -72,15 +77,39 @@
       if ('done' in item && typeof item.done !== 'boolean') throw new StoreError('打卡状态不正确。');
       let row;
       const canonical = index.get(item.task_id);
+      const retired = index.retired?.get(item.task_id);
+      const definition = canonical?.task || retired || {};
       if (canonical) {
         const { subject, chapter, task } = canonical;
         row = Object.fromEntries(['title', 'detail', 'kind', 'reference', 'quantity', 'remarks'].map((key) => [key, String(task[key] ?? '')]));
         Object.assign(row, { task_id: task.id, subject_id: subject.id, subject_name: subject.name, chapter_id: chapter.id, chapter_title: chapter.title });
+      } else if (retired && retired.subject_id === item.subject_id) {
+        if (typeof item.title !== 'string' || !item.title.trim() || item.title.length > 400) throw new StoreError('已停用任务缺少原保存的名称，无法恢复记录。');
+        row = { task_id: item.task_id, subject_id: retired.subject_id, subject_name: SUBJECTS[retired.subject_id] };
+        for (const key of ['title', 'detail', 'kind', 'reference', 'quantity', 'remarks', 'chapter_id', 'chapter_title']) {
+          const value = item[key] ?? '';
+          if (typeof value !== 'string' || value.length > (key === 'title' || key === 'chapter_title' ? 400 : 10000)) throw new StoreError('已保存任务的内容格式不正确。');
+          row[key] = value;
+        }
       } else if (item.task_id.startsWith('custom-') && SUBJECTS[item.subject_id]) {
         if (typeof item.title !== 'string' || !item.title.trim() || item.title.length > 400 || (item.detail !== undefined && typeof item.detail !== 'string') || (item.detail || '').length > 10000) throw new StoreError('请填写有效的任务名称。');
         row = { task_id: item.task_id, subject_id: item.subject_id, subject_name: SUBJECTS[item.subject_id], chapter_id: 'custom', chapter_title: '自定义任务', title: item.title.trim(), detail: (item.detail || '').trim(), kind: '自定义', reference: '', quantity: '', remarks: '' };
       } else throw new StoreError('任务库中未找到这项任务，请重新选择。');
+      const estimate = Object.hasOwn(item, 'estimated_minutes') ? item : definition;
+      if (Object.hasOwn(estimate, 'estimated_minutes') && estimate.estimated_minutes !== null &&
+          (typeof estimate.estimated_minutes !== 'number' || !Number.isFinite(estimate.estimated_minutes) || estimate.estimated_minutes < 0 || estimate.estimated_minutes > 525600)) throw new StoreError('预计用时必须是有效的分钟数，未填写时请留空。');
+      const source = Object.hasOwn(estimate, 'estimated_source') ? estimate.estimated_source : definition.estimated_source ?? '';
+      const group = Object.hasOwn(estimate, 'estimate_group') ? estimate.estimate_group : definition.estimate_group ?? null;
+      if (typeof source !== 'string' || source.length > 500 || (group !== null && (typeof group !== 'string' || group.length > 200))) throw new StoreError('预计用时来源或分组格式不正确。');
+      row.estimated_minutes = estimate.estimated_minutes ?? null;
+      row.estimated_source = source;
+      row.estimate_group = group;
+      const video = estimate.source_video_minutes ?? definition.source_video_minutes;
+      if (typeof video === 'number' && Number.isFinite(video) && video >= 0 && video <= 525600) row.source_video_minutes = video;
       row.done = item.done ?? false;
+      const actual = item.actual_minutes ?? null;
+      if (actual !== null && (typeof actual !== 'number' || !Number.isFinite(actual) || actual < 0 || actual > 525600)) throw new StoreError('实际用时必须是有效的分钟数，未记录时请留空。');
+      row.actual_minutes = row.done ? actual : null;
       return row;
     });
     return result.sort((a, b) => SUBJECT_ORDER.indexOf(a.subject_id) - SUBJECT_ORDER.indexOf(b.subject_id));
@@ -88,6 +117,24 @@
 
   function initialRecord(date = localDate()) {
     return { revision: 1, current: { date: validateDate(date), assignments: [] }, archives: [] };
+  }
+
+  function hydrateRecordEstimates(record, index) {
+    const next = copy(record);
+    let changed = false;
+    for (const day of [next.current, ...next.archives]) for (const task of day.assignments) {
+      if (!Object.hasOwn(task, 'actual_minutes')) { task.actual_minutes = null; changed = true; }
+      if (Object.hasOwn(task, 'estimated_minutes')) continue;
+      const original = index.get(task.task_id)?.task || index.retired?.get(task.task_id);
+      task.estimated_minutes = original?.estimated_minutes ?? null;
+      task.estimated_source = original?.estimated_source || '原资料未提供预计用时';
+      task.estimate_group = original?.estimate_group || null;
+      if (typeof original?.source_video_minutes === 'number') task.source_video_minutes = original.source_video_minutes;
+      changed = true;
+    }
+    if (!changed) return record;
+    next.revision = record.revision + 1;
+    return next;
   }
 
   function stateOf(record) {
@@ -140,7 +187,13 @@
     const map = new Map(result.map((item) => [item.task_id, item]));
     for (const task of incoming) {
       const previous = map.get(task.task_id);
-      if (previous) previous.done = previous.done || task.done;
+      if (previous) {
+        const completedBefore = previous.done;
+        previous.done = previous.done || task.done;
+        if (!completedBefore && task.done) previous.actual_minutes = task.actual_minutes ?? null;
+        else if (previous.actual_minutes == null && task.done && task.actual_minutes != null) previous.actual_minutes = task.actual_minutes;
+        if (!previous.done) previous.actual_minutes = null;
+      }
       else { const added = { ...task }; map.set(task.task_id, added); result.push(added); }
     }
     if (result.length > MAX_TASKS) throw new StoreError('合并后某一天超过 100 项任务，未导入任何内容。请先整理备份。');
@@ -258,7 +311,13 @@
       if (options.body !== undefined) {
         try { payload = JSON.parse(options.body); } catch { throw new StoreError('保存的内容格式不正确。'); }
       }
-      if (path === '/api/state' && method === 'GET') return transact((record) => ({ result: stateOf(record) }));
+      if (path === '/api/state' && method === 'GET') {
+        const { index } = await loadLibrary();
+        return transact((record) => {
+          const next = hydrateRecordEstimates(record, index);
+          return { ...(next === record ? {} : { record: next }), result: stateOf(next) };
+        });
+      }
       if (path === '/api/state' && method === 'PUT') {
         const { index } = await loadLibrary();
         return transact((record) => { const next = saveRecord(record, payload, index); return { record: next, result: stateOf(next) }; });
@@ -289,6 +348,6 @@
   const api = createStore();
   api.createStore = createStore;
   api.StoreError = StoreError;
-  api.helpers = Object.freeze({ validateDate, nextDate, localDate, namespace, libraryIndex, normaliseAssignments, initialRecord, stateOf, saveRecord, archiveRecord, validateBackup, mergeTasks, importRecord, storageError });
+  api.helpers = Object.freeze({ validateDate, nextDate, localDate, namespace, libraryIndex, normaliseAssignments, initialRecord, hydrateRecordEstimates, stateOf, saveRecord, archiveRecord, validateBackup, mergeTasks, importRecord, storageError });
   return api;
 });

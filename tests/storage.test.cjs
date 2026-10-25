@@ -137,3 +137,75 @@ test('storage capacity errors are explicit failures', () => {
   assert.match(h.storageError({ name: 'QuotaExceededError' }).message, /尚未保存/);
   assert.equal(h.storageError({ name: 'SecurityError' }).status, 503);
 });
+
+test('estimated time is restored for old tasks and saved as part of a day snapshot', () => {
+  const canonical = index.get(first).task;
+  const restored = h.normaliseAssignments([task(first)], index)[0];
+  assert.equal(restored.estimated_minutes, canonical.estimated_minutes);
+  const saved = save(initial(), [{ ...task(first, true), estimated_minutes: 35, estimated_source: '今日手动安排' }]);
+  assert.equal(saved.current.assignments[0].estimated_minutes, 35);
+  assert.equal(saved.current.assignments[0].estimate_group, canonical.estimate_group);
+  const archived = h.archiveRecord(saved, { date: saved.current.date, revision: saved.revision, carry_pending: false });
+  assert.equal(archived.archives[0].assignments[0].estimated_minutes, 35);
+  const imported = h.validateBackup(backup(archived.current, archived.archives), index);
+  assert.equal(imported.archives[0].assignments[0].estimated_minutes, 35);
+  assert.equal(imported.archives[0].assignments[0].estimated_source, '今日手动安排');
+});
+
+test('invalid time estimates cannot enter saved or imported records', () => {
+  for (const value of [-1, NaN, Infinity, '30', 525601]) {
+    assert.throws(() => h.normaliseAssignments([{ ...task(first), estimated_minutes: value }], index));
+  }
+  assert.equal(h.normaliseAssignments([{ ...task(first), estimated_minutes: null }], index)[0].estimated_minutes, null);
+  assert.equal(h.normaliseAssignments([{ ...task(first), estimated_minutes: 0 }], index)[0].estimated_minutes, 0);
+});
+
+test('legacy current and archived tasks receive one-time estimate snapshots without changing their content', () => {
+  const old = initial();
+  const savedTask = { task_id: first, title: '原来保存的标题', detail: '原来的笔记', done: true };
+  old.current.assignments = [{ ...savedTask }];
+  old.archives = [{ date: '2026-10-24', assignments: [{ ...savedTask }] }];
+  const result = h.hydrateRecordEstimates(old, index);
+  assert.equal(result.revision, old.revision + 1);
+  assert.equal(result.current.assignments[0].estimated_minutes, index.get(first).task.estimated_minutes);
+  assert.equal(result.archives[0].assignments[0].estimated_minutes, index.get(first).task.estimated_minutes);
+  assert.equal(result.current.assignments[0].title, savedTask.title);
+  assert.equal(result.current.assignments[0].detail, savedTask.detail);
+  assert.equal(result.current.assignments[0].done, true);
+  assert.equal(result.current.assignments[0].actual_minutes, null);
+  assert.ok(!Object.hasOwn(old.current.assignments[0], 'estimated_minutes'));
+  assert.strictEqual(h.hydrateRecordEstimates(result, index), result);
+});
+
+test('actual completion minutes survive saving, archiving and backup import', () => {
+  const saved = save(initial(), [{ ...task(first, true), actual_minutes: 27.5 }]);
+  assert.equal(saved.current.assignments[0].actual_minutes, 27.5);
+  const archive = h.archiveRecord(saved, { date: saved.current.date, revision: saved.revision, carry_pending: false });
+  const imported = h.validateBackup(backup(archive.current, archive.archives), index);
+  assert.equal(imported.archives[0].assignments[0].actual_minutes, 27.5);
+  assert.equal(save(saved, [{ ...saved.current.assignments[0], done: false }]).current.assignments[0].actual_minutes, null);
+  for (const invalid of [-1, Infinity, NaN, '20', 525601]) assert.throws(() => h.normaliseAssignments([{ ...task(first, true), actual_minutes: invalid }], index));
+});
+
+test('merging a backup fills missing actual time but preserves an existing recorded value', () => {
+  const existing = h.normaliseAssignments([{ ...task(first, true), actual_minutes: 20 }], index);
+  const incoming = h.normaliseAssignments([{ ...task(first, true), actual_minutes: 25 }], index);
+  assert.equal(h.mergeTasks(existing, incoming)[0].actual_minutes, 20);
+  existing[0].actual_minutes = null;
+  assert.equal(h.mergeTasks(existing, incoming)[0].actual_minutes, 25);
+  existing[0].done = false;
+  assert.equal(h.mergeTasks(existing, incoming)[0].done, true);
+});
+
+test('retired library cards remain readable only through complete saved snapshots', () => {
+  const id = 'ds-retired-fixture';
+  const retiredIndex = h.libraryIndex({ subjects: library.subjects, metadata: { retired_tasks: [{ id, subject_id: 'ds', estimated_minutes: 15, estimated_source: '原计划', estimate_group: id }] } });
+  const snapshot = { task_id: id, subject_id: 'ds', title: '以前保存的阅读任务', detail: '原学习笔记', chapter_title: '原章节', done: true, actual_minutes: 18 };
+  const result = h.normaliseAssignments([snapshot], retiredIndex)[0];
+  assert.equal(result.title, snapshot.title);
+  assert.equal(result.detail, snapshot.detail);
+  assert.equal(result.estimated_minutes, 15);
+  assert.equal(result.actual_minutes, 18);
+  assert.throws(() => h.normaliseAssignments([{ task_id: id, done: true }], retiredIndex));
+  assert.throws(() => h.normaliseAssignments([{ ...snapshot, subject_id: 'cn' }], retiredIndex));
+});

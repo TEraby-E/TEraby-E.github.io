@@ -22,6 +22,24 @@
   let crestPromise;
   let exportQueue = Promise.resolve();
 
+  function timeTools() {
+    if (root.StudyTime) return root.StudyTime;
+    if (typeof module === 'object' && module.exports) return require('./study-time.js');
+    throw new Error('预计时长模块没有载入，请刷新页面后重试。');
+  }
+
+  function hydrateEstimates(assignments, library) {
+    const canonical = new Map();
+    for (const subject of library?.subjects || library || []) {
+      for (const chapter of subject.chapters || []) for (const task of chapter.tasks || []) canonical.set(task.id, task);
+    }
+    for (const task of library?.metadata?.retired_tasks || []) if (!canonical.has(task.id)) canonical.set(task.id, task);
+    return assignments.map((task) => {
+      const estimate = timeTools().getEstimate(task, canonical.get(task.task_id || task.id));
+      return { ...task, estimated_minutes: estimate.minutes, estimated_source: estimate.source, estimate_group: estimate.group };
+    });
+  }
+
   function dateValue(date) {
     if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('导出日期格式不正确。');
     const [year, month, day] = date.split('-').map(Number);
@@ -46,12 +64,15 @@
       const chapter = clean(task.chapter_title);
       const detail = clean(task.detail);
       const remarks = clean(task.remarks);
+      const estimate = timeTools().getEstimate(task);
+      const actual = timeTools().getActual(task);
       const metadata = [['任务类型', task.kind], ['任务量', task.quantity], ['参考', task.reference]].map(([label, value]) => [label, clean(value)]).filter(([label, value]) => value && !detail.includes(`${label}：${value}`));
       return {
         subject_id: task.subject_id, subject_name: SUBJECTS[task.subject_id], title,
         chapter: chapter && !title.includes(chapter) ? chapter : '',
         detail, remarks: remarks && !detail.includes(remarks) && remarks !== title ? remarks : '',
         metadata: metadata.map(([label, value]) => `${label}：${value}`).join('  ·  '),
+        estimate, actual, timeComparison: timeTools().comparisonLabel(task),
         done: task.done ?? false, originalIndex: index,
       };
     }).sort((a, b) => ORDER.indexOf(a.subject_id) - ORDER.indexOf(b.subject_id) || a.originalIndex - b.originalIndex);
@@ -74,13 +95,14 @@
 
   function taskLines(task, measure) {
     const lines = [];
-    const add = (text, size, height, color, bold, gap = 0) => {
+    const add = (text, size, height, color, bold, gap = 0, role = 'content') => {
       if (!text) return;
-      if (gap) lines.push({ text: '', size: 1, height: gap, color, bold: false });
-      for (const line of wrap(text, value => measure(value, size, bold))) lines.push({ text: line, size, height, color, bold });
+      if (gap) lines.push({ text: '', size: 1, height: gap, color, bold: false, role });
+      for (const line of wrap(text, value => measure(value, size, bold))) lines.push({ text: line, size, height, color, bold, role });
     };
     add(task.title, 27, 40, COLORS.ink, true);
     add(task.chapter, 19, 29, COLORS.wine, false, 5);
+    add(task.timeComparison, 18, 28, COLORS.wine, false, 6, 'estimate');
     add(task.metadata, 18, 28, COLORS.wine, false, 6);
     add(task.detail, 22, 34, COLORS.muted, false, 8);
     add(task.remarks, 22, 34, COLORS.muted, false, 5);
@@ -129,12 +151,18 @@
     }
     if (!tasks.length) { page.blocks.push({ type: 'rest', top: CONTENT_TOP, height: 194 }); y += 194; }
     finish();
-    return { pages, tasks, width: WIDTH, completed: tasks.filter(task => task.done).length };
+    return { pages, tasks, width: WIDTH, completed: tasks.filter(task => task.done).length, timeSummary: timeTools().summarize(assignments) };
   }
 
   function font(context, size, bold = false) { context.font = `${bold ? 650 : 400} ${size}px ${FONT}`; }
   function text(context, value, x, y, size, color, bold = false, align = 'left') {
     font(context, size, bold); context.textAlign = align; context.textBaseline = 'top'; context.fillStyle = color; context.fillText(value, x, y);
+  }
+  function fittedText(context, value, x, y, size, maxWidth, color, bold = false, minSize = 12) {
+    let fitted = size;
+    font(context, fitted, bold);
+    while (fitted > minSize && context.measureText(value).width > maxWidth) { fitted -= 1; font(context, fitted, bold); }
+    text(context, value, x, y, fitted, color, bold);
   }
   function rounded(context, x, y, w, h, radius, fill, stroke) {
     context.beginPath(); context.roundRect(x, y, w, h, radius);
@@ -165,8 +193,19 @@
     rounded(context, 1003, 50, 121, 121, 9, '#FFFFFF');
     context.drawImage(crest, 1011, 58, 105, 105);
     const formatted = `${day.getFullYear()}.${String(day.getMonth() + 1).padStart(2, '0')}.${String(day.getDate()).padStart(2, '0')}`;
-    text(context, formatted, 76, 315, 39, COLORS.ink, true);
-    text(context, `星期${'日一二三四五六'[day.getDay()]}`, 78, 372, 20, COLORS.muted);
+    const summary = document.timeSummary;
+    rounded(context, 76, 307, 300, 102, 13, '#FAF3E8', COLORS.rule);
+    text(context, '今日学习时长 · 预计 / 实际', 98, 319, 15, COLORS.muted);
+    const duration = summary.unknown && !summary.known ? '待补充' : timeTools().formatMinutes(summary.minutes);
+    const actualDuration = summary.actualUnknown && !summary.actualKnown ? '待补记' : timeTools().formatMinutes(summary.actualMinutes);
+    const estimateText = `${duration}${summary.unknown ? ` · ${summary.unknown}项待补` : ''}`;
+    const actualText = `${actualDuration}${summary.actualUnknown ? ` · ${summary.actualUnknown}项未记` : ''}`;
+    text(context, '预计', 98, 347, 14, COLORS.muted);
+    fittedText(context, estimateText, 143, 342, 22, 211, COLORS.red, true);
+    text(context, '实际', 98, 378, 14, COLORS.muted);
+    fittedText(context, actualText, 143, 373, 22, 211, COLORS.green, true);
+    text(context, formatted, 418, 324, 31, COLORS.ink, true);
+    text(context, `星期${'日一二三四五六'[day.getDay()]}`, 420, 373, 19, COLORS.muted);
     rounded(context, 752, 307, 372, 102, 13, '#FAF3E8', COLORS.rule);
     text(context, '今日进度', 777, 329, 19, COLORS.muted);
     text(context, String(document.completed).padStart(2, '0'), 904, 322, 39, COLORS.red, true);
@@ -320,12 +359,17 @@
   async function performExport({ date, assignments }) {
     const day = dateValue(date);
     const permission = await permittedDirectory();
+    let exportAssignments = assignments;
+    if (root.StudyStore?.request) {
+      try { exportAssignments = hydrateEstimates(assignments, await root.StudyStore.request('/api/library')); }
+      catch { /* Saved estimates still export when the optional library fallback is unavailable. */ }
+    }
     if (root.document.fonts?.ready) await root.document.fonts.ready;
     const crest = await getCrest();
     const canvas = root.document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (!context) throw new Error('浏览器无法创建图片画布，请换用新版浏览器后重试。');
-    const document = layoutDocument(assignments, (value, size, bold) => { font(context, size, bold); return context.measureText(value).width; });
+    const document = layoutDocument(exportAssignments, (value, size, bold) => { font(context, size, bold); return context.measureText(value).width; });
     const files = [];
     try {
       for (let i = 0; i < document.pages.length; i += 1) {
@@ -367,5 +411,5 @@
     return run;
   }
 
-  return { exportDaily, chooseDirectory, getDirectoryInfo, clearDirectory, _test: { normalize, wrap, layoutDocument, dateValue, crc32, zipFiles, WIDTH, MAX_HEIGHT } };
+  return { exportDaily, chooseDirectory, getDirectoryInfo, clearDirectory, _test: { normalize, wrap, layoutDocument, hydrateEstimates, dateValue, crc32, zipFiles, WIDTH, MAX_HEIGHT } };
 });
