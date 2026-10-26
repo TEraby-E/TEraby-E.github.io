@@ -100,14 +100,19 @@ test('actual zero is recorded while pending or missing actual time is never inve
   assert.equal(result.timeSummary.actualMinutes, 0);
   assert.equal(result.timeSummary.actualKnown, 1);
   assert.equal(result.timeSummary.actualUnknown, 1);
-  assert.equal(result.tasks[0].actual.minutes, 0);
-  assert.equal(result.tasks[0].actual.recorded, true);
-  assert.equal(result.tasks[1].actual.minutes, null);
-  assert.equal(result.tasks[2].actual.minutes, null);
-  assert(result.tasks[0].timeComparison.includes('预计20分钟'));
-  assert(result.tasks[0].timeComparison.includes('实际0分钟'));
-  assert(result.tasks[1].timeComparison.includes('实际未记录'));
-  assert(result.tasks[2].timeComparison.includes('实际待完成'));
+  // Cards place unfinished work first; identify each source task independently of display order.
+  const bySource = new Map(result.tasks.map(item => [item.originalIndex, item]));
+  const zero = bySource.get(0);
+  const missing = bySource.get(1);
+  const pending = bySource.get(2);
+  assert.equal(zero.actual.minutes, 0);
+  assert.equal(zero.actual.recorded, true);
+  assert.equal(missing.actual.minutes, null);
+  assert.equal(pending.actual.minutes, null);
+  assert(zero.timeComparison.includes('预计20分钟'));
+  assert(zero.timeComparison.includes('实际0分钟'));
+  assert(missing.timeComparison.includes('实际未记录'));
+  assert(pending.timeComparison.includes('实际待完成'));
 });
 
 test('shared task copies export actual duration only once without losing each record', () => {
