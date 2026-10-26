@@ -1,0 +1,1149 @@
+/* Shared task-card presentation. Context variants keep the same visual grammar. */
+:root {
+  --card-paper: #fff9ee;
+  --card-border: #ddcfc0;
+  --card-ink: #3c3232;
+  --card-muted: #817269;
+  --card-soft: #f1e8db;
+  --card-radius: 11px;
+  --card-space: 16px;
+}
+
+.task-list,
+.library-tasks {
+  gap: 14px;
+}
+
+.study-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  min-width: 0;
+  margin: 0;
+  padding: var(--card-space);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: linear-gradient(135deg, #fffdf780, #f8eddd50), var(--card-paper);
+  box-shadow: 0 2px 4px #4a2c2404, 0 8px 22px #4a2c2403;
+  color: var(--card-ink);
+  list-style: none;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+.study-card::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: -1px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #c0a48c;
+  opacity: .65;
+  pointer-events: none;
+}
+
+.study-card.is-selected {
+  border-color: #bc7f83;
+  background: linear-gradient(135deg, #fff9ed, #f8eae1);
+  box-shadow: 0 0 0 1px #a51c3008;
+}
+
+.study-card.is-selected::before {
+  background: var(--red);
+  opacity: 1;
+}
+
+.study-card.is-finished {
+  border-color: #c8d0bb;
+  background: linear-gradient(135deg, #f8f8ee, #edf0e3);
+  box-shadow: none;
+}
+
+.study-card.is-finished::before {
+  background: #77916c;
+}
+
+.study-card.is-checked-in:not(.is-finished) {
+  border-color: #bfcab8;
+}
+
+.card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.card-selection {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+}
+
+.study-card .card-selection > input[type=checkbox] {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  margin-top: 4px;
+  border-color: #bca99a;
+  box-shadow: 0 0 0 8px transparent;
+}
+
+.card-titleblock {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.card-eyebrow {
+  margin: 0;
+  color: #986c5b;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.card-title {
+  display: block;
+  margin: 0;
+  color: var(--card-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.card-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  width: 36px;
+  min-height: 36px;
+  margin: -7px -7px 0 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #a6978b;
+  opacity: .8;
+}
+
+.card-remove .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.card-detail {
+  margin: 0;
+  color: #716259;
+  font-size: 12px;
+  line-height: 1.85;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.card-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.card-metadata > span {
+  max-width: 100%;
+  padding: 3px 7px;
+  border: 1px solid #e6d8c9;
+  border-radius: 5px;
+  background: #f3eadc;
+  color: #886e5f;
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.card-notes {
+  padding: 0 10px;
+  border: 1px solid #e8ddce;
+  border-radius: 6px;
+  background: #f3eadc55;
+}
+
+.card-notes > summary {
+  min-height: 36px;
+  padding: 8px 0;
+  color: #8f7767;
+  font-size: 11px;
+  line-height: 1.7;
+  cursor: pointer;
+}
+
+.card-notes > :not(summary) {
+  margin: 0 0 10px;
+  color: #867265;
+  font-size: 12px;
+  line-height: 1.85;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid #e5d8c9;
+}
+
+.card-timing {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.card-time-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 61px;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid #e1d2c1;
+  border-radius: 7px;
+  background: #f8f0e2;
+  color: #8c7160;
+  text-align: left;
+  line-height: 1.5;
+}
+
+.card-time-cell > span {
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.card-time-cell strong {
+  color: #705040;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.card-time-cell small {
+  color: #9d8576;
+  font-size: 10px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.card-time-cell.is-actual {
+  border-color: #d0d8c3;
+  background: #edf1e4;
+}
+
+.card-time-cell.is-actual strong {
+  color: #55704f;
+}
+
+.card-time-cell.is-unknown strong {
+  color: #9b8779;
+  font-weight: 400;
+}
+
+.card-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+.study-card .task-mode-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+  color: #887265;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.study-card .task-mode-control select {
+  min-height: 36px;
+  max-width: 150px;
+  padding: 6px 25px 6px 9px;
+  border: 1px solid #d7c3b1;
+  border-radius: 6px;
+  background-color: #fff8eb;
+  color: #755343;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.card-complete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  max-width: 100%;
+  margin-left: auto;
+  padding: 7px 11px;
+  border: 1px solid #c9908b;
+  border-radius: 6px;
+  background: #f7e7de;
+  color: #9a3340;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.6;
+  text-align: center;
+  cursor: pointer;
+}
+
+.card-complete-button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.card-complete-button[aria-pressed=true] {
+  border-color: #adbea0;
+  background: #e3ead9;
+  color: #5d7651;
+}
+
+.card-status-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: 1px solid #d9c9b8;
+  border-radius: 4px;
+  background: #f3e9d9;
+  color: #91705b;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.card-status.is-done {
+  border-color: #c4d0b9;
+  background: #e6eddd;
+  color: #5e7952;
+}
+
+.card-status.is-today {
+  border-color: #b7ccbc;
+  background: #e4eee5;
+  color: #557660;
+}
+
+.card-status.is-multi {
+  border-color: #dac6b2;
+  background: #f1e3d0;
+  color: #896549;
+}
+
+.card-progress {
+  color: #8b7462;
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.history-card {
+  gap: 11px;
+  margin: 10px 0;
+  box-shadow: none;
+}
+
+.history-card .card-selection {
+  cursor: default;
+}
+
+.history-card .card-title {
+  font-size: 13px;
+}
+
+.history-card .card-footer {
+  gap: 0;
+}
+
+.daily-table .subject-column {
+  width: 153px;
+}
+
+.daily-table .progress-column {
+  width: 67px;
+}
+
+.daily-table td {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.daily-table .subject-cell {
+  vertical-align: top;
+  padding-top: 25px;
+}
+
+.daily-table .subject-control {
+  gap: 8px;
+}
+
+.daily-table .add-task-button {
+  width: 34px;
+  height: 34px;
+}
+
+.daily-table .row-progress {
+  vertical-align: top;
+  padding-top: 29px;
+}
+
+.completed-group > summary {
+  min-height: 40px;
+  font-size: 12px;
+}
+
+.completed-group-content {
+  padding: 5px 10px 11px;
+}
+
+.completed-group .study-card {
+  box-shadow: none;
+}
+
+.library-modal {
+  width: min(1000px, calc(100vw - 56px));
+  max-height: calc(100dvh - 44px);
+}
+
+.library-modal .modal-heading {
+  padding: 24px 28px 21px;
+}
+
+.library-modal .library-layout {
+  grid-template-columns: 225px minmax(0, 1fr);
+  height: min(570px, 60dvh);
+  min-height: 0;
+}
+
+.library-modal .chapter-list {
+  padding: 13px 11px;
+  background: #eee5d7;
+}
+
+.library-modal .chapter-button {
+  min-height: 44px;
+  padding: 10px 11px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.library-modal .chapter-phase {
+  font-size: 9px;
+}
+
+.library-modal .chapter-content {
+  padding: 22px 25px 26px;
+  background: #f7f0e5aa;
+}
+
+.library-modal .chapter-heading h3 {
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.library-modal .chapter-heading p,
+.library-modal .chapter-heading .text-button {
+  font-size: 11px;
+}
+
+.library-modal .chapter-heading {
+  margin-bottom: 18px;
+}
+
+.library-modal .library-search-wrap {
+  gap: 16px;
+  padding: 12px 28px;
+}
+
+.library-modal .search-field input {
+  min-height: 36px;
+  font-size: 13px;
+}
+
+.library-modal .phase-filter select {
+  min-height: 36px;
+  font-size: 11px;
+}
+
+.library-modal .modal-description {
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.library-modal .selection-summary,
+.library-modal .modal-footer .button {
+  font-size: 12px;
+}
+
+.library-modal .selection-time {
+  font-size: 11px;
+}
+
+.history-modal {
+  width: min(930px, calc(100vw - 56px));
+}
+
+.history-modal .history-layout {
+  grid-template-columns: 180px minmax(0, 1fr);
+  height: min(560px, 60dvh);
+}
+
+.history-modal .history-content {
+  padding: 22px;
+  background: #f7f0e5aa;
+}
+
+.history-subject h4 {
+  margin-top: 23px;
+  font-size: 13px;
+}
+
+select:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #c87a89;
+  outline-offset: 3px;
+  border-radius: 5px;
+}
+
+.study-card button,
+.study-card select,
+.card-notes > summary {
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+
+@media (hover: hover) {
+  .study-card:hover {
+    border-color: #c8ac97;
+    box-shadow: 0 5px 18px #4a2c2408;
+  }
+
+  button.card-time-cell:hover {
+    border-color: #bd9a80;
+    background: #f1e4d2;
+  }
+
+  button.card-time-cell.is-actual:hover {
+    border-color: #9eb394;
+    background: #e4ecd9;
+  }
+
+  .card-complete-button:hover {
+    border-color: #a51c30;
+    background: #f1dcd2;
+  }
+
+  .card-complete-button[aria-pressed=true]:hover {
+    border-color: #819b70;
+    background: #dbe6ce;
+  }
+
+  .card-remove:hover {
+    border-color: #dfbdb5;
+    background: #f4e2dc;
+    color: var(--red);
+    opacity: 1;
+  }
+}
+
+.study-card button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 850px) and (min-width: 651px) {
+  .daily-table .subject-column {
+    width: 135px;
+  }
+
+  .daily-table .progress-column {
+    width: 53px;
+  }
+
+  .daily-table td {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+
+  .library-modal .library-layout {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+
+  .library-modal .chapter-content {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 650px) {
+  :root {
+    --card-space: 14px;
+    --card-radius: 9px;
+  }
+
+  .study-card {
+    gap: 12px;
+  }
+
+  .card-heading {
+    gap: 9px;
+  }
+
+  .card-selection {
+    gap: 10px;
+    min-height: 34px;
+  }
+
+  .card-title,
+  .history-card .card-title {
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  .card-eyebrow {
+    font-size: 11px;
+  }
+
+  .card-detail,
+  .card-notes > :not(summary) {
+    font-size: 12px;
+    line-height: 1.85;
+  }
+
+  .card-metadata > span {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .card-remove {
+    width: 40px;
+    min-height: 40px;
+    flex-basis: 40px;
+    opacity: 1;
+  }
+
+  .card-controls {
+    gap: 9px;
+  }
+
+  .study-card .task-mode-control {
+    font-size: 11px;
+    gap: 5px;
+  }
+
+  .study-card .task-mode-control select {
+    min-height: 40px;
+    padding-left: 8px;
+    padding-right: 17px;
+    font-size: 11px;
+  }
+
+  .card-complete-button {
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .card-time-cell {
+    min-height: 66px;
+    padding: 9px;
+  }
+
+  .card-time-cell > span,
+  .card-time-cell small {
+    font-size: 11px;
+  }
+
+  .card-time-cell strong {
+    font-size: 13px;
+  }
+
+  .card-notes > summary {
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  .card-status,
+  .card-progress {
+    font-size: 11px;
+  }
+
+  .task-list,
+  .library-tasks {
+    gap: 12px;
+  }
+
+  .daily-table,
+  .daily-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .daily-table thead {
+    display: none;
+  }
+
+  .daily-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+    padding: 0 15px;
+    border-top: 1px solid #e6dacd;
+    background: transparent;
+  }
+
+  .daily-table tbody tr:nth-child(even) {
+    background: #f1e5d433;
+  }
+
+  .daily-table td.subject-cell {
+    grid-row: 1;
+    grid-column: 1;
+    padding: 15px 0 10px;
+  }
+
+  .daily-table .subject-control {
+    justify-content: flex-start;
+    gap: 12px;
+  }
+
+  .daily-table .subject-button {
+    min-height: 40px;
+    padding-left: 11px;
+  }
+
+  .daily-table .subject-button strong {
+    font-size: 14px;
+  }
+
+  .daily-table .subject-button .subject-help {
+    font-size: 10px;
+  }
+
+  .daily-table .add-task-button {
+    width: 40px;
+    height: 40px;
+    border-color: #dfcfc4;
+  }
+
+  .daily-table .add-task-button .icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .daily-table td:not(.subject-cell):not(.row-progress) {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    padding: 0 0 17px;
+    min-width: 0;
+  }
+
+  .daily-table td.row-progress {
+    grid-row: 1;
+    grid-column: 2;
+    align-self: center;
+    padding: 14px 0 10px !important;
+    font-size: 12px;
+  }
+
+  .daily-table .row-progress .total-count {
+    font-size: 11px;
+  }
+
+  .daily-table .empty-row {
+    min-height: 36px;
+    padding: 0 0 3px 11px;
+  }
+
+  .daily-table .empty-row > span {
+    font-size: 12px;
+  }
+
+  .completed-group > summary {
+    min-height: 42px;
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .completed-group-content {
+    padding: 3px 7px 9px;
+  }
+
+  .library-modal,
+  .history-modal {
+    width: calc(100vw - 20px);
+    height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .library-modal .modal-heading,
+  .history-modal .modal-heading {
+    gap: 12px;
+    padding: 18px 19px 14px;
+  }
+
+  .library-modal .modal-heading h2,
+  .history-modal .modal-heading h2 {
+    font-size: 20px;
+  }
+
+  .library-modal .modal-description,
+  .history-modal .modal-description {
+    margin-top: 5px;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .library-modal .close-button,
+  .history-modal .close-button {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+    margin: -5px -6px 0 0;
+  }
+
+  .library-modal .library-search-wrap {
+    flex-wrap: wrap;
+    gap: 7px 11px;
+    padding: 8px 19px 11px;
+  }
+
+  .library-modal .search-field {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .library-modal .search-field input {
+    min-height: 34px;
+    font-size: 13px;
+  }
+
+  .library-modal .phase-filter select {
+    min-height: 36px;
+    font-size: 11px;
+  }
+
+  .library-modal .library-search-wrap > .muted {
+    font-size: 11px;
+  }
+
+  .library-modal .library-layout,
+  .history-modal .history-layout {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .library-modal .chapter-list,
+  .history-modal .history-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    align-content: start;
+    flex: 0 0 auto;
+    max-height: 124px;
+    padding: 8px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .library-modal .chapter-button {
+    min-height: 42px;
+    margin: 0;
+    padding: 8px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  .library-modal .chapter-phase {
+    font-size: 9px;
+  }
+
+  .library-modal .chapter-list > .completed-group {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+  }
+
+  .library-modal .chapter-list > .completed-group > summary {
+    min-height: 40px;
+    font-size: 11px;
+    padding: 9px;
+  }
+
+  .library-modal .chapter-list > .completed-group .completed-group-content {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 2px 4px 6px;
+  }
+
+  .library-modal .chapter-content,
+  .history-modal .history-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 16px 13px 20px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .library-modal .chapter-heading {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .library-modal .chapter-heading h3 {
+    font-size: 15px;
+  }
+
+  .library-modal .chapter-heading p,
+  .library-modal .chapter-heading .text-button {
+    font-size: 11px;
+  }
+
+  .library-modal .modal-footer,
+  .history-modal .modal-footer {
+    gap: 10px;
+    padding: 12px 15px;
+  }
+
+  .library-modal .modal-footer .button,
+  .history-modal .modal-footer .button {
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .library-modal .selection-summary,
+  .library-modal .selection-time,
+  .history-modal .modal-footer .muted {
+    font-size: 11px;
+  }
+
+  .history-modal .history-date-button {
+    min-height: 42px;
+    padding: 8px;
+    margin: 0;
+  }
+
+  .history-modal .history-date-button strong {
+    font-size: 11px;
+  }
+
+  .history-modal .history-date-button small {
+    font-size: 10px;
+  }
+
+  .history-modal .history-subject h4 {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 390px) {
+  .card-controls {
+    align-items: stretch;
+  }
+
+  .study-card .task-mode-control {
+    flex: 1 1 auto;
+  }
+
+  .study-card .task-mode-control > span {
+    display: none;
+  }
+
+  .library-modal .modal-footer {
+    flex-wrap: wrap;
+  }
+
+  .library-modal .modal-footer-buttons {
+    margin-left: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .study-card,
+  .study-card button,
+  .study-card select,
+  .card-notes > summary {
+    transition: none;
+  }
+
+  .study-card button:not(:disabled):active {
+    transform: none;
+  }
+}
+
+/* Compact daily desk layout; the library keeps its generous reading layout. */
+.daily-card{gap:10px;padding:14px}
+.daily-card .card-content{gap:8px}
+.daily-card .card-footer{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px}
+.daily-card .card-controls{flex-direction:column;align-items:stretch;gap:6px}
+.daily-card .task-mode-control>span{display:none}
+.daily-card .task-mode-control select{width:100%;min-height:34px}
+.daily-card .card-complete-button{width:100%;min-height:34px;margin:0}
+.card-notes>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none}
+.card-notes>summary::-webkit-details-marker{display:none}
+.card-notes>summary .icon{width:12px;height:12px;transition:transform .2s}
+.card-notes[open]>summary .icon{transform:rotate(90deg)}
+html:has(dialog[open]){overflow:hidden}
+.university-emblem{background:transparent;padding:0;border-radius:50%}
+@media(max-width:650px){
+  .daily-card .card-footer{display:flex;flex-direction:column;align-items:stretch}
+  .daily-card .card-controls{flex-direction:row;align-items:center;gap:10px}
+  .daily-card .task-mode-control>span{display:inline}
+  .daily-card .card-complete-button{width:auto;min-height:40px;margin-left:auto}
+  .daily-card .task-mode-control select{width:auto;min-height:40px}
+  .library-search-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:10px 16px}
+  .library-search-wrap .search-field{grid-column:1;min-width:0}
+  .library-search-wrap .phase-filter{grid-column:2;grid-row:1}
+  .library-search-wrap>#library-subject-count{display:none}
+  .library-search-wrap .phase-filter select{max-width:116px;min-height:36px}
+  .library-layout .chapter-list{max-height:110px}
+  .modal-heading{padding-top:19px;padding-bottom:16px}
+  .modal-description{font-size:11px;line-height:1.7}
+}
+
+/* One type scale for every card subtype and its surrounding navigation. */
+:root{--task-title-size:15px;--task-body-size:13px;--task-meta-size:11px;--task-control-size:12px}
+.study-card .card-title{font-size:var(--task-title-size);font-weight:600;line-height:1.7;letter-spacing:.015em}
+.study-card .card-detail,.study-card .card-notes>p{font-size:var(--task-body-size);line-height:1.8;color:#6d6057}
+.study-card .card-eyebrow,.study-card .card-metadata>span,.study-card .card-status,.study-card .card-progress{font-size:var(--task-meta-size);line-height:1.65}
+.study-card .card-time-cell>span,.study-card .card-time-cell small{font-size:11px}
+.study-card .card-time-cell strong{font-size:15px;line-height:1.6}
+.study-card .card-complete-button,.study-card .task-mode-control,.study-card .task-mode-control select,.study-card .card-notes>summary{font-size:var(--task-control-size)}
+.chapter-button{font-size:13px;line-height:1.7}
+.chapter-phase{font-size:10px;line-height:1.6}
+.chapter-heading h3{font-size:18px;line-height:1.55}
+.chapter-heading p,.chapter-heading .text-button,.library-search-wrap>.muted{font-size:12px}
+.library-search-wrap .search-field input{font-size:14px}
+.library-search-wrap .phase-filter select{font-size:12px}
+.selection-summary{font-size:13px}.selection-time{font-size:11px}
+.modal-description{font-size:13px;line-height:1.7;color:#8a7770}
+.modal-heading h2{font-size:25px;letter-spacing:.01em}
+.modal-footer .button{font-size:13px}
+.daily-table th{font-size:12px}.subject-button strong{font-size:15px}.subject-button .subject-help{font-size:11px}
+.empty-row>span,.empty-choose{font-size:13px}
+.sheet-hint,#completion-text,.action-note{font-size:12px;line-height:1.7}
+.page-footer{font-size:10px}.save-status{font-size:12px}
+.history-date-button strong{font-size:13px}.history-date-button small{font-size:11px}.history-subject h4{font-size:14px}
+.history-detail-heading>span,.history-time-line{font-size:12px;line-height:1.7}
+.completed-group>summary{font-size:12px}.completed-group-count{font-size:11px}
+.chapter-list>.completed-group>summary{font-size:12px}
+@media(max-width:650px){
+ :root{--task-title-size:14px;--task-body-size:12px;--task-meta-size:11px;--task-control-size:12px}
+ .study-card .card-title{font-size:var(--task-title-size)}
+ .study-card .card-detail,.study-card .card-notes>p{font-size:var(--task-body-size)}
+ .chapter-button{font-size:12px;line-height:1.6}.chapter-phase{font-size:10px}
+ .chapter-heading h3{font-size:16px}.chapter-heading p,.chapter-heading .text-button{font-size:11px}
+ .modal-heading h2{font-size:21px}.modal-description{font-size:12px;line-height:1.65}
+ .library-search-wrap .search-field input{font-size:13px}.library-search-wrap .phase-filter select{font-size:11px}
+ .selection-summary{font-size:12px}.selection-time{font-size:11px}.modal-footer .button{font-size:12px}
+ .subject-button strong{font-size:14px}.subject-button .subject-help{font-size:11px}.save-status{font-size:11px}
+ .sheet-hint,#completion-text,.action-note{font-size:11px}.empty-row>span,.empty-choose{font-size:12px}
+ .page-footer{font-size:10px}.chapter-list>.completed-group>summary{font-size:11px}.chapter-list>.completed-group .completed-group-count{font-size:10px}
+ .heading-meta .duration-value-line>span,.duration-label,.duration-note,.date-label,.date-weekday{font-size:11px}
+ .heading-meta .duration-value-line strong{font-size:18px}
+ .page-heading .page-description{font-size:12px}
+}
+
+.library-modal .chapter-button{font-size:13px}
+.library-modal .chapter-phase{font-size:10px}
+.library-modal .chapter-heading h3{font-size:18px}
+.library-modal .chapter-heading p,.library-modal .chapter-heading .text-button{font-size:12px}
+.library-modal .search-field input{font-size:14px}
+.library-modal .phase-filter select{font-size:12px}
+@media(max-width:650px){
+ .library-modal .chapter-button{font-size:12px}
+ .library-modal .chapter-phase{font-size:10px}
+ .library-modal .chapter-heading h3{font-size:16px}
+ .library-modal .chapter-heading p,.library-modal .chapter-heading .text-button{font-size:11px}
+ .library-modal .search-field input{font-size:13px}.library-modal .phase-filter select{font-size:11px}
+}
+
+/* Preserve the original heading emphasis after switching to Song/Times. */
+.page-heading h1,.modal-heading h2,.sheet-heading h2,.chapter-heading h3,
+.library-modal .chapter-heading h3,.history-detail-heading h3,.history-subject h4,
+.study-card .card-title,.subject-button strong,.brand-copy strong,
+.chapter-button[aria-current=true]{font-weight:700;font-synthesis:weight}
+.page-heading h1,.modal-heading h2,.study-card .card-title{-webkit-text-stroke:0}
+
+/* Song uses thin details at small sizes: prioritize readable type and native rasterization. */
+:root{--task-title-size:16px;--task-body-size:14px;--task-meta-size:12px;--task-control-size:13px}
+body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothing:auto}
+.study-card{transform:none;will-change:auto;backface-visibility:visible}
+.study-card .card-title{letter-spacing:normal;line-height:26px;color:#302827}
+.study-card .card-detail,.study-card .card-notes>p{line-height:25px;color:#594d44}
+.study-card .card-metadata>span,.study-card .card-eyebrow,.study-card .card-status,.study-card .card-progress{line-height:20px}
+.study-card .card-time-cell>span,.study-card .card-time-cell small{font-size:12px;line-height:19px;color:#78604f}
+.study-card .card-time-cell strong{font-size:16px;line-height:25px;letter-spacing:normal}
+.study-card .task-mode-control,.study-card .task-mode-control select,.study-card .card-complete-button,.study-card .card-notes>summary{font-size:13px}
+.study-card .card-metadata>span{color:#765c4b}
+.library-modal .chapter-button{font-size:14px;line-height:23px;color:#79645b}
+.library-modal .chapter-phase{font-size:12px;line-height:19px;opacity:1;color:#8d7062}
+.subject-button .subject-help{font-size:12px;line-height:19px}
+.modal-description{color:#78655d}
+@media(max-width:650px){
+ :root{--task-title-size:16px;--task-body-size:14px;--task-meta-size:12px;--task-control-size:13px}
+ .library-modal .chapter-button{font-size:13px;line-height:22px}
+ .library-modal .chapter-phase{font-size:11px;line-height:18px}
+ .study-card .card-detail,.study-card .card-notes>p{line-height:25px}
+}
+
+/* Subject labels stay bold at every breakpoint, including the compact table variant. */
+.subject-name,.daily-table .subject-button strong,.history-modal .history-subject h4,#library-title{font-weight:700;font-synthesis:weight}
+.daily-table .subject-button strong{font-size:16px;line-height:24px;letter-spacing:.03em}
+.history-modal .history-subject h4{font-size:16px;line-height:24px}
+
+:root{--card-title-ink:#302827;--card-body-ink:#594d44}
+
+/* Skip layout/paint for offscreen cards while keeping native find/focus behavior. */
+@supports(content-visibility:auto){
+ .study-card{content-visibility:auto;contain-intrinsic-size:auto 300px}
+ .history-card{contain-intrinsic-size:auto 230px}
+}

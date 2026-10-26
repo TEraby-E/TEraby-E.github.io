@@ -6,14 +6,15 @@
   <meta name="theme-color" content="#9e1b32">
   <meta name="description" content="安排章节任务，记录每天的学习进展。">
   <title>交大学习手账 · 每日任务</title>
-  <link rel="stylesheet" href="./styles.css">
-  <link rel="icon" href="./assets/sjtu-emblem.ico">
+  <link rel="stylesheet" href="./styles.css?v=20261026-performance-2">
+  <link rel="stylesheet" href="./cards.css?v=20261026-performance-2">
+  <link rel="icon" type="image/svg+xml" href="./assets/sjtu-emblem-round.svg?v=20261026-performance-2">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/app-icon-192.png">
-  <script src="./study-time.js" defer></script>
-  <script src="./storage.js" defer></script>
-  <script src="./export-image.js" defer></script>
-  <script src="./app.js" defer></script>
+  <script src="./study-time.js?v=20261026-performance-2" defer></script>
+  <script src="./storage.js?v=20261026-performance-2" defer></script>
+  <script src="./export-image.js?v=20261026-performance-2" defer></script>
+  <script src="./app.js?v=20261026-performance-2" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -33,7 +34,7 @@
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="./" aria-label="交大学习手账首页">
-        <img class="university-emblem" src="./assets/sjtu-emblem.png" alt="上海交通大学校徽" width="60" height="60">
+        <img class="university-emblem" src="./assets/sjtu-emblem-round.svg" alt="上海交通大学校徽" width="60" height="60">
         <span class="brand-rule" aria-hidden="true"></span>
         <span class="brand-copy"><strong>交大学习手账</strong><span>SJTU</span></span>
       </a>
@@ -56,7 +57,7 @@
         <p class="page-description">不要把梦想埋没</p>
       </div>
       <div class="heading-meta">
-        <div class="duration-block" aria-live="polite"><span class="duration-label">今日学习时长</span><span class="duration-value-line"><span>预计</span><strong id="estimated-time">0分钟</strong></span><span class="duration-value-line is-actual"><span>实际</span><strong id="actual-time">0分钟</strong></span><span id="estimated-time-note" class="duration-note">按已选任务汇总</span><span id="actual-time-note" class="duration-note">按已完成任务汇总</span></div>
+        <div class="duration-block" aria-live="polite"><span class="duration-label">今日学习时长</span><span class="duration-value-line"><span>预计</span><strong id="estimated-time">0分钟</strong></span><span class="duration-value-line is-actual"><span>实际</span><strong id="actual-time">0分钟</strong></span></div>
         <div class="date-block"><span class="date-label">学习日期</span><time id="study-date">正在载入</time><span id="study-weekday" class="date-weekday"></span></div>
       </div>
     </section>
@@ -107,7 +108,7 @@
 
   <dialog class="modal archive-modal" id="archive-dialog" aria-labelledby="archive-title">
     <div class="modal-heading"><div><p class="eyebrow">NEXT DAY</p><h2 id="archive-title">收好今天，继续向前</h2></div><button type="button" class="icon-button close-button" data-close="archive-dialog" aria-label="关闭"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <div class="archive-content"><p id="archive-description"></p><label class="carry-option"><input type="checkbox" id="carry-pending" checked><span><strong>将未完成任务带到下一天</strong><span>今天的完成情况会保留在历史记录中。</span></span></label></div>
+    <div class="archive-content"><p id="archive-description"></p><label class="carry-option"><input type="checkbox" id="carry-pending" checked><span><strong>将未完成任务带到下一天</strong><span>包括今天已打卡但尚未标记完成的多日任务；今天的用时和打卡会留在历史记录中。</span></span></label></div>
     <div class="modal-footer"><button type="button" class="button button-secondary" data-close="archive-dialog">继续今天</button><button type="button" class="button button-primary" id="confirm-archive">保存并进入下一天<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
   </dialog>
 

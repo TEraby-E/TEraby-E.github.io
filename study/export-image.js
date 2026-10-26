@@ -6,21 +6,26 @@
   else root.StudyImage = api;
 })(typeof window === 'undefined' ? globalThis : window, function (root) {
   const WIDTH = 1200;
-  const MAX_HEIGHT = 12000;
+  const SCALE = 2;
+  const MAX_HEIGHT = 6000;
   const CONTENT_TOP = 448;
   const FOOTER = 88;
-  const SUBJECT_HEIGHT = 56;
+  const SUBJECT_HEIGHT = 68;
+  const CARD_HEADER = 50;
+  const CARD_GAP = 18;
   const PAD = 22;
-  const TEXT_WIDTH = 820;
-  const SUBJECTS = Object.freeze({ english: '英语', calculus: '高数', linear: '线代', probability: '概率论', ds: '数据结构', co: '计组', os: '操作系统', cn: '计网' });
+  const TEXT_WIDTH = 952;
+  const SUBJECTS = Object.freeze({ english: '英语', calculus: '高数', linear: '线代', probability: '概率论', ds: 'DS', co: 'CO', os: 'OS', cn: 'CN' });
   const ORDER = Object.keys(SUBJECTS);
-  const COLORS = { paper: '#F3EBDD', row: '#FCF7EE', rowAlt: '#F7EFE2', ink: '#282126', muted: '#81736E', red: '#A51C30', wine: '#622C3D', rule: '#DFD0C0', pink: '#E5A8B6', green: '#537C66' };
-  const FONT = '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif';
+  const COLORS = { paper: '#F3EBDD', row: '#FCF7EE', rowAlt: '#F7EFE2', ink: '#282126', muted: '#594D44', red: '#A51C30', wine: '#622C3D', rule: '#DFD0C0', pink: '#E5A8B6', green: '#537C66' };
+  const FONT = '"Times New Roman", "SimSun", "宋体", "Songti SC", "Noto Serif CJK SC", serif';
   const scope = root.document ? new URL('.', root.document.baseURI).pathname : '/';
   const DB_NAME = `sjtu-study-export:${scope}`;
   let directoryHandle;
   let crestPromise;
   let exportQueue = Promise.resolve();
+  let exportFontFamily = FONT;
+  const contextFonts = new WeakMap();
 
   function timeTools() {
     if (root.StudyTime) return root.StudyTime;
@@ -51,7 +56,7 @@
   }
 
   function clean(value) {
-    return String(value ?? '').replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').split('\n').map(line => line.replace(/[\t ]+/g, ' ').trim()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    return String(value ?? '').replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').split('\n').map(line => line.replace(/[\t ]+/g, ' ').trim()).join('\n').replace(/\n{2,}/g, '\n').trim();
   }
 
   function normalize(assignments) {
@@ -70,12 +75,17 @@
       return {
         subject_id: task.subject_id, subject_name: SUBJECTS[task.subject_id], title,
         chapter: chapter && !title.includes(chapter) ? chapter : '',
-        detail, remarks: remarks && !detail.includes(remarks) && remarks !== title ? remarks : '',
+        detail: detail.replace(/\s/g, '') === title.replace(/\s/g, '') ? '' : detail, remarks: remarks && !detail.includes(remarks) && remarks !== title ? remarks : '',
         metadata: metadata.map(([label, value]) => `${label}：${value}`).join('  ·  '),
         estimate, actual, timeComparison: timeTools().comparisonLabel(task),
         done: task.done ?? false, originalIndex: index,
+        mode: task.task_mode === 'multi-day' ? 'multi-day' : 'single-day',
+        overallCompleted: typeof task.overall_completed === 'boolean' ? task.overall_completed : task.task_mode === 'multi-day' ? false : Boolean(task.done),
+        checkinDays: Number.isFinite(task.checkin_days) ? Math.max(0, Math.floor(task.checkin_days)) : task.done ? 1 : 0,
+        totalActualMinutes: Number.isFinite(task.total_actual_minutes) ? Math.max(0, task.total_actual_minutes) : 0,
+        exportContext: task.export_context || 'daily',
       };
-    }).sort((a, b) => ORDER.indexOf(a.subject_id) - ORDER.indexOf(b.subject_id) || a.originalIndex - b.originalIndex);
+    }).sort((a, b) => ORDER.indexOf(a.subject_id) - ORDER.indexOf(b.subject_id) || Number(a.overallCompleted) - Number(b.overallCompleted) || a.originalIndex - b.originalIndex);
   }
 
   function wrap(text, measure, width = TEXT_WIDTH) {
@@ -100,12 +110,12 @@
       if (gap) lines.push({ text: '', size: 1, height: gap, color, bold: false, role });
       for (const line of wrap(text, value => measure(value, size, bold))) lines.push({ text: line, size, height, color, bold, role });
     };
-    add(task.title, 27, 40, COLORS.ink, true);
-    add(task.chapter, 19, 29, COLORS.wine, false, 5);
-    add(task.timeComparison, 18, 28, COLORS.wine, false, 6, 'estimate');
-    add(task.metadata, 18, 28, COLORS.wine, false, 6);
-    add(task.detail, 22, 34, COLORS.muted, false, 8);
-    add(task.remarks, 22, 34, COLORS.muted, false, 5);
+    add(task.chapter, 21, 32, COLORS.wine, false);
+    add(task.title, 28, 43, COLORS.ink, true, task.chapter ? 4 : 0);
+    add(task.detail, 25, 39, COLORS.muted, false, 8);
+    add(task.metadata, 21, 33, COLORS.wine, false, 6);
+    add(task.remarks ? `学习备注：${task.remarks}` : '', 25, 39, COLORS.muted, false, 7);
+    lines.push({ text: task.timeComparison, size: 21, height: 122, color: COLORS.wine, bold: false, role: 'estimate' });
     return lines;
   }
 
@@ -127,7 +137,7 @@
       const lines = taskLines(task, measure);
       let at = 0;
       let continued = false;
-      const fullHeight = PAD * 2 + lines.reduce((sum, line) => sum + line.height, 0);
+      const fullHeight = PAD * 2 + CARD_HEADER + lines.reduce((sum, line) => sum + line.height, 0) + CARD_GAP;
       const freshCapacity = MAX_HEIGHT - FOOTER - CONTENT_TOP - SUBJECT_HEIGHT;
       const head = subjectId === task.subject_id ? 0 : SUBJECT_HEIGHT;
       if (y + head + fullHeight > MAX_HEIGHT - FOOTER && fullHeight <= freshCapacity && page.blocks.length) {
@@ -136,15 +146,15 @@
       while (at < lines.length) {
         const headHeight = subjectId === task.subject_id ? 0 : SUBJECT_HEIGHT;
         const minLineHeight = lines[at].height + (lines[at].text ? 0 : lines[at + 1]?.height || 0);
-        if (y + headHeight + PAD * 2 + minLineHeight > MAX_HEIGHT - FOOTER && page.blocks.length) { finish(); fresh(); }
+        if (y + headHeight + PAD * 2 + CARD_HEADER + CARD_GAP + minLineHeight > MAX_HEIGHT - FOOTER && page.blocks.length) { finish(); fresh(); }
         if (subjectId !== task.subject_id) addSubject(task, continued);
-        const capacity = MAX_HEIGHT - FOOTER - y - PAD * 2;
+        const capacity = MAX_HEIGHT - FOOTER - y - PAD * 2 - CARD_HEADER - CARD_GAP;
         let used = 0;
         let end = at;
         while (end < lines.length && used + lines[end].height <= capacity) { used += lines[end].height; end += 1; }
         if (end === at) throw new Error('任务文字无法放入导出图片，请检查异常字体设置。');
-        page.blocks.push({ type: 'task', top: y, height: used + PAD * 2, lines: lines.slice(at, end), done: task.done, continued, subject_id: task.subject_id, originalIndex: task.originalIndex });
-        y += used + PAD * 2;
+        page.blocks.push({ type: 'task', top: y, height: used + PAD * 2 + CARD_HEADER, task, lines: lines.slice(at, end), done: task.done, continued, subject_id: task.subject_id, originalIndex: task.originalIndex });
+        y += used + PAD * 2 + CARD_HEADER + CARD_GAP;
         at = end;
         if (at < lines.length) { finish(); fresh(); continued = true; }
       }
@@ -154,7 +164,42 @@
     return { pages, tasks, width: WIDTH, completed: tasks.filter(task => task.done).length, timeSummary: timeTools().summarize(assignments) };
   }
 
-  function font(context, size, bold = false) { context.font = `${bold ? 650 : 400} ${size}px ${FONT}`; }
+  async function prepareTypography() {
+    if (!root.document) return;
+    if (root.getComputedStyle) {
+      const style = root.getComputedStyle(root.document.documentElement);
+      exportFontFamily = style.fontFamily || FONT;
+      COLORS.ink = style.getPropertyValue('--card-title-ink').trim() || '#302827';
+      COLORS.muted = style.getPropertyValue('--card-body-ink').trim() || '#594D44';
+      COLORS.red = style.getPropertyValue('--red').trim() || COLORS.red;
+      COLORS.green = style.getPropertyValue('--green').trim() || COLORS.green;
+    }
+    if (root.document.fonts?.load) {
+      const sample = '学习任务 时间 ABC DS CO OS CN 0123456789 ,.;:!?';
+      await Promise.all([400, 700].map((weight) => root.document.fonts.load(`${weight} 28px ${exportFontFamily}`, sample)));
+    }
+    if (root.document.fonts?.ready) await root.document.fonts.ready;
+  }
+
+  function prepareContext(context, scale = 1) {
+    context.setTransform(scale, 0, 0, scale, 0, 0);
+    contextFonts.delete(context);
+    if ('fontKerning' in context) context.fontKerning = 'normal';
+    if ('textRendering' in context) context.textRendering = 'optimizeLegibility';
+    if ('letterSpacing' in context) context.letterSpacing = '0px';
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+  }
+
+  function font(context, size, bold = false) {
+    const value = `${bold ? 700 : 400} ${size}px ${exportFontFamily}`;
+    if (contextFonts.get(context) !== value) { context.font = value; contextFonts.set(context, value); }
+  }
+
+  function yieldToBrowser() {
+    if (root.scheduler?.yield) return root.scheduler.yield();
+    return new Promise((resolve) => root.setTimeout(resolve, 0));
+  }
   function text(context, value, x, y, size, color, bold = false, align = 'left') {
     font(context, size, bold); context.textAlign = align; context.textBaseline = 'top'; context.fillStyle = color; context.fillText(value, x, y);
   }
@@ -186,12 +231,11 @@
     for (let x = 0; x <= WIDTH; x += 40) line(context, x, 8, x, 272, '#FFFFFF07');
     for (let y = 8; y <= 272; y += 40) line(context, 0, y, WIDTH, y, '#FFFFFF07');
     context.fillStyle = COLORS.red; context.fillRect(0, 0, WIDTH, 8);
-    text(context, '上海交通大学', 76, 57, 26, '#FFF4E9', true);
+    text(context, '交大学习手账', 76, 57, 26, '#FFF4E9', true);
     text(context, 'SJTU', 77, 99, 15, '#D0BCC2', true);
     text(context, '饮水思源 · 爱国荣校', 73, 148, 55, '#FFF8EE', true);
     text(context, '不要把梦想埋没', 78, 225, 18, COLORS.pink, true);
-    rounded(context, 1003, 50, 121, 121, 9, '#FFFFFF');
-    context.drawImage(crest, 1011, 58, 105, 105);
+    context.drawImage(crest, 1003, 50, 121, 121);
     const formatted = `${day.getFullYear()}.${String(day.getMonth() + 1).padStart(2, '0')}.${String(day.getDate()).padStart(2, '0')}`;
     const summary = document.timeSummary;
     rounded(context, 76, 307, 300, 102, 13, '#FAF3E8', COLORS.rule);
@@ -216,27 +260,88 @@
     text(context, `${pageNumber} / ${document.pages.length}`, 1124, 239, 16, '#DAC0C9', false, 'right');
   }
 
+  class ImageCard {
+    constructor(context, block) {
+      this.context = context;
+      this.block = block;
+      this.x = 76;
+      this.width = 1048;
+    }
+
+    frame(fill, border, radius = 16) {
+      const context = this.context;
+      context.save();
+      context.shadowColor = '#4A2C2410'; context.shadowBlur = 12; context.shadowOffsetY = 4;
+      rounded(context, this.x, this.block.top, this.width, this.block.height, radius, fill);
+      context.restore();
+      rounded(context, this.x, this.block.top, this.width, this.block.height, radius, null, border);
+    }
+
+    badge(label, x, y, fill, ink) {
+      font(this.context, 21);
+      const width = this.context.measureText(label).width + 22;
+      rounded(this.context, x, y, width, 36, 5, fill);
+      text(this.context, label, x + 11, y + 7, 21, ink);
+      return x + width + 10;
+    }
+
+    timeCell(label, value, x, y, width, actual = false) {
+      rounded(this.context, x, y, width, 92, 9, actual ? '#EAF0E3' : '#F7EEDD', actual ? '#CED9C3' : '#E2D2BE');
+      text(this.context, label, x + 17, y + 12, 21, actual ? '#718569' : '#907660');
+      fittedText(this.context, value, x + 17, y + 46, 28, width - 34, actual ? '#52734E' : '#75513E', true, 15);
+    }
+  }
+
+  class TaskImageCard extends ImageCard {
+    draw() {
+      const context = this.context;
+      const block = this.block;
+      const task = block.task;
+      const completed = task.overallCompleted;
+      this.frame(completed ? '#F2F5E9' : '#FFF9EE', completed ? '#C5D0B7' : '#DCCBBB');
+      rounded(context, this.x, block.top + 18, 4, block.height - 36, 2, completed ? '#77936C' : '#AC3447');
+      let chipX = this.x + 28;
+      const chipY = block.top + 19;
+      chipX = this.badge(task.mode === 'multi-day' ? '多日任务' : '单日任务', chipX, chipY, '#F1E3D0', '#876447');
+      if (completed) chipX = this.badge('已完成', chipX, chipY, '#E1EAD6', '#5A7650');
+      if (task.done) chipX = this.badge(task.exportContext === 'history' ? '当日已打卡' : '今日已打卡', chipX, chipY, '#E2EEE3', '#56755E');
+      else if (!completed) chipX = this.badge(task.mode === 'multi-day' ? '进行中' : '待学习', chipX, chipY, '#F2EADF', '#917D6D');
+      if (task.mode === 'multi-day' && task.exportContext !== 'history') {
+        fittedText(context, `累计打卡 ${task.checkinDays} 天`, this.x + 760, chipY + 7, 21, 250, COLORS.muted);
+      }
+      if (block.continued) text(context, '续', this.x + this.width - 30, chipY + 5, 17, COLORS.muted, false, 'right');
+      let y = block.top + PAD + CARD_HEADER;
+      for (const item of block.lines) {
+        if (item.role === 'estimate') {
+          line(context, this.x + 28, y + 4, this.x + this.width - 28, y + 4, '#E7D9C7');
+          const width = (this.width - 72) / 2;
+          const estimate = task.estimate.minutes === null ? '待补充' : timeTools().formatMinutes(task.estimate.minutes);
+          const actual = task.actual.recorded ? timeTools().formatMinutes(task.actual.minutes) : task.done ? '未记录' : '待打卡';
+          this.timeCell('预计用时', estimate, this.x + 28, y + 15, width);
+          this.timeCell('实际用时', actual, this.x + 44 + width, y + 15, width, true);
+        } else if (item.text) text(context, item.text, this.x + 28, y, item.size, item.color, item.bold);
+        y += item.height;
+      }
+    }
+  }
+
+  class SubjectImageCard extends ImageCard {
+    draw() {
+      const y = this.block.top + 20;
+      rounded(this.context, this.x, y + 1, 4, 28, 2, COLORS.red);
+      text(this.context, this.block.name + (this.block.continued ? ' · 续' : ''), this.x + 19, y, 30, COLORS.ink, true);
+    }
+  }
+
   function drawPage(context, document, page, day, number, crest) {
     drawHeader(context, day, document, number, crest);
     for (const block of page.blocks) {
-      if (block.type === 'subject') {
-        rounded(context, 76, block.top, 1048, block.height, 0, COLORS.wine);
-        text(context, block.name + (block.continued ? ' · 续' : ''), 102, block.top + 15, 24, '#F9EBDD', true);
-      } else if (block.type === 'rest') {
-        rounded(context, 76, block.top, 1048, block.height, 12, COLORS.row, COLORS.rule);
+      if (block.type === 'subject') new SubjectImageCard(context, block).draw();
+      else if (block.type === 'rest') {
+        new ImageCard(context, block).frame(COLORS.row, COLORS.rule);
         text(context, '今天没有安排学习任务', 110, block.top + 43, 29, COLORS.ink, true);
         text(context, '休息与调整，也是学习计划的一部分。', 111, block.top + 103, 23, COLORS.muted);
-      } else {
-        context.fillStyle = block.originalIndex % 2 ? COLORS.rowAlt : COLORS.row;
-        context.fillRect(76, block.top, 1048, block.height);
-        line(context, 76, block.top + block.height, 1124, block.top + block.height, COLORS.rule);
-        line(context, 76, block.top, 76, block.top + block.height, COLORS.rule);
-        line(context, 1124, block.top, 1124, block.top + block.height, COLORS.rule);
-        status(context, 100, block.top + PAD + 4, block.done);
-        text(context, block.continued ? '续' : block.done ? '已完成' : '待完成', 1098, block.top + PAD + 8, 17, block.done ? COLORS.green : COLORS.muted, false, 'right');
-        let y = block.top + PAD;
-        for (const item of block.lines) { if (item.text) text(context, item.text, 148, y, item.size, item.color, item.bold); y += item.height; }
-      }
+      } else new TaskImageCard(context, block).draw();
     }
     const footerY = page.height - 54;
     line(context, 76, footerY - 20, 1124, footerY - 20, COLORS.rule);
@@ -249,7 +354,7 @@
       const image = new root.Image();
       image.onload = () => resolve(image);
       image.onerror = () => { crestPromise = null; reject(new Error('校徽图片未载入，请联网重新打开页面后导出。')); };
-      image.src = new URL('./assets/sjtu-emblem.png', root.document.baseURI).href;
+      image.src = new URL('./assets/sjtu-emblem-round.svg', root.document.baseURI).href;
     });
     return crestPromise;
   }
@@ -364,22 +469,26 @@
       try { exportAssignments = hydrateEstimates(assignments, await root.StudyStore.request('/api/library')); }
       catch { /* Saved estimates still export when the optional library fallback is unavailable. */ }
     }
-    if (root.document.fonts?.ready) await root.document.fonts.ready;
+    await prepareTypography();
     const crest = await getCrest();
     const canvas = root.document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (!context) throw new Error('浏览器无法创建图片画布，请换用新版浏览器后重试。');
+    prepareContext(context);
     const document = layoutDocument(exportAssignments, (value, size, bold) => { font(context, size, bold); return context.measureText(value).width; });
     const files = [];
     try {
+      await yieldToBrowser();
       for (let i = 0; i < document.pages.length; i += 1) {
         const page = document.pages[i];
-        canvas.width = WIDTH; canvas.height = page.height;
+        canvas.width = WIDTH * SCALE; canvas.height = page.height * SCALE;
+        prepareContext(context, SCALE);
         drawPage(context, document, page, day, i + 1, crest);
         const blob = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('浏览器未能生成 PNG 图片，请减少单日任务后重试。')), 'image/png'));
         const suffix = document.pages.length > 1 ? `_p${i + 1}` : '';
-        files.push({ name: `今日打卡_${date}${suffix}.png`, blob, width: WIDTH, height: page.height });
+        files.push({ name: `今日打卡_${date}${suffix}.png`, blob, width: WIDTH * SCALE, height: page.height * SCALE });
         canvas.width = canvas.height = 1;
+        if (i + 1 < document.pages.length) await yieldToBrowser();
       }
     } finally { canvas.width = canvas.height = 1; }
     if (permission.handle) {

@@ -9,6 +9,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./Assets/Icons/terabyte-favicon.png">
   <link rel="icon" type="image/svg+xml" href="./Assets/Icons/terabyte-favicon.svg">
   <link rel="apple-touch-icon" href="./Assets/Icons/terabyte-touch-icon.png">
+  <link rel="preload" as="image" type="image/webp" href="./Assets/Images/bg.webp" fetchpriority="high">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -38,7 +39,7 @@
       </section>
       <aside id="profile" aria-labelledby="profile-title">
         <section class="profile-card">
-          <div class="profile-intro"><img class="avatar" src="./Assets/Images/Aegleseeker.jpg" width="72" height="72" alt="Terabyte 的头像"><div><h2 id="profile-title">Terabyte</h2><p class="profile-handle">@TEraby-E</p></div></div>
+          <div class="profile-intro"><img class="avatar" decoding="async" loading="lazy" src="./Assets/Images/Aegleseeker.jpg" width="72" height="72" alt="Terabyte 的头像"><div><h2 id="profile-title">Terabyte</h2><p class="profile-handle">@TEraby-E</p></div></div>
           <div class="profile-divider"></div>
           <h3>在这些地方找到我</h3>
           <div class="social-grid">
