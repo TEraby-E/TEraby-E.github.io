@@ -17,6 +17,7 @@
   const TEXT_WIDTH = 952;
   const SUBJECTS = Object.freeze({ english: '英语', calculus: '高数', linear: '线代', probability: '概率论', ds: 'DS', co: 'CO', os: 'OS', cn: 'CN' });
   const ORDER = Object.keys(SUBJECTS);
+  const COMPACT_SUBJECTS = new Set(['ds', 'co', 'os', 'cn']);
   const COLORS = { paper: '#F3EBDD', row: '#FCF7EE', rowAlt: '#F7EFE2', ink: '#282126', muted: '#594D44', red: '#A51C30', wine: '#622C3D', rule: '#DFD0C0', pink: '#E5A8B6', green: '#537C66' };
   const FONT = '"Times New Roman", "SimSun", "宋体", "Songti SC", "Noto Serif CJK SC", serif';
   const scope = root.document ? new URL('.', root.document.baseURI).pathname : '/';
@@ -119,7 +120,15 @@
     return lines;
   }
 
-  function layoutDocument(assignments, measure) {
+  function subjectSummary(assignments) {
+    // A multi-day check-in records time, but only an explicit finish completes a knowledge point.
+    const finished = assignments.filter(task => task.done && (task.task_mode !== 'multi-day' || task.overall_completed === true));
+    const work = timeTools().summarize(finished);
+    const actual = timeTools().summarize(assignments);
+    return { completed: finished.length, estimatedMinutes: work.minutes, estimateKnown: work.known, estimateUnknown: work.unknown, actualMinutes: actual.actualMinutes, actualKnown: actual.actualKnown, actualUnknown: actual.actualUnknown };
+  }
+
+  function layoutDocument(assignments, measure, { compact408 = false } = {}) {
     const tasks = normalize(assignments);
     const pages = [];
     let page;
@@ -133,7 +142,18 @@
       subjectId = task.subject_id;
     };
     const finish = () => { page.height = Math.max(760, Math.ceil(y + FOOTER)); };
+    const summarized = new Set();
     for (const task of tasks) {
+      if (compact408 && COMPACT_SUBJECTS.has(task.subject_id)) {
+        if (summarized.has(task.subject_id)) continue;
+        summarized.add(task.subject_id);
+        const height = 190;
+        if (y + SUBJECT_HEIGHT + height + CARD_GAP > MAX_HEIGHT - FOOTER && page.blocks.length) { finish(); fresh(); }
+        addSubject(task, false);
+        page.blocks.push({ type: 'subject-summary', top: y, height, subject_id: task.subject_id, summary: subjectSummary(assignments.filter(item => item.subject_id === task.subject_id)) });
+        y += height + CARD_GAP;
+        continue;
+      }
       const lines = taskLines(task, measure);
       let at = 0;
       let continued = false;
@@ -333,10 +353,26 @@
     }
   }
 
+  class SubjectSummaryImageCard extends ImageCard {
+    draw() {
+      const { summary, top } = this.block;
+      this.frame('#FFF9EE', '#DCCBBB');
+      const width = (this.width - 88) / 3;
+      this.timeCell('完成知识点', `${summary.completed} 项`, this.x + 28, top + 24, width);
+      this.timeCell('已完成工作 · 预计用时', summary.estimateUnknown && !summary.estimateKnown ? '待补充' : timeTools().formatMinutes(summary.estimatedMinutes), this.x + 44 + width, top + 24, width);
+      this.timeCell('今日实际用时', summary.actualUnknown && !summary.actualKnown ? '待补记' : timeTools().formatMinutes(summary.actualMinutes), this.x + 60 + width * 2, top + 24, width, true);
+      const notes = ['每项学习任务计为一个知识点；多日任务完成后计数'];
+      if (summary.estimateUnknown) notes.push(`${summary.estimateUnknown}项预计用时待补充`);
+      if (summary.actualUnknown) notes.push(`${summary.actualUnknown}项实际用时未记录`);
+      fittedText(this.context, notes.join(' · '), this.x + 28, top + 143, 18, this.width - 56, COLORS.muted);
+    }
+  }
+
   function drawPage(context, document, page, day, number, crest) {
     drawHeader(context, day, document, number, crest);
     for (const block of page.blocks) {
       if (block.type === 'subject') new SubjectImageCard(context, block).draw();
+      else if (block.type === 'subject-summary') new SubjectSummaryImageCard(context, block).draw();
       else if (block.type === 'rest') {
         new ImageCard(context, block).frame(COLORS.row, COLORS.rule);
         text(context, '今天没有安排学习任务', 110, block.top + 43, 29, COLORS.ink, true);
@@ -461,7 +497,7 @@
     return new Blob([...local, ...central, end.bytes], { type: 'application/zip' });
   }
 
-  async function performExport({ date, assignments }) {
+  async function performExport({ date, assignments, compact408 = false }) {
     const day = dateValue(date);
     const permission = await permittedDirectory();
     let exportAssignments = assignments;
@@ -475,7 +511,7 @@
     const context = canvas.getContext('2d');
     if (!context) throw new Error('浏览器无法创建图片画布，请换用新版浏览器后重试。');
     prepareContext(context);
-    const document = layoutDocument(exportAssignments, (value, size, bold) => { font(context, size, bold); return context.measureText(value).width; });
+    const document = layoutDocument(exportAssignments, (value, size, bold) => { font(context, size, bold); return context.measureText(value).width; }, { compact408 });
     const files = [];
     try {
       await yieldToBrowser();
@@ -520,5 +556,5 @@
     return run;
   }
 
-  return { exportDaily, chooseDirectory, getDirectoryInfo, clearDirectory, _test: { normalize, wrap, layoutDocument, hydrateEstimates, dateValue, crc32, zipFiles, WIDTH, MAX_HEIGHT } };
+  return { exportDaily, chooseDirectory, getDirectoryInfo, clearDirectory, _test: { normalize, wrap, layoutDocument, subjectSummary, hydrateEstimates, dateValue, crc32, zipFiles, WIDTH, MAX_HEIGHT } };
 });

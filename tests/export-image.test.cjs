@@ -164,3 +164,46 @@ test('ZIP stores UTF-8 PNG names and valid CRC data', async () => {
   assert.equal(view.getUint16(data.length - 12, true), 2);
   assert(new TextDecoder().decode(data).includes('第二张.png'));
 });
+
+test('compact export replaces only 408 details with one summary per subject without changing records', () => {
+  const assignments = [
+    task({ subject_id: 'english', title: '英语原样', detail: '英语完整备注', done: true, estimated_minutes: 15, actual_minutes: 20 }),
+    task({ subject_id: 'calculus', title: '数学原样', detail: '数学完整备注' }),
+    ...['ds', 'co', 'os', 'cn'].flatMap(subject_id => [
+      task({ task_id: `${subject_id}-done`, subject_id, title: '不应出现在简图的标题', detail: '不应出现在简图的详情', done: true, estimated_minutes: 30, actual_minutes: 35 }),
+      task({ task_id: `${subject_id}-pending`, subject_id, estimated_minutes: 60 }),
+    ]),
+  ];
+  const before = JSON.stringify(assignments);
+  const result = image.layoutDocument(assignments, measure, { compact408: true });
+  const blocks = result.pages.flatMap(page => page.blocks);
+  const summaries = blocks.filter(block => block.type === 'subject-summary');
+  assert.deepEqual(summaries.map(block => block.subject_id), ['ds', 'co', 'os', 'cn']);
+  for (const { summary } of summaries) {
+    assert.equal(summary.completed, 1);
+    assert.equal(summary.estimatedMinutes, 30);
+    assert.equal(summary.actualMinutes, 35);
+  }
+  const detailText = blocks.filter(block => block.type === 'task').flatMap(block => block.lines).map(line => line.text).join('');
+  assert(detailText.includes('英语完整备注'));
+  assert(detailText.includes('数学完整备注'));
+  assert(!detailText.includes('不应出现在简图'));
+  assert.equal(JSON.stringify(assignments), before);
+  assert.equal(image.layoutDocument(assignments, measure).pages.flatMap(page => page.blocks).filter(block => block.type === 'task').length, 10);
+});
+
+test('compact summary includes multi-day effort but counts only finished knowledge points and estimates', () => {
+  const result = image.subjectSummary([
+    task({ task_id: 'ongoing', done: true, task_mode: 'multi-day', overall_completed: false, estimated_minutes: 120, actual_minutes: 25 }),
+    task({ task_id: 'finished', done: true, task_mode: 'multi-day', overall_completed: true, estimated_minutes: 90, actual_minutes: 30 }),
+    task({ task_id: 'zero', done: true, estimated_minutes: 0, actual_minutes: 0 }),
+    task({ task_id: 'unknown', done: true }),
+    task({ task_id: 'pending', done: false, estimated_minutes: 100, actual_minutes: 500 }),
+  ]);
+  assert.equal(result.completed, 3);
+  assert.equal(result.estimatedMinutes, 90);
+  assert.equal(result.estimateUnknown, 1);
+  assert.equal(result.actualMinutes, 55);
+  assert.equal(result.actualKnown, 3);
+  assert.equal(result.actualUnknown, 1);
+});

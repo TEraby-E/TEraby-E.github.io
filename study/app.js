@@ -50,7 +50,7 @@
     if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value.date) || !Array.isArray(value.assignments)) {
       throw new Error('学习记录的格式不正确，请重新载入。');
     }
-    return { ...value, history: Array.isArray(value.history) ? value.history : [], completed_ids: Array.isArray(value.completed_ids) ? value.completed_ids : [], library_completed_ids: Array.isArray(value.library_completed_ids) ? value.library_completed_ids : [], library_reopened_ids: Array.isArray(value.library_reopened_ids) ? value.library_reopened_ids : [], task_modes: value.task_modes || {}, task_progress: value.task_progress || {}, assignments: value.assignments.map((assignment) => ({ ...assignment, done: Boolean(assignment.done) })) };
+    return { ...value, history: Array.isArray(value.history) ? value.history : [], completed_ids: Array.isArray(value.completed_ids) ? value.completed_ids : [], library_completed_ids: Array.isArray(value.library_completed_ids) ? value.library_completed_ids : [], library_reopened_ids: Array.isArray(value.library_reopened_ids) ? value.library_reopened_ids : [], task_modes: value.task_modes || {}, subject_phases: value.subject_phases || {}, task_progress: value.task_progress || {}, assignments: value.assignments.map((assignment) => ({ ...assignment, done: Boolean(assignment.done) })) };
   }
 
   function dateParts(date) {
@@ -465,6 +465,18 @@
     }
   }
 
+  class LearningStage extends LearningNode {
+    constructor(subject, phase) {
+      super({ id: `${subject.id}:${phase}` }, subject.chapters.filter(chapter => !phase || chapter.phase === phase).map(chapter => new LearningChapter(chapter)));
+    }
+
+    get progress() {
+      const tasks = this.children.flatMap(chapter => chapter.children.map(node => ({ ...node.data, done: node.completed })));
+      const summary = timeSummary(tasks);
+      return { ...summary, percent: summary.minutes > 0 ? Math.round(summary.completedMinutes / summary.minutes * 1000) / 10 : null };
+    }
+  }
+
   function taskMode(task) {
     return new LearningTask(task).mode;
   }
@@ -762,7 +774,7 @@
     }
     if (!dirty || !state) return;
     const version = changeVersion;
-    const snapshot = { date: state.date, revision: state.revision, assignments: cloneAssignments(), library_completed_ids: [...state.library_completed_ids], library_reopened_ids: [...state.library_reopened_ids], task_modes: { ...state.task_modes } };
+    const snapshot = { date: state.date, revision: state.revision, assignments: cloneAssignments(), library_completed_ids: [...state.library_completed_ids], library_reopened_ids: [...state.library_reopened_ids], task_modes: { ...state.task_modes }, subject_phases: { ...state.subject_phases } };
     setStatus('saving', '正在保存');
     savePromise = (async () => {
       try {
@@ -812,10 +824,13 @@
     const selected = new Set(subjectAssignments(id).filter((assignment) => available.has(assignment.task_id)).map((assignment) => assignment.task_id));
     const firstSelected = subject.chapters.find((chapter) => !new LearningChapter(chapter).completed && chapter.tasks.some((task) => selected.has(task.id)));
     const nextChapter = subject.chapters.find((chapter) => chapter.tasks.some((task) => !libraryTaskCompleted(task.id)));
-    subjectDraft = { subject, selected, chapterId: firstSelected?.id || nextChapter?.id || subject.chapters[0]?.id, query: '', phase: '' };
+    const phases = [...new Set(subject.chapters.map(chapter => chapter.phase).filter(Boolean))];
+    const phase = state.subject_phases[id] ?? (nextChapter?.phase || phases[0] || '');
+    subjectDraft = { subject, selected, chapterId: firstSelected?.id || nextChapter?.id || subject.chapters[0]?.id, query: '', phase };
     $('library-title').textContent = `${subjectName(subject)} · 选择学习任务`;
     $('library-search').value = '';
     $('library-phase').innerHTML = '<option value="">全部阶段</option>' + [...new Set(subject.chapters.map((chapter) => chapter.phase).filter(Boolean))].map((phase) => `<option value="${escape(phase)}">${escape(phase)}</option>`).join('');
+    $('library-phase').value = phase;
     $('library-subject-count').textContent = `${subject.chapters.length} 个章节`;
     renderLibrary();
     openDialog('library-dialog');
@@ -898,6 +913,9 @@
     renderLibraryNavigation();
     renderLibraryContent();
     updateSelectionSummary();
+    const progress = new LearningStage(subjectDraft.subject, subjectDraft.phase).progress;
+    const percent = progress.percent === null ? '—' : `${progress.percent}%`;
+    $('stage-progress').innerHTML = `<div class="stage-progress-heading"><strong>${escape(subjectDraft.phase || '全部阶段')} · 预计用时完成度</strong><strong>${percent}</strong></div><progress max="100" value="${progress.percent ?? 0}" aria-label="当前阶段按预计用时计算的完成百分比">${percent}</progress><p>已完成 ${escape(formattedTime(progress.completedMinutes))} / 共 ${escape(formattedTime(progress.minutes))}${progress.unknown ? ` · ${progress.unknown}项未设置预计用时，暂未计入` : ''}${progress.percent === null ? ' · 暂无可计算的预计用时' : ''}</p>`;
   }
 
   function refreshLibraryCompletion(taskId) {
@@ -1057,6 +1075,7 @@
       await flushAutosave();
       const record = isCurrent ? { date: state.date, assignments: cloneAssignments() } : await api(`/api/history/${encodeURIComponent(date)}`);
       record.assignments = record.assignments.map((task) => new (isCurrent ? DailyTaskCardView : HistoryTaskCardView)(task).exportSnapshot());
+      record.compact408 = $('compact-export').checked;
       const result = await window.StudyImage.exportDaily(record);
       if (!result.files?.length) throw new Error('没有收到图片保存结果，请重试。');
       clearError();
@@ -1242,8 +1261,10 @@
     searchTimer = window.setTimeout(() => { if (subjectDraft === draft && $('library-dialog').open) renderLibrary(); }, 90);
   });
   $('library-phase').addEventListener('change', (event) => {
-    if (!subjectDraft) return;
+    if (!subjectDraft || !state || actionBusy) return;
     subjectDraft.phase = event.target.value;
+    state.subject_phases[subjectDraft.subject.id] = subjectDraft.phase;
+    changed();
     renderLibrary();
     $('chapter-list').scrollTop = 0;
     $('chapter-content').scrollTop = 0;

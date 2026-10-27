@@ -1147,3 +1147,18 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
  .study-card{content-visibility:auto;contain-intrinsic-size:auto 300px}
  .history-card{contain-intrinsic-size:auto 230px}
 }
+
+/* Shared stage dashboard and image-only export preference. */
+.compact-export-option{display:flex;align-items:flex-start;gap:10px;max-width:928px;margin:-10px auto 26px;padding:14px 18px;border:1px solid #dfd0c0;border-radius:12px;background:#f4ebdf;color:var(--card-title-ink);font-size:14px;line-height:1.7;cursor:pointer}
+.compact-export-option input{width:18px;height:18px;margin-top:3px;accent-color:var(--red);flex-shrink:0}
+.compact-export-option small{display:block;font-size:12px;color:var(--card-body-ink);margin-top:2px}
+.library-modal .phase-filter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--card-body-ink)}
+.stage-progress{flex:0 0 auto;margin:0 28px 14px;padding:14px 18px;border:1px solid #dfcebc;border-radius:12px;background:linear-gradient(115deg,#f0e2d1,#faf4e9);color:var(--card-title-ink)}
+.stage-progress-heading{display:flex;justify-content:space-between;gap:12px;font-size:15px;line-height:1.6}
+.stage-progress-heading>strong:last-child{color:var(--red);font-size:19px;white-space:nowrap}
+.stage-progress progress{display:block;appearance:none;-webkit-appearance:none;width:100%;height:7px;margin:10px 0;border:0;border-radius:8px;overflow:hidden;background:#dfd0c0;accent-color:var(--red)}
+.stage-progress progress::-webkit-progress-bar{background:#dfd0c0;border-radius:8px}
+.stage-progress progress::-webkit-progress-value{background:var(--red);border-radius:8px}
+.stage-progress progress::-moz-progress-bar{background:var(--red);border-radius:8px}
+.stage-progress p{margin:0;font-size:13px;line-height:1.7;color:var(--card-body-ink)}
+@media(max-width:650px){.stage-progress{margin:0 16px 10px;padding:10px 12px}.stage-progress-heading{font-size:14px}.stage-progress p{font-size:12px}.library-modal .phase-filter{gap:2px;font-size:12px;flex-direction:column;align-items:flex-start}.compact-export-option{margin-top:0;padding:12px;font-size:13px}}

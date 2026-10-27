@@ -6,15 +6,15 @@
   <meta name="theme-color" content="#9e1b32">
   <meta name="description" content="安排章节任务，记录每天的学习进展。">
   <title>交大学习手账 · 每日任务</title>
-  <link rel="stylesheet" href="./styles.css?v=20261026-performance-2">
-  <link rel="stylesheet" href="./cards.css?v=20261026-performance-2">
-  <link rel="icon" type="image/svg+xml" href="./assets/sjtu-emblem-round.svg?v=20261026-performance-2">
+  <link rel="stylesheet" href="./styles.css?v=20261027-stage-summary">
+  <link rel="stylesheet" href="./cards.css?v=20261027-stage-summary">
+  <link rel="icon" type="image/svg+xml" href="./assets/sjtu-emblem-round.svg?v=20261027-stage-summary">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/app-icon-192.png">
-  <script src="./study-time.js?v=20261026-performance-2" defer></script>
-  <script src="./storage.js?v=20261026-performance-2" defer></script>
-  <script src="./export-image.js?v=20261026-performance-2" defer></script>
-  <script src="./app.js?v=20261026-performance-2" defer></script>
+  <script src="./study-time.js?v=20261027-stage-summary" defer></script>
+  <script src="./storage.js?v=20261027-stage-summary" defer></script>
+  <script src="./export-image.js?v=20261027-stage-summary" defer></script>
+  <script src="./app.js?v=20261027-stage-summary" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -89,13 +89,15 @@
         <button class="button button-primary" id="archive-button" type="button" disabled><span>保存并进入下一天</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
       </div>
     </div>
+    <label class="compact-export-option"><input type="checkbox" id="compact-export" checked><span>简化408打卡图片<small>DS、CO、OS、CN 仅显示完成数量和用时；英语、数学保留原样。历史图片也使用此选项。</small></span></label>
 
     <footer class="page-footer"><span>饮水思源 · 爱国荣校</span><span>学有所得，日有所进</span></footer>
   </main>
 
   <dialog class="modal library-modal" id="library-dialog" aria-labelledby="library-title">
     <div class="modal-heading"><div><p class="eyebrow">CHAPTER LIBRARY</p><h2 id="library-title">选择学习任务</h2><p class="modal-description">按今天的进度，自由选择章节和任务。</p></div><button type="button" class="icon-button close-button" data-close="library-dialog" aria-label="关闭任务库"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <div class="library-search-wrap"><label class="search-field"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="library-search" type="search" autocomplete="off" placeholder="搜索章节或任务" aria-label="搜索当前科目的章节或任务"></label><label class="phase-filter"><span class="visually-hidden">筛选学习阶段</span><select id="library-phase" aria-label="筛选学习阶段"><option value="">全部阶段</option></select></label><span id="library-subject-count" class="muted"></span></div>
+    <div class="library-search-wrap"><label class="search-field"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="library-search" type="search" autocomplete="off" placeholder="搜索章节或任务" aria-label="搜索当前科目的章节或任务"></label><label class="phase-filter"><span>当前学习阶段</span><select id="library-phase" aria-label="切换当前学科的学习阶段"><option value="">全部阶段</option></select></label><span id="library-subject-count" class="muted"></span></div>
+    <section id="stage-progress" class="stage-progress" aria-label="阶段完成进度" aria-live="polite"></section>
     <div class="library-layout"><nav class="chapter-list" id="chapter-list" aria-label="选择章节"></nav><section class="chapter-content" id="chapter-content" aria-live="polite"></section></div>
     <div class="modal-footer"><span class="selection-summary" id="selection-summary">已选 0 项任务</span><div class="modal-footer-buttons"><button type="button" class="button button-secondary" data-close="library-dialog">取消</button><button type="button" class="button button-primary" id="apply-library">加入今日清单<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div></div>
   </dialog>

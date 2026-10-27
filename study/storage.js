@@ -56,8 +56,10 @@
   function libraryIndex(library) {
     if (!library || !Array.isArray(library.subjects)) throw new StoreError('章节任务库的格式不正确。');
     const index = new Map();
+    index.subjectPhases = new Map();
     for (const subject of library.subjects) {
       if (!SUBJECTS[subject.id] || subject.name !== SUBJECTS[subject.id] || !Array.isArray(subject.chapters)) throw new StoreError('章节任务库的科目不正确。');
+      index.subjectPhases.set(subject.id, new Set(subject.chapters.map(chapter => chapter.phase).filter(Boolean)));
       for (const chapter of subject.chapters) {
         if (typeof chapter.id !== 'string' || !Array.isArray(chapter.tasks)) throw new StoreError('章节任务库的章节不正确。');
         for (const task of chapter.tasks) {
@@ -117,6 +119,10 @@
       const mode = item.task_mode ?? definition.task_mode ?? 'single-day';
       if (!['single-day', 'multi-day'].includes(mode)) throw new StoreError('任务类别不正确。');
       row.task_mode = mode;
+      if (Object.hasOwn(item, 'overall_completed')) {
+        if (typeof item.overall_completed !== 'boolean') throw new StoreError('任务整体完成状态不正确。');
+        row.overall_completed = item.overall_completed;
+      }
       row.done = item.done ?? false;
       const actual = item.actual_minutes ?? null;
       if (actual !== null && (typeof actual !== 'number' || !Number.isFinite(actual) || actual < 0 || actual > 525600)) throw new StoreError('实际用时必须是有效的分钟数，未记录时请留空。');
@@ -142,6 +148,16 @@
     for (const [id, mode] of Object.entries(value)) {
       if ((!index.has(id) && !index.retired?.has(id)) || !['single-day', 'multi-day'].includes(mode)) throw new StoreError('任务类别设置不正确。');
       result[id] = mode;
+    }
+    return result;
+  }
+
+  function normaliseSubjectPhases(value, index) {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > SUBJECT_ORDER.length) throw new StoreError('学科学习阶段设置不正确。');
+    const result = {};
+    for (const [id, phase] of Object.entries(value)) {
+      if (!SUBJECT_ORDER.includes(id) || typeof phase !== 'string' || (phase !== '' && !index.subjectPhases.get(id)?.has(phase))) throw new StoreError('学科学习阶段不存在，请重新选择。');
+      result[id] = phase;
     }
     return result;
   }
@@ -180,7 +196,7 @@
   function stateOf(record) {
     const completed = new Set();
     for (const day of [record.current, ...record.archives]) for (const task of day.assignments) if (task.done && (record.task_modes?.[task.task_id] || task.task_mode) !== 'multi-day') completed.add(task.task_id);
-    return copy({ date: record.current.date, revision: record.revision, assignments: record.current.assignments, history: record.archives.map((day) => ({ date: day.date, total: day.assignments.length, completed: day.assignments.filter((task) => task.done).length })).sort((a, b) => b.date.localeCompare(a.date)), completed_ids: [...completed].sort(), library_completed_ids: Array.isArray(record.library_completed_ids) ? record.library_completed_ids : [], library_reopened_ids: Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : [], task_modes: record.task_modes || {}, task_progress: progressOf(record) });
+    return copy({ date: record.current.date, revision: record.revision, assignments: record.current.assignments, history: record.archives.map((day) => ({ date: day.date, total: day.assignments.length, completed: day.assignments.filter((task) => task.done).length })).sort((a, b) => b.date.localeCompare(a.date)), completed_ids: [...completed].sort(), library_completed_ids: Array.isArray(record.library_completed_ids) ? record.library_completed_ids : [], library_reopened_ids: Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : [], task_modes: record.task_modes || {}, subject_phases: record.subject_phases || {}, task_progress: progressOf(record) });
   }
 
   function checkRevision(record, payload) {
@@ -194,6 +210,7 @@
     const markers = {};
     for (const key of ['library_completed_ids', 'library_reopened_ids']) if (Object.hasOwn(payload, key)) markers[key] = normaliseLibraryCompletedIds(payload[key], index);
     if (Object.hasOwn(payload, 'task_modes')) markers.task_modes = normaliseTaskModes(payload.task_modes, index);
+    if (Object.hasOwn(payload, 'subject_phases')) markers.subject_phases = normaliseSubjectPhases(payload.subject_phases, index);
     return { ...copy(record), ...markers, revision: record.revision + 1, current: { date: record.current.date, assignments } };
   }
 
@@ -203,8 +220,11 @@
     const next = nextDate(record.current.date);
     const existingTomorrow = record.archives.find((day) => day.date === next);
     const archives = record.archives.filter((day) => day.date !== record.current.date && day.date !== next);
-    archives.push(copy(record.current));
     const finished = new Set(record.library_completed_ids || []);
+    archives.push({ ...copy(record.current), assignments: record.current.assignments.map(task =>
+      (record.task_modes?.[task.task_id] || task.task_mode) === 'multi-day'
+        ? { ...copy(task), task_mode: 'multi-day', overall_completed: finished.has(task.task_id) }
+        : copy(task)) });
     const carried = payload.carry_pending === false ? [] : record.current.assignments.filter((task) => (record.task_modes?.[task.task_id] || task.task_mode) === 'multi-day' ? !finished.has(task.task_id) : !task.done).map((task) => (record.task_modes?.[task.task_id] || task.task_mode) === 'multi-day' ? { ...task, task_mode: 'multi-day', done: false, actual_minutes: null } : task);
     return { ...copy(record), revision: record.revision + 1, current: { date: next, assignments: mergeTasks(existingTomorrow?.assignments || [], carried) }, archives };
   }
@@ -226,7 +246,8 @@
     const library_completed_ids = Object.hasOwn(value, 'library_completed_ids') ? normaliseLibraryCompletedIds(value.library_completed_ids, index) : [];
     const library_reopened_ids = Object.hasOwn(value, 'library_reopened_ids') ? normaliseLibraryCompletedIds(value.library_reopened_ids, index) : [];
     const task_modes = Object.hasOwn(value, 'task_modes') ? normaliseTaskModes(value.task_modes, index) : {};
-    return { current, archives, library_completed_ids, library_reopened_ids, task_modes };
+    const subject_phases = Object.hasOwn(value, 'subject_phases') ? normaliseSubjectPhases(value.subject_phases, index) : {};
+    return { current, archives, library_completed_ids, library_reopened_ids, task_modes, subject_phases };
   }
 
   function mergeTasks(existing, incoming) {
@@ -254,7 +275,7 @@
     const incomingMarkers = Array.isArray(incoming.library_completed_ids) ? incoming.library_completed_ids : [];
     const existingReopened = Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : [];
     const incomingReopened = Array.isArray(incoming.library_reopened_ids) ? incoming.library_reopened_ids : [];
-    if (options.replace || (!record.current.assignments.length && !record.archives.length && !existingMarkers.length && !existingReopened.length && !Object.keys(record.task_modes || {}).length)) return { revision: record.revision + 1, ...copy(incoming), task_modes: copy(incoming.task_modes || {}), library_completed_ids: [...incomingMarkers], library_reopened_ids: [...incomingReopened] };
+    if (options.replace || (!record.current.assignments.length && !record.archives.length && !existingMarkers.length && !existingReopened.length && !Object.keys(record.task_modes || {}).length && !Object.keys(record.subject_phases || {}).length)) return { revision: record.revision + 1, ...copy(incoming), task_modes: copy(incoming.task_modes || {}), library_completed_ids: [...incomingMarkers], library_reopened_ids: [...incomingReopened] };
     const merged = new Map(record.archives.map((day) => [day.date, copy(day)]));
     const current = copy(record.current);
     for (const day of [...incoming.archives, incoming.current]) {
@@ -264,7 +285,7 @@
         merged.set(day.date, { date: day.date, assignments: previous ? mergeTasks(previous.assignments, day.assignments) : copy(day.assignments) });
       }
     }
-    return { ...copy(record), task_modes: { ...(incoming.task_modes || {}), ...(record.task_modes || {}) }, revision: record.revision + 1, current, archives: [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)), library_completed_ids: [...new Set([...existingMarkers, ...incomingMarkers.filter((id) => !existingReopened.includes(id))])].sort(), library_reopened_ids: [...new Set([...existingReopened, ...incomingReopened.filter((id) => !existingMarkers.includes(id))])].sort() };
+    return { ...copy(record), subject_phases: { ...(incoming.subject_phases || {}), ...(record.subject_phases || {}) }, task_modes: { ...(incoming.task_modes || {}), ...(record.task_modes || {}) }, revision: record.revision + 1, current, archives: [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)), library_completed_ids: [...new Set([...existingMarkers, ...incomingMarkers.filter((id) => !existingReopened.includes(id))])].sort(), library_reopened_ids: [...new Set([...existingReopened, ...incomingReopened.filter((id) => !existingMarkers.includes(id))])].sort() };
   }
 
   function storageError(error) {
@@ -388,7 +409,7 @@
     }
 
     async function exportBackup() {
-      return transact((record) => ({ result: { format: BACKUP_FORMAT, version: 1, exported_at: new Date().toISOString(), current: copy(record.current), archives: copy(record.archives), library_completed_ids: copy(Array.isArray(record.library_completed_ids) ? record.library_completed_ids : []), library_reopened_ids: copy(Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : []), task_modes: copy(record.task_modes || {}) } }));
+      return transact((record) => ({ result: { format: BACKUP_FORMAT, version: 1, exported_at: new Date().toISOString(), current: copy(record.current), archives: copy(record.archives), library_completed_ids: copy(Array.isArray(record.library_completed_ids) ? record.library_completed_ids : []), library_reopened_ids: copy(Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : []), task_modes: copy(record.task_modes || {}), subject_phases: copy(record.subject_phases || {}) } }));
     }
 
     async function importBackup(value, options = {}) {

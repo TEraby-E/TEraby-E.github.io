@@ -14,6 +14,38 @@ const initial = () => h.initialRecord('2026-10-25');
 const save = (record, tasks) => h.saveRecord(record, { date: record.current.date, revision: record.revision, assignments: tasks }, index);
 const backup = (current, archives = []) => ({ format: 'sjtu-study-checkin-backup', version: 1, current, archives });
 
+test('subject stages persist through saving, archiving, backup import and conservative merging', () => {
+  const phases = Object.fromEntries(library.subjects.map(s => [s.id, s.chapters[0].phase]));
+  const saved = h.saveRecord(initial(), { date: initial().current.date, revision: 1, assignments: [task()], subject_phases: phases }, index);
+  assert.deepEqual(h.stateOf(saved).subject_phases, phases);
+  const advanced = h.archiveRecord(saved, { date: saved.current.date, revision: saved.revision });
+  assert.deepEqual(advanced.subject_phases, phases);
+  assert.equal(advanced.archives[0].assignments[0].title, index.get(first).task.title);
+  const incoming = h.validateBackup({ ...backup(saved.current, saved.archives), subject_phases: phases }, index);
+  assert.deepEqual(incoming.subject_phases, phases);
+  const imported = h.importRecord(initial(), incoming, { revision: 1 });
+  assert.deepEqual(imported.subject_phases, phases);
+  const existing = { ...saved, subject_phases: { ds: '' } };
+  const merged = h.importRecord(existing, incoming, { revision: existing.revision });
+  assert.equal(merged.subject_phases.ds, '');
+  assert.equal(merged.subject_phases.cn, phases.cn);
+  for (const invalid of [{ unknown: '强化' }, { ds: '不存在的阶段' }, { ds: 1 }, []]) {
+    assert.throws(() => h.saveRecord(saved, { date: saved.current.date, revision: saved.revision, assignments: [], subject_phases: invalid }, index));
+  }
+});
+
+test('multi-day overall completion is frozen in the archived day and survives backup validation', () => {
+  const entry = h.normaliseAssignments([{ ...task(), task_mode: 'multi-day', done: true, actual_minutes: 45 }], index)[0];
+  const record = { ...initial(), current: { date: initial().current.date, assignments: [entry] }, library_completed_ids: [first] };
+  const advanced = h.archiveRecord(record, { date: record.current.date, revision: record.revision });
+  assert.equal(advanced.archives[0].assignments[0].overall_completed, true);
+  assert.equal(advanced.current.assignments.length, 0);
+  const restored = h.validateBackup(backup(advanced.current, advanced.archives), index);
+  assert.equal(restored.archives[0].assignments[0].overall_completed, true);
+  assert.equal(restored.archives[0].assignments[0].actual_minutes, 45);
+  assert.equal(record.current.assignments[0].overall_completed, undefined);
+});
+
 test('validates calendar dates without JS date rollover', () => {
   assert.equal(h.validateDate('2024-02-29'), '2024-02-29');
   for (const value of ['2026-02-29', '2026-13-01', '2026-04-31', '2026-1-01', '../x', null, '2026-01-01T12:00:00']) assert.throws(() => h.validateDate(value));
