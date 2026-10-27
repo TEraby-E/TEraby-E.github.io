@@ -1,8 +1,8 @@
 'use strict';
 
 const PREFIX = `sjtu-checkin-${new URL(self.registration.scope).pathname}-`;
-const CACHE = `${PREFIX}v23`;
-const RELEASE = '20261027-stage-summary';
+const CACHE = `${PREFIX}v24`;
+const RELEASE = '20261027-round-two';
 const FILES = [
   './', './index.html', './styles.css', './cards.css', './app.js', './study-time.js', './storage.js', './export-image.js',
   './manifest.webmanifest', './data/library.json', './assets/sjtu-emblem-round.svg', './assets/app-icon-192.png', './assets/app-icon-512.png',

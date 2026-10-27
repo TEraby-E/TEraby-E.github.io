@@ -14,6 +14,19 @@ const initial = () => h.initialRecord('2026-10-25');
 const save = (record, tasks) => h.saveRecord(record, { date: record.current.date, revision: record.revision, assignments: tasks }, index);
 const backup = (current, archives = []) => ({ format: 'sjtu-study-checkin-backup', version: 1, current, archives });
 
+test('legacy 408 stage preferences migrate once and remain valid in old backups and in-flight saves', () => {
+  const record = { ...save(initial(), [task(first, true)]), subject_phases: { ds: '二轮算法', co: '应用综合', os: '应用综合', cn: '应用综合', calculus: '强化' } };
+  const migrated = h.hydrateRecordEstimates(record, index);
+  assert.deepEqual(migrated.subject_phases, { ds: '第二轮', co: '第二轮', os: '第二轮', cn: '第二轮', calculus: '强化' });
+  assert.equal(migrated.revision, record.revision + 1);
+  assert.deepEqual(migrated.current, record.current);
+  assert.strictEqual(h.hydrateRecordEstimates(migrated, index), migrated);
+  const incoming = h.validateBackup({ ...backup(record.current), subject_phases: record.subject_phases }, index);
+  assert.deepEqual(incoming.subject_phases, migrated.subject_phases);
+  const saved = h.saveRecord(record, { date: record.current.date, revision: record.revision, assignments: record.current.assignments, subject_phases: record.subject_phases }, index);
+  assert.deepEqual(saved.subject_phases, migrated.subject_phases);
+});
+
 test('subject stages persist through saving, archiving, backup import and conservative merging', () => {
   const phases = Object.fromEntries(library.subjects.map(s => [s.id, s.chapters[0].phase]));
   const saved = h.saveRecord(initial(), { date: initial().current.date, revision: 1, assignments: [task()], subject_phases: phases }, index);

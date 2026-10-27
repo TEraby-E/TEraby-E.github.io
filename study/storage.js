@@ -57,6 +57,7 @@
     if (!library || !Array.isArray(library.subjects)) throw new StoreError('章节任务库的格式不正确。');
     const index = new Map();
     index.subjectPhases = new Map();
+    index.phaseAliases = library.metadata?.phase_aliases || {};
     for (const subject of library.subjects) {
       if (!SUBJECTS[subject.id] || subject.name !== SUBJECTS[subject.id] || !Array.isArray(subject.chapters)) throw new StoreError('章节任务库的科目不正确。');
       index.subjectPhases.set(subject.id, new Set(subject.chapters.map(chapter => chapter.phase).filter(Boolean)));
@@ -155,7 +156,8 @@
   function normaliseSubjectPhases(value, index) {
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > SUBJECT_ORDER.length) throw new StoreError('学科学习阶段设置不正确。');
     const result = {};
-    for (const [id, phase] of Object.entries(value)) {
+    for (const [id, savedPhase] of Object.entries(value)) {
+      const phase = index.subjectPhases.get(id)?.has(savedPhase) ? savedPhase : index.phaseAliases[id]?.[savedPhase] || savedPhase;
       if (!SUBJECT_ORDER.includes(id) || typeof phase !== 'string' || (phase !== '' && !index.subjectPhases.get(id)?.has(phase))) throw new StoreError('学科学习阶段不存在，请重新选择。');
       result[id] = phase;
     }
@@ -165,6 +167,13 @@
   function hydrateRecordEstimates(record, index) {
     const next = copy(record);
     let changed = false;
+    if (record.subject_phases) {
+      const phases = normaliseSubjectPhases(record.subject_phases, index);
+      if (Object.entries(phases).some(([id, phase]) => record.subject_phases[id] !== phase)) {
+        next.subject_phases = phases;
+        changed = true;
+      }
+    }
     for (const day of [next.current, ...next.archives]) for (const task of day.assignments) {
       if (!Object.hasOwn(task, 'task_mode')) { task.task_mode = next.task_modes?.[task.task_id] || index.get(task.task_id)?.task.task_mode || 'single-day'; changed = true; }
       if (!Object.hasOwn(task, 'actual_minutes')) { task.actual_minutes = null; changed = true; }
