@@ -1,155 +1,91 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
 const image = require('../study/export-image.js')._test;
-const measure = (value, size) => Array.from(value).length * size;
-const task = (overrides = {}) => ({ subject_id: 'ds', title: '链表综合题', detail: '先完成应用题，再检查指针变化。', done: false, ...overrides });
 
 test('export validates calendar dates, including leap years', () => {
   assert.equal(image.dateValue('2028-02-29').getDate(), 29);
-  assert.throws(() => image.dateValue('2026-02-29'));
-  assert.throws(() => image.dateValue('2026-13-01'));
-  assert.throws(() => image.dateValue('../record'));
+  for (const date of ['2026-02-29', '2026-13-01', '../record']) assert.throws(() => image.dateValue(date));
 });
 
-test('Chinese and unbroken text wraps without losing characters', () => {
-  const content = '算法题目ABCDEFG123456中文内容'.repeat(30);
-  const lines = image.wrap(content, value => Array.from(value).length * 22, 820);
-  assert.equal(lines.join(''), content);
-  assert(lines.every(line => Array.from(line).length * 22 <= 820));
+test('screen-sized card is exported in one complete image', () => {
+  assert.deepEqual(image.captureSlices(1454, 1190), [{top:0,height:1454}]);
 });
 
-test('subject groups follow all eight subjects in the requested order', () => {
-  const ids = ['cn', 'os', 'co', 'ds', 'probability', 'linear', 'calculus', 'english'];
-  const result = image.layoutDocument(ids.map(subject_id => task({ subject_id })), measure);
-  assert.deepEqual(result.tasks.map(item => item.subject_id), [...ids].reverse());
-  assert.equal(result.pages.length, 1);
+test('long exports cover every pixel exactly once within canvas limits', () => {
+  for (const width of [360, 1190, 1600]) {
+    for (const height of [1, 4096, 20001, 95000]) {
+      const pages = image.captureSlices(height, width);
+      assert.equal(pages[0].top, 0);
+      assert.equal(pages.at(-1).top + pages.at(-1).height, height);
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        assert(page.height > 0 && page.height <= image.MAX_HEIGHT);
+        assert(width * page.height * image.SCALE ** 2 <= image.MAX_PIXELS);
+        if (i) assert.equal(page.top, pages[i-1].top + pages[i-1].height);
+      }
+    }
+  }
 });
 
-test('rest days still generate one valid image page', () => {
-  const result = image.layoutDocument([], measure);
-  assert.equal(result.pages.length, 1);
-  assert.equal(result.pages[0].blocks[0].type, 'rest');
-  assert(result.pages[0].height >= 760);
+test('page breaks prefer card boundaries and still split oversized cards without trimming', () => {
+  const pages = image.captureSlices(9000, 1200, [3000, 4000, 8000]);
+  assert.equal(pages[0].height, 3000);
+  assert.equal(pages.at(-1).top + pages.at(-1).height, 9000);
+  for (const args of [[0,1200],[100,0],[NaN,1200],[100,Infinity]]) assert.throws(() => image.captureSlices(...args));
 });
 
-test('100 long Chinese tasks paginate without trimming any details', () => {
-  const long = '在处理算法问题时检查边界条件，并说明复杂度。'.repeat(70);
-  const tasks = Array.from({ length: 100 }, (_, index) => task({ title: `第${index + 1}项综合题`, detail: long, done: index % 2 === 0 }));
-  const result = image.layoutDocument(tasks, measure);
-  assert(result.pages.length > 1);
-  assert.equal(result.completed, 50);
-  assert(result.pages.every(page => page.height <= image.MAX_HEIGHT));
-  const allLines = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).filter(line => line.role !== 'estimate').map(line => line.text).join('');
-  for (let index = 0; index < 100; index += 1) assert(allLines.includes(`第${index + 1}项综合题${long}`));
+function captureFixture({fail=false, height=1454}={}) {
+  const calls = [];
+  const controls = [{disabled:true}];
+  let removed = false;
+  const surface = {
+    style: { setProperty() {} }, scrollHeight: height,
+    setAttribute() {},
+    getBoundingClientRect: () => ({width:1190,height,top:0}),
+    querySelector: () => ({}),
+    querySelectorAll: selector => selector === 'button,input,select' ? controls : [],
+    remove() {removed=true;},
+  };
+  const window = {
+    document: {baseURI:'http://localhost/study/',body:{append(){}},fonts:{ready:Promise.resolve()}},
+    setTimeout: callback => callback(),
+    htmlToImage: {async toCanvas(node, options) {
+      calls.push({node,options});
+      if (fail) throw new Error('capture failed');
+      return {width:options.width*2,height:options.height*2,toBlob(cb) {cb(new Blob(['png']));}};
+    }},
+  };
+  const context=vm.createContext({window, URL, Blob, TextEncoder, Uint8Array, DataView});
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'../study/export-image.js'),'utf8'),context);
+  return {surface,calls,controls,removed:()=>removed,api:window.StudyImage._test};
+}
+
+test('capture renders the supplied page DOM including all folds and tray, not a parallel card renderer', async () => {
+  const f=captureFixture();
+  const files=await f.api.captureSurface(f.surface,'2026-10-31');
+  assert.equal(f.calls.length,1);
+  assert.equal(f.calls[0].node,f.surface);
+  assert.equal(files[0].width,2380);
+  assert.equal(files[0].height,2908);
+  assert.equal(files[0].name,'今日打卡_2026-10-31.png');
+  assert.equal(f.calls[0].options.pixelRatio,2);
+  assert.equal(f.calls[0].options.skipAutoScale,true);
+  assert.equal(f.controls[0].disabled,false);
+  assert(f.removed());
 });
 
-test('a single exceptionally long task continues onto new pages', () => {
-  const detail = '这是必须保留的完整备注内容，不能使用省略号截断。'.repeat(900);
-  const result = image.layoutDocument([task({ detail })], measure);
-  assert(result.pages.length > 1);
-  assert(result.pages.every(page => page.blocks[0].type === 'subject'));
-  assert(result.pages[1].blocks[0].continued);
-  const merged = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).filter(line => line.role !== 'estimate').map(line => line.text).join('');
-  assert.equal(merged, `链表综合题${detail}`);
-});
-
-test('export time summary counts shared papers once and keeps missing estimates visible', () => {
-  const assignments = [
-    task({ subject_id: 'calculus', estimated_minutes: 180, estimated_source: '原计划共享整卷', estimate_group: 'shared-paper' }),
-    task({ subject_id: 'linear', estimated_minutes: 180, estimated_source: '原计划共享整卷', estimate_group: 'shared-paper' }),
-    task({ estimated_minutes: 35, estimated_source: '原排课预计用时' }),
-    task({ subject_id: 'cn' }),
-  ];
-  const result = image.layoutDocument(assignments, measure);
-  assert.equal(result.timeSummary.minutes, 215);
-  assert.equal(result.timeSummary.unknown, 1);
-  assert.equal(result.timeSummary.groups, 2);
-  assert.equal(result.tasks.filter(item => item.estimate.minutes === 180).length, 2);
-  const estimateLines = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).filter(line => line.role === 'estimate').map(line => line.text).filter(Boolean);
-  assert.equal(estimateLines.length, assignments.length);
-  assert(estimateLines.some(label => label.includes('待补充')));
-});
-
-test('old records recover canonical estimates while saved estimates retain their snapshot', () => {
-  const canonical = { id: 'source-task', estimated_minutes: 75, estimated_source: '原排课预计用时', estimate_group: 'source-group' };
-  const library = { subjects: [{ chapters: [{ tasks: [canonical] }] }] };
-  const old = task({ task_id: canonical.id, title: '已归档标题', detail: '已归档备注' });
-  const recovered = image.hydrateEstimates([old], library)[0];
-  assert.equal(recovered.estimated_minutes, 75);
-  assert.equal(recovered.estimate_group, 'source-group');
-  assert.equal(recovered.title, old.title);
-  assert.equal(recovered.detail, old.detail);
-  const snapshot = image.hydrateEstimates([{ ...old, estimated_minutes: 45, estimated_source: '保存时的预计用时', estimate_group: 'source-group' }], library)[0];
-  assert.equal(snapshot.estimated_minutes, 45);
-  assert.equal(image.layoutDocument([snapshot], measure).timeSummary.minutes, 45);
-});
-
-test('estimated video time remains explicitly labelled as video time', () => {
-  const result = image.layoutDocument([task({ estimated_minutes: 12, estimated_source: '原视频时长' })], measure);
-  assert.equal(result.timeSummary.minutes, 12);
-  assert(result.tasks[0].estimate.label.includes('视频时长'));
-});
-
-test('actual zero is recorded while pending or missing actual time is never invented', () => {
-  const result = image.layoutDocument([
-    task({ task_id: 'zero', estimated_minutes: 20, actual_minutes: 0, done: true }),
-    task({ task_id: 'missing', estimated_minutes: 30, done: true }),
-    task({ task_id: 'pending', estimated_minutes: 40, actual_minutes: 15, done: false }),
-  ], measure);
-  assert.equal(result.timeSummary.minutes, 90);
-  assert.equal(result.timeSummary.actualMinutes, 0);
-  assert.equal(result.timeSummary.actualKnown, 1);
-  assert.equal(result.timeSummary.actualUnknown, 1);
-  // Cards place unfinished work first; identify each source task independently of display order.
-  const bySource = new Map(result.tasks.map(item => [item.originalIndex, item]));
-  const zero = bySource.get(0);
-  const missing = bySource.get(1);
-  const pending = bySource.get(2);
-  assert.equal(zero.actual.minutes, 0);
-  assert.equal(zero.actual.recorded, true);
-  assert.equal(missing.actual.minutes, null);
-  assert.equal(pending.actual.minutes, null);
-  assert(zero.timeComparison.includes('预计20分钟'));
-  assert(zero.timeComparison.includes('实际0分钟'));
-  assert(missing.timeComparison.includes('实际未记录'));
-  assert(pending.timeComparison.includes('实际待完成'));
-});
-
-test('shared task copies export actual duration only once without losing each record', () => {
-  const assignments = ['calculus', 'linear', 'probability'].map((subject_id, index) => task({
-    task_id: `paper-${index}`, subject_id, estimated_minutes: 180,
-    estimate_group: 'shared-paper', actual_minutes: 200, done: true,
-  }));
-  const result = image.layoutDocument(assignments, measure);
-  assert.equal(result.timeSummary.minutes, 180);
-  assert.equal(result.timeSummary.actualMinutes, 200);
-  assert.equal(result.timeSummary.actualUnknown, 0);
-  assert.equal(result.tasks.length, 3);
-  assert(result.tasks.every(item => item.actual.minutes === 200));
-  const lines = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).filter(line => line.role === 'estimate').map(line => line.text).join('');
-  assert.equal(lines.match(/实际3小时20分钟/g).length, 3);
-});
-
-test('retired selectable cards still supply estimates to an old saved record without fabricating actual time', () => {
-  const library = { subjects: [], metadata: { retired_tasks: [{ id: 'retired', estimated_minutes: 35, estimated_source: '原计划', estimate_group: 'retired' }] } };
-  const old = task({ task_id: 'retired', title: '以前保存的任务', detail: '以前保存的笔记', done: true, actual_minutes: 22 });
-  const recovered = image.hydrateEstimates([old], library)[0];
-  assert.equal(recovered.estimated_minutes, 35);
-  assert.equal(recovered.actual_minutes, 22);
-  assert.equal(recovered.title, old.title);
-  assert.equal(recovered.detail, old.detail);
-  const noActual = image.hydrateEstimates([task({ task_id: 'retired', done: true })], library)[0];
-  assert.equal(Object.hasOwn(noActual, 'actual_minutes'), false);
-  assert.equal(image.layoutDocument([noActual], measure).timeSummary.actualUnknown, 1);
-});
-
-test('export retains metadata and nonduplicate remarks', () => {
-  const result = image.layoutDocument([task({ kind: '应用题', quantity: '3题', reference: '3.2', remarks: '注意临界指针' })], measure);
-  const text = result.pages.flatMap(page => page.blocks).filter(block => block.type === 'task').flatMap(block => block.lines).map(line => line.text).join('');
-  assert(text.includes('任务类型：应用题'));
-  assert(text.includes('任务量：3题'));
-  assert(text.includes('参考：3.2'));
-  assert(text.includes('注意临界指针'));
+test('capture offsets every long-page slice and removes its temporary DOM on failure', async () => {
+  const f=captureFixture({height:9500});
+  const files=await f.api.captureSurface(f.surface,'2026-10-31');
+  assert(files.length>1);
+  assert.equal(files.reduce((n,file)=>n+file.height,0),19000);
+  assert(f.calls[1].options.style.transform.startsWith('translateY(-'));
+  const broken=captureFixture({fail:true});
+  await assert.rejects(broken.api.captureSurface(broken.surface,'2026-10-31'),/capture failed/);
+  assert(broken.removed());
 });
 
 test('ZIP stores UTF-8 PNG names and valid CRC data', async () => {
@@ -163,47 +99,4 @@ test('ZIP stores UTF-8 PNG names and valid CRC data', async () => {
   assert.equal(view.getUint32(data.length - 22, true), 0x06054B50);
   assert.equal(view.getUint16(data.length - 12, true), 2);
   assert(new TextDecoder().decode(data).includes('第二张.png'));
-});
-
-test('compact export replaces only 408 details with one summary per subject without changing records', () => {
-  const assignments = [
-    task({ subject_id: 'english', title: '英语原样', detail: '英语完整备注', done: true, estimated_minutes: 15, actual_minutes: 20 }),
-    task({ subject_id: 'calculus', title: '数学原样', detail: '数学完整备注' }),
-    ...['ds', 'co', 'os', 'cn'].flatMap(subject_id => [
-      task({ task_id: `${subject_id}-done`, subject_id, title: '不应出现在简图的标题', detail: '不应出现在简图的详情', done: true, estimated_minutes: 30, actual_minutes: 35 }),
-      task({ task_id: `${subject_id}-pending`, subject_id, estimated_minutes: 60 }),
-    ]),
-  ];
-  const before = JSON.stringify(assignments);
-  const result = image.layoutDocument(assignments, measure, { compact408: true });
-  const blocks = result.pages.flatMap(page => page.blocks);
-  const summaries = blocks.filter(block => block.type === 'subject-summary');
-  assert.deepEqual(summaries.map(block => block.subject_id), ['ds', 'co', 'os', 'cn']);
-  for (const { summary } of summaries) {
-    assert.equal(summary.completed, 1);
-    assert.equal(summary.estimatedMinutes, 30);
-    assert.equal(summary.actualMinutes, 35);
-  }
-  const detailText = blocks.filter(block => block.type === 'task').flatMap(block => block.lines).map(line => line.text).join('');
-  assert(detailText.includes('英语完整备注'));
-  assert(detailText.includes('数学完整备注'));
-  assert(!detailText.includes('不应出现在简图'));
-  assert.equal(JSON.stringify(assignments), before);
-  assert.equal(image.layoutDocument(assignments, measure).pages.flatMap(page => page.blocks).filter(block => block.type === 'task').length, 10);
-});
-
-test('compact summary includes multi-day effort but counts only finished knowledge points and estimates', () => {
-  const result = image.subjectSummary([
-    task({ task_id: 'ongoing', done: true, task_mode: 'multi-day', overall_completed: false, estimated_minutes: 120, actual_minutes: 25 }),
-    task({ task_id: 'finished', done: true, task_mode: 'multi-day', overall_completed: true, estimated_minutes: 90, actual_minutes: 30 }),
-    task({ task_id: 'zero', done: true, estimated_minutes: 0, actual_minutes: 0 }),
-    task({ task_id: 'unknown', done: true }),
-    task({ task_id: 'pending', done: false, estimated_minutes: 100, actual_minutes: 500 }),
-  ]);
-  assert.equal(result.completed, 3);
-  assert.equal(result.estimatedMinutes, 90);
-  assert.equal(result.estimateUnknown, 1);
-  assert.equal(result.actualMinutes, 55);
-  assert.equal(result.actualKnown, 3);
-  assert.equal(result.actualUnknown, 1);
 });

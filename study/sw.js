@@ -1,12 +1,12 @@
 'use strict';
 
 const PREFIX = `sjtu-checkin-${new URL(self.registration.scope).pathname}-`;
-const CACHE = `${PREFIX}v24`;
-const RELEASE = '20261027-round-two';
+const CACHE = `${PREFIX}v37`;
+const RELEASE = '20261101-smooth-performance';
 const FILES = [
-  './', './index.html', './styles.css', './cards.css', './app.js', './study-time.js', './storage.js', './export-image.js',
-  './manifest.webmanifest', './data/library.json', './assets/sjtu-emblem-round.svg', './assets/app-icon-192.png', './assets/app-icon-512.png',
-  './assets/study-backdrop.svg', './assets/paper-texture.svg'
+  './', './index.html', './styles.css', './cards.css', './app.js', './study-time.js', './learning-model.js', './storage.js', './export-image.js',
+  './vendor/html-to-image.js', './manifest.webmanifest', './data/library.json', './assets/sjtu-emblem-round.svg', './assets/app-icon-192.png', './assets/app-icon-512.png',
+  './assets/journal-circuit.svg', './assets/study-backdrop.svg', './assets/paper-texture.svg'
 ];
 const allowed = new Set(FILES.map((path) => new URL(path, self.registration.scope).href));
 
@@ -14,7 +14,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => Promise.all([...allowed].map(async (key) => {
     const url = new URL(key);
     if (!url.pathname.endsWith('/') && !url.pathname.endsWith('/index.html')) url.searchParams.set('v', RELEASE);
-    const response = await fetch(new Request(url.href, { cache: 'reload' }));
+    const response = await fetch(new Request(url.href, { cache: 'default' }));
     if (!response.ok) throw new Error(`Precache failed: ${url.pathname}`);
     await cache.put(key, response);
   }))).then(() => self.skipWaiting()));
@@ -31,6 +31,8 @@ self.addEventListener('fetch', (event) => {
   url.hash = '';
   if (!allowed.has(url.href)) return;
   event.respondWith((async () => {
+    // A page from a different release must never overwrite this release's cache.
+    if (requestedRelease && requestedRelease !== RELEASE) return fetch(request);
     const cache = await caches.open(CACHE);
     const cached = await cache.match(url.href);
     const isDocument = request.mode === 'navigate' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/');

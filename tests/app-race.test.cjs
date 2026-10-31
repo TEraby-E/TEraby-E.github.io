@@ -29,7 +29,7 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-function createApp(initial = day(1, [task('existing', '已经安排的任务')])) {
+function createApp(initial = day(1, [task('existing', '已经安排的任务')]), {expanded=true} = {}) {
   const requests = [];
   const elements = new Map();
   const element = (id) => {
@@ -48,8 +48,11 @@ function createApp(initial = day(1, [task('existing', '已经安排的任务')])
   const context = vm.createContext({
     fixtureLibrary,
     fixtureInitial: initial,
+    fixtureExpanded: expanded,
     document: { getElementById: element, querySelectorAll: () => [], querySelector: () => null, body: { append() {} }, activeElement: null },
     window: {
+      StudyModels: require('../study/learning-model.js'),
+      StudyTime: require('../study/study-time.js'),
       clearTimeout() {}, setTimeout() { return 1; },
       StudyStore: { request(url, options) { const wait = deferred(); requests.push({ url, options, ...wait }); return wait.promise; } },
     },
@@ -57,10 +60,12 @@ function createApp(initial = day(1, [task('existing', '已经安排的任务')])
   vm.runInContext(appPrefix + `
     state = normaliseState(fixtureInitial);
     library = fixtureLibrary.subjects;
+    if (fixtureExpanded) expandedSubjects.add('english');
     renderDay();
     globalThis.fixtureApp = {
       startLoad: () => load(),
       addTask: (task) => { state.assignments.push(task); changed(); },
+      toggleSubject: (id) => { toggleSubject(id); renderDay(); },
       snapshot: () => JSON.stringify(state)
     };
   })();`, context, { filename: 'study/app.js' });
@@ -93,6 +98,21 @@ test('a delayed successful refresh cannot discard a task selected while it was l
   assert.ok(fixture.snapshot().assignments.some((entry) => entry.task_id === 'newly-selected'));
   assert.match(fixture.table(), /刚选入的新任务/);
   assert.equal(fixture.saveStatus(), 'saving', 'unsaved local work must not be labelled saved');
+});
+
+test('subject folds default closed, have no nested completed frame, and survive card refreshes', () => {
+  const fixture = createApp(undefined,{expanded:false});
+  assert.match(fixture.table(), /class="subject-toggle"[^>]*data-action="toggle-subject"[^>]*data-subject="english"[^>]*aria-expanded="false"/);
+  assert.doesNotMatch(fixture.table(), /subject-rule/);
+  assert.match(fixture.table(), /id="subject-body-english"[^>]* hidden/);
+  assert.doesNotMatch(fixture.table(), /completed-group|group-progress/);
+  fixture.app.toggleSubject('english');
+  assert.doesNotMatch(fixture.table(), /id="subject-body-english"[^>]* hidden/);
+  fixture.app.addTask(task('second','第二个任务'));
+  assert.doesNotMatch(fixture.table(), /id="subject-body-english"[^>]* hidden/);
+  fixture.app.toggleSubject('english');
+  assert.match(fixture.table(), /id="subject-body-english"[^>]* hidden/);
+  assert.equal(fixture.snapshot().assignments.length,2);
 });
 
 test('a delayed failed refresh cannot replace newly edited tasks with an error empty state', async () => {

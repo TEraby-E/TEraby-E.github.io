@@ -213,66 +213,6 @@
   border-top: 1px solid #e5d8c9;
 }
 
-.card-timing {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  min-width: 0;
-}
-
-.card-time-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 2px;
-  min-width: 0;
-  min-height: 61px;
-  margin: 0;
-  padding: 9px 11px;
-  border: 1px solid #e1d2c1;
-  border-radius: 7px;
-  background: #f8f0e2;
-  color: #8c7160;
-  text-align: left;
-  line-height: 1.5;
-}
-
-.card-time-cell > span {
-  font-size: 10px;
-  font-weight: 400;
-}
-
-.card-time-cell strong {
-  color: #705040;
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
-}
-
-.card-time-cell small {
-  color: #9d8576;
-  font-size: 10px;
-  font-weight: 400;
-  overflow-wrap: anywhere;
-}
-
-.card-time-cell.is-actual {
-  border-color: #d0d8c3;
-  background: #edf1e4;
-}
-
-.card-time-cell.is-actual strong {
-  color: #55704f;
-}
-
-.card-time-cell.is-unknown strong {
-  color: #9b8779;
-  font-weight: 400;
-}
-
 .card-controls {
   display: flex;
   align-items: center;
@@ -303,37 +243,6 @@
   color: #755343;
   font-size: 11px;
   cursor: pointer;
-}
-
-.card-complete-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 36px;
-  max-width: 100%;
-  margin-left: auto;
-  padding: 7px 11px;
-  border: 1px solid #c9908b;
-  border-radius: 6px;
-  background: #f7e7de;
-  color: #9a3340;
-  font-size: 11px;
-  font-weight: 550;
-  line-height: 1.6;
-  text-align: center;
-  cursor: pointer;
-}
-
-.card-complete-button .icon {
-  width: 14px;
-  height: 14px;
-}
-
-.card-complete-button[aria-pressed=true] {
-  border-color: #adbea0;
-  background: #e3ead9;
-  color: #5d7651;
 }
 
 .card-status-row {
@@ -397,38 +306,6 @@
 
 .history-card .card-footer {
   gap: 0;
-}
-
-.daily-table .subject-column {
-  width: 153px;
-}
-
-.daily-table .progress-column {
-  width: 67px;
-}
-
-.daily-table td {
-  padding-top: 20px;
-  padding-bottom: 20px;
-}
-
-.daily-table .subject-cell {
-  vertical-align: top;
-  padding-top: 25px;
-}
-
-.daily-table .subject-control {
-  gap: 8px;
-}
-
-.daily-table .add-task-button {
-  width: 34px;
-  height: 34px;
-}
-
-.daily-table .row-progress {
-  vertical-align: top;
-  padding-top: 29px;
 }
 
 .completed-group > summary {
@@ -519,10 +396,6 @@
   font-size: 12px;
 }
 
-.library-modal .selection-time {
-  font-size: 11px;
-}
-
 .history-modal {
   width: min(930px, calc(100vw - 56px));
 }
@@ -561,26 +434,6 @@ summary:focus-visible {
     box-shadow: 0 5px 18px #4a2c2408;
   }
 
-  button.card-time-cell:hover {
-    border-color: #bd9a80;
-    background: #f1e4d2;
-  }
-
-  button.card-time-cell.is-actual:hover {
-    border-color: #9eb394;
-    background: #e4ecd9;
-  }
-
-  .card-complete-button:hover {
-    border-color: #a51c30;
-    background: #f1dcd2;
-  }
-
-  .card-complete-button[aria-pressed=true]:hover {
-    border-color: #819b70;
-    background: #dbe6ce;
-  }
-
   .card-remove:hover {
     border-color: #dfbdb5;
     background: #f4e2dc;
@@ -594,18 +447,6 @@ summary:focus-visible {
 }
 
 @media (max-width: 850px) and (min-width: 651px) {
-  .daily-table .subject-column {
-    width: 135px;
-  }
-
-  .daily-table .progress-column {
-    width: 53px;
-  }
-
-  .daily-table td {
-    padding-left: 13px;
-    padding-right: 13px;
-  }
 
   .library-modal .library-layout {
     grid-template-columns: 190px minmax(0, 1fr);
@@ -679,26 +520,6 @@ summary:focus-visible {
     font-size: 11px;
   }
 
-  .card-complete-button {
-    min-height: 40px;
-    padding: 8px 10px;
-    font-size: 11px;
-  }
-
-  .card-time-cell {
-    min-height: 66px;
-    padding: 9px;
-  }
-
-  .card-time-cell > span,
-  .card-time-cell small {
-    font-size: 11px;
-  }
-
-  .card-time-cell strong {
-    font-size: 13px;
-  }
-
   .card-notes > summary {
     min-height: 40px;
     font-size: 12px;
@@ -712,92 +533,6 @@ summary:focus-visible {
   .task-list,
   .library-tasks {
     gap: 12px;
-  }
-
-  .daily-table,
-  .daily-table tbody {
-    display: block;
-    width: 100%;
-  }
-
-  .daily-table thead {
-    display: none;
-  }
-
-  .daily-table tbody tr {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    width: 100%;
-    padding: 0 15px;
-    border-top: 1px solid #e6dacd;
-    background: transparent;
-  }
-
-  .daily-table tbody tr:nth-child(even) {
-    background: #f1e5d433;
-  }
-
-  .daily-table td.subject-cell {
-    grid-row: 1;
-    grid-column: 1;
-    padding: 15px 0 10px;
-  }
-
-  .daily-table .subject-control {
-    justify-content: flex-start;
-    gap: 12px;
-  }
-
-  .daily-table .subject-button {
-    min-height: 40px;
-    padding-left: 11px;
-  }
-
-  .daily-table .subject-button strong {
-    font-size: 14px;
-  }
-
-  .daily-table .subject-button .subject-help {
-    font-size: 10px;
-  }
-
-  .daily-table .add-task-button {
-    width: 40px;
-    height: 40px;
-    border-color: #dfcfc4;
-  }
-
-  .daily-table .add-task-button .icon {
-    width: 15px;
-    height: 15px;
-  }
-
-  .daily-table td:not(.subject-cell):not(.row-progress) {
-    grid-row: 2;
-    grid-column: 1 / -1;
-    padding: 0 0 17px;
-    min-width: 0;
-  }
-
-  .daily-table td.row-progress {
-    grid-row: 1;
-    grid-column: 2;
-    align-self: center;
-    padding: 14px 0 10px !important;
-    font-size: 12px;
-  }
-
-  .daily-table .row-progress .total-count {
-    font-size: 11px;
-  }
-
-  .daily-table .empty-row {
-    min-height: 36px;
-    padding: 0 0 3px 11px;
-  }
-
-  .daily-table .empty-row > span {
-    font-size: 12px;
   }
 
   .completed-group > summary {
@@ -960,7 +695,6 @@ summary:focus-visible {
   }
 
   .library-modal .selection-summary,
-  .library-modal .selection-time,
   .history-modal .modal-footer .muted {
     font-size: 11px;
   }
@@ -1026,7 +760,6 @@ summary:focus-visible {
 .daily-card .card-controls{flex-direction:column;align-items:stretch;gap:6px}
 .daily-card .task-mode-control>span{display:none}
 .daily-card .task-mode-control select{width:100%;min-height:34px}
-.daily-card .card-complete-button{width:100%;min-height:34px;margin:0}
 .card-notes>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none}
 .card-notes>summary::-webkit-details-marker{display:none}
 .card-notes>summary .icon{width:12px;height:12px;transition:transform .2s}
@@ -1037,7 +770,6 @@ html:has(dialog[open]){overflow:hidden}
   .daily-card .card-footer{display:flex;flex-direction:column;align-items:stretch}
   .daily-card .card-controls{flex-direction:row;align-items:center;gap:10px}
   .daily-card .task-mode-control>span{display:inline}
-  .daily-card .card-complete-button{width:auto;min-height:40px;margin-left:auto}
   .daily-card .task-mode-control select{width:auto;min-height:40px}
   .library-search-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:10px 16px}
   .library-search-wrap .search-field{grid-column:1;min-width:0}
@@ -1053,23 +785,18 @@ html:has(dialog[open]){overflow:hidden}
 :root{--task-title-size:15px;--task-body-size:13px;--task-meta-size:11px;--task-control-size:12px}
 .study-card .card-title{font-size:var(--task-title-size);font-weight:600;line-height:1.7;letter-spacing:.015em}
 .study-card .card-detail,.study-card .card-notes>p{font-size:var(--task-body-size);line-height:1.8;color:#6d6057}
-.study-card .card-eyebrow,.study-card .card-metadata>span,.study-card .card-status,.study-card .card-progress{font-size:var(--task-meta-size);line-height:1.65}
-.study-card .card-time-cell>span,.study-card .card-time-cell small{font-size:11px}
-.study-card .card-time-cell strong{font-size:15px;line-height:1.6}
-.study-card .card-complete-button,.study-card .task-mode-control,.study-card .task-mode-control select,.study-card .card-notes>summary{font-size:var(--task-control-size)}
+.study-card .card-eyebrow,.study-card .card-metadata>span,.study-card .card-status,.study-card .card-progress{font-size:var(--task-meta-size);line-height:1.65}.study-card .task-mode-control,.study-card .task-mode-control select,.study-card .card-notes>summary{font-size:var(--task-control-size)}
 .chapter-button{font-size:13px;line-height:1.7}
 .chapter-phase{font-size:10px;line-height:1.6}
 .chapter-heading h3{font-size:18px;line-height:1.55}
 .chapter-heading p,.chapter-heading .text-button,.library-search-wrap>.muted{font-size:12px}
 .library-search-wrap .search-field input{font-size:14px}
 .library-search-wrap .phase-filter select{font-size:12px}
-.selection-summary{font-size:13px}.selection-time{font-size:11px}
+.selection-summary{font-size:13px}
 .modal-description{font-size:13px;line-height:1.7;color:#8a7770}
 .modal-heading h2{font-size:25px;letter-spacing:.01em}
-.modal-footer .button{font-size:13px}
-.daily-table th{font-size:12px}.subject-button strong{font-size:15px}.subject-button .subject-help{font-size:11px}
-.empty-row>span,.empty-choose{font-size:13px}
-.sheet-hint,#completion-text,.action-note{font-size:12px;line-height:1.7}
+.modal-footer .button{font-size:13px}.subject-button strong{font-size:15px}.subject-button .subject-help{font-size:11px}
+.empty-row>span,.empty-choose{font-size:13px}#completion-text{font-size:12px;line-height:1.7}
 .page-footer{font-size:10px}.save-status{font-size:12px}
 .history-date-button strong{font-size:13px}.history-date-button small{font-size:11px}.history-subject h4{font-size:14px}
 .history-detail-heading>span,.history-time-line{font-size:12px;line-height:1.7}
@@ -1083,9 +810,8 @@ html:has(dialog[open]){overflow:hidden}
  .chapter-heading h3{font-size:16px}.chapter-heading p,.chapter-heading .text-button{font-size:11px}
  .modal-heading h2{font-size:21px}.modal-description{font-size:12px;line-height:1.65}
  .library-search-wrap .search-field input{font-size:13px}.library-search-wrap .phase-filter select{font-size:11px}
- .selection-summary{font-size:12px}.selection-time{font-size:11px}.modal-footer .button{font-size:12px}
- .subject-button strong{font-size:14px}.subject-button .subject-help{font-size:11px}.save-status{font-size:11px}
- .sheet-hint,#completion-text,.action-note{font-size:11px}.empty-row>span,.empty-choose{font-size:12px}
+ .selection-summary{font-size:12px}.modal-footer .button{font-size:12px}
+ .subject-button strong{font-size:14px}.subject-button .subject-help{font-size:11px}.save-status{font-size:11px}#completion-text{font-size:11px}.empty-row>span,.empty-choose{font-size:12px}
  .page-footer{font-size:10px}.chapter-list>.completed-group>summary{font-size:11px}.chapter-list>.completed-group .completed-group-count{font-size:10px}
  .heading-meta .duration-value-line>span,.duration-label,.duration-note,.date-label,.date-weekday{font-size:11px}
  .heading-meta .duration-value-line strong{font-size:18px}
@@ -1120,9 +846,7 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 .study-card .card-title{letter-spacing:normal;line-height:26px;color:#302827}
 .study-card .card-detail,.study-card .card-notes>p{line-height:25px;color:#594d44}
 .study-card .card-metadata>span,.study-card .card-eyebrow,.study-card .card-status,.study-card .card-progress{line-height:20px}
-.study-card .card-time-cell>span,.study-card .card-time-cell small{font-size:12px;line-height:19px;color:#78604f}
-.study-card .card-time-cell strong{font-size:16px;line-height:25px;letter-spacing:normal}
-.study-card .task-mode-control,.study-card .task-mode-control select,.study-card .card-complete-button,.study-card .card-notes>summary{font-size:13px}
+.study-card .task-mode-control,.study-card .task-mode-control select,.study-card .card-notes>summary{font-size:13px}
 .study-card .card-metadata>span{color:#765c4b}
 .library-modal .chapter-button{font-size:14px;line-height:23px;color:#79645b}
 .library-modal .chapter-phase{font-size:12px;line-height:19px;opacity:1;color:#8d7062}
@@ -1136,8 +860,7 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 }
 
 /* Subject labels stay bold at every breakpoint, including the compact table variant. */
-.subject-name,.daily-table .subject-button strong,.history-modal .history-subject h4,#library-title{font-weight:700;font-synthesis:weight}
-.daily-table .subject-button strong{font-size:16px;line-height:24px;letter-spacing:.03em}
+.subject-name,.history-modal .history-subject h4,#library-title{font-weight:700;font-synthesis:weight}
 .history-modal .history-subject h4{font-size:16px;line-height:24px}
 
 :root{--card-title-ink:#302827;--card-body-ink:#594d44}
@@ -1147,18 +870,138 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
  .study-card{content-visibility:auto;contain-intrinsic-size:auto 300px}
  .history-card{contain-intrinsic-size:auto 230px}
 }
-
-/* Shared stage dashboard and image-only export preference. */
-.compact-export-option{display:flex;align-items:flex-start;gap:10px;max-width:928px;margin:-10px auto 26px;padding:14px 18px;border:1px solid #dfd0c0;border-radius:12px;background:#f4ebdf;color:var(--card-title-ink);font-size:14px;line-height:1.7;cursor:pointer}
-.compact-export-option input{width:18px;height:18px;margin-top:3px;accent-color:var(--red);flex-shrink:0}
-.compact-export-option small{display:block;font-size:12px;color:var(--card-body-ink);margin-top:2px}
 .library-modal .phase-filter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--card-body-ink)}
-.stage-progress{flex:0 0 auto;margin:0 28px 14px;padding:14px 18px;border:1px solid #dfcebc;border-radius:12px;background:linear-gradient(115deg,#f0e2d1,#faf4e9);color:var(--card-title-ink)}
-.stage-progress-heading{display:flex;justify-content:space-between;gap:12px;font-size:15px;line-height:1.6}
-.stage-progress-heading>strong:last-child{color:var(--red);font-size:19px;white-space:nowrap}
-.stage-progress progress{display:block;appearance:none;-webkit-appearance:none;width:100%;height:7px;margin:10px 0;border:0;border-radius:8px;overflow:hidden;background:#dfd0c0;accent-color:var(--red)}
-.stage-progress progress::-webkit-progress-bar{background:#dfd0c0;border-radius:8px}
-.stage-progress progress::-webkit-progress-value{background:var(--red);border-radius:8px}
-.stage-progress progress::-moz-progress-bar{background:var(--red);border-radius:8px}
-.stage-progress p{margin:0;font-size:13px;line-height:1.7;color:var(--card-body-ink)}
-@media(max-width:650px){.stage-progress{margin:0 16px 10px;padding:10px 12px}.stage-progress-heading{font-size:14px}.stage-progress p{font-size:12px}.library-modal .phase-filter{gap:2px;font-size:12px;flex-direction:column;align-items:flex-start}.compact-export-option{margin-top:0;padding:12px;font-size:13px}}
+@media(max-width:650px){.library-modal .phase-filter{gap:2px;font-size:12px;flex-direction:column;align-items:flex-start}}
+.card-checkin-button{display:inline-flex;flex:0 0 auto;min-width:max-content;white-space:nowrap;word-break:normal;overflow-wrap:normal;line-height:1.4;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:8px 15px;border:1px solid #bdc9b3;border-radius:8px;background:#eaf0e3;color:#426b48;font:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s ease,border-color .15s ease}
+.card-checkin-button:hover{background:#e1ead8;border-color:#8fa782}
+.card-checkin-button .icon{width:15px;height:15px;flex:0 0 15px}
+.card-checkin-label{display:block;flex:0 0 auto;min-width:max-content;white-space:nowrap;word-break:normal;overflow-wrap:normal}
+.card-checkin-button:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+@media(max-width:650px){.card-checkin-button{min-height:40px}}
+
+.completion-entry.is-multiday{flex-wrap:wrap;align-items:flex-start}
+.completion-entry.is-multiday .completion-entry-copy{flex:1 1 230px}
+.finish-multiday{display:flex;gap:10px;align-items:flex-start;flex:1 0 100%;padding-top:12px;border-top:1px solid #dfd0c0;cursor:pointer;font-size:14px;color:var(--card-title-ink)}
+.finish-multiday input{width:18px;height:18px;accent-color:var(--red);margin-top:3px}
+.finish-multiday small{display:block;font-size:12px;line-height:1.7;color:var(--card-body-ink);margin-top:3px}
+.segment-summary{font-size:13px!important;color:var(--card-body-ink)!important;margin-top:10px!important}
+.segment-list{display:flex;gap:6px;flex-wrap:wrap;max-height:130px;overflow:auto;list-style:none;margin:8px 0;padding:0;font-size:12px;color:var(--card-body-ink)}
+.segment-list li{background:#eee5d7;border-radius:5px;padding:4px 7px}
+.undo-segment{font-size:12px;min-height:30px}
+
+/* Circuit-board and neural-network marks share one static SVG resource. */
+.journal-circuit{display:block;pointer-events:none;user-select:none;object-fit:contain;mix-blend-mode:multiply}
+.task-sheet .sheet-bottom{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,350px);gap:20px;align-items:center;padding:14px 27px;background:linear-gradient(110deg,#eee1d0b3,#f5eddf);min-height:98px}
+.sheet-bottom .completion-summary{min-width:0}
+.sheet-circuit{width:100%;height:68px;opacity:.78;mask-image:linear-gradient(90deg,transparent,#000 15%,#000 90%,transparent)}
+.day-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:26px}
+.action-circuit{width:280px;max-width:100%;height:56px;opacity:.44;mask-image:linear-gradient(90deg,#000,transparent)}
+.day-actions .action-buttons{justify-self:end}
+@media(max-width:650px){
+ .task-sheet .sheet-bottom{display:flex;flex-direction:row;gap:10px;min-height:82px;padding:14px 17px;align-items:center}
+ .sheet-bottom .completion-summary{flex:1;gap:8px}
+ .sheet-circuit{flex:0 0 108px;width:108px;height:52px;object-fit:cover;object-position:50%;opacity:.6}
+ .day-actions{display:block;padding-top:20px;padding-bottom:24px}
+ .action-circuit{display:none}
+ .day-actions .action-buttons{width:100%;justify-content:flex-end}
+}
+
+/* One burgundy / graphite / warm-grey scale for the daily progress instrument. */
+.completion-summary{--progress-ink:#7e2a40;--progress-track:#dcd3c5;--progress:0%;--progress-step:12.5%;gap:14px}
+.completion-summary .completion-symbol{position:relative;isolation:isolate;width:44px;height:44px;flex:0 0 44px;border-radius:50%;background:conic-gradient(var(--progress-ink) 0 var(--progress),var(--progress-track) var(--progress) 100%);color:#672438;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.completion-symbol:before{content:"";position:absolute;inset:3px;border:1px solid #e8dece;border-radius:inherit;background:#f5eee3;z-index:-1}
+#completion-text{color:#51423c;font-size:13px;line-height:1.7}
+#completion-text strong{color:#72263a;font-weight:700}
+.completion-summary>div{min-width:0}
+.completion-summary .summary-progress{position:relative;width:100%;max-width:300px;height:7px;margin-top:9px;border-radius:3px;background:#dcd3c5;box-shadow:inset 0 1px 2px #45372b12;overflow:hidden}
+.summary-progress>span{background:linear-gradient(90deg,#71263a,#a34155);border-radius:3px}
+.summary-progress:after{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(90deg,transparent calc(100% - 1px),#f5eee3 calc(100% - 1px));background-size:var(--progress-step) 100%;background-repeat:repeat-x;opacity:.75}
+/* Editorial registration marks and restrained engineering geometry. */
+.task-sheet{position:relative}
+.task-sheet:before,.task-sheet:after{content:"";position:absolute;width:28px;height:28px;pointer-events:none;z-index:1;opacity:.65}
+.task-sheet:before{left:7px;top:7px;border-top:1px solid #8f3149;border-left:1px solid #8f3149}
+.task-sheet:after{right:7px;bottom:7px;border-right:1px solid #b59b80;border-bottom:1px solid #b59b80}
+.task-sheet .sheet-heading{background-image:linear-gradient(90deg,#a51c300a,transparent 55%),radial-gradient(circle at 84% 50%,transparent 26px,#9b7c6612 27px,transparent 28px,transparent 37px,#9b7c6610 38px,transparent 39px)}
+.task-sheet .sheet-bottom{border-top-color:#d8c8b5;background:linear-gradient(110deg,#eee4d5,#f5eee3)}
+.sheet-circuit{opacity:.85}
+.page-footer{border-top-style:dashed;border-top-color:#cfbda7}
+@media(max-width:650px){.completion-summary .completion-symbol{width:36px;height:36px;flex-basis:36px;font-size:12px}.completion-summary{gap:9px}#completion-text{font-size:11px}.completion-summary .summary-progress{height:6px;margin-top:7px}.sheet-circuit{flex-basis:86px;width:86px;opacity:.55}}
+@media(prefers-reduced-motion:reduce){.summary-progress>span{transition:none}}
+
+/* Full-width subject sections replace the old three-column table. */
+.task-sheet .sheet-heading{padding:23px 28px;gap:16px;align-items:center}
+.sheet-heading-title{gap:12px;min-width:0}
+.sheet-heading-title h2{font-size:21px;line-height:1.5;letter-spacing:.03em}
+.sheet-heading-title .count-pill{background:#eee3d3;color:#735b4b;border-color:#ddcbb7;font-size:12px}
+.subject-groups{padding:4px 28px 16px;min-width:0}
+.subject-group{min-width:0;padding:17px 0 20px;border-bottom:1px solid #e6dacb}
+.subject-group:last-child{border-bottom:0;padding-bottom:6px}
+.subject-group.is-empty{padding:8px 0}
+.subject-heading{display:flex;align-items:center;gap:15px;min-height:36px}
+.subject-heading h3{margin:0;flex:0 0 auto;font-size:16px;line-height:1.5}
+.subject-heading .subject-button{display:inline-flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:8px;min-width:0;min-height:36px;padding:3px 0;text-align:left}
+.subject-heading .subject-button:before{display:none}
+.subject-heading .subject-name{font-size:16px;line-height:24px;font-weight:700}
+.subject-toggle{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;margin-left:-10px;padding:0;border:0;border-radius:6px;background:transparent;color:#a08a78;flex:0 0 auto}
+.subject-toggle:hover{background:#eadcc959;color:var(--red)}
+.subject-chevron{width:14px;height:14px;stroke-width:1.7;transition:transform .18s ease}
+.subject-toggle[aria-expanded="true"] .subject-chevron{transform:rotate(90deg)}
+.subject-stage-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 18px;margin:8px 0 2px;padding:0 2px}
+.subject-stage-line{display:flex;align-items:baseline;gap:12px;grid-column:1 / -1;min-width:0;line-height:1.6}
+.subject-phase{font-size:13px;color:#6b554b;font-weight:700}
+.subject-stage-label{font-size:12px;color:#8a776b}
+.subject-stage-value{margin-left:auto;font-size:18px;line-height:1.4;color:#7e2a40;white-space:nowrap;font-variant-numeric:tabular-nums}
+.subject-stage-track{height:5px;border-radius:3px;background:#e1d7ca;overflow:hidden;min-width:0}
+.subject-stage-track>span{display:block;height:100%;background:linear-gradient(90deg,#742a3e,#a44b5d);border-radius:inherit}
+.subject-daily-time{font-size:12px;line-height:1.6;color:#647260;white-space:nowrap}
+.subject-transition{display:flow-root;min-width:0}
+.subject-transition[data-animating]{contain:paint}
+.subject-body{padding-top:12px;min-width:0}
+.is-empty .subject-body{padding-top:0}
+.subject-body .task-list{gap:12px}
+.subject-body .card-controls{width:100%;justify-content:flex-end}
+.task-sheet .sheet-bottom{padding:18px 28px;gap:28px}
+@media(max-width:650px){
+ .task-sheet .sheet-heading{padding:18px 17px;gap:10px}
+ .sheet-heading-title{gap:8px}.sheet-heading-title h2{font-size:18px}.sheet-heading-title .count-pill{font-size:11px}
+ .subject-groups{padding:3px 16px 12px}
+ .subject-group{padding:10px 0 16px}.subject-group.is-empty{padding:3px 0}
+ .subject-heading{gap:11px;min-height:44px}.subject-heading .subject-button{min-height:44px}.subject-toggle{width:44px;height:44px}
+ .subject-stage-summary{gap:7px 12px;margin-top:3px}.subject-stage-line{flex-wrap:wrap;gap:4px 9px}.subject-stage-label{font-size:11px}.subject-daily-time{font-size:11px}.subject-stage-value{font-size:17px}
+ .subject-body{padding-top:7px}.subject-body .study-card{padding:16px}.subject-body .card-controls{justify-content:space-between;gap:10px}
+ .task-sheet .sheet-bottom{padding:15px 16px;gap:10px}
+ .save-status{font-size:11px;white-space:nowrap}
+}
+@media(prefers-reduced-motion:reduce){.subject-chevron{transition:none}}
+
+/* Inset the motto and the two instruments from the paper's outer edges. */
+.page-heading{padding:14px 28px 10px;gap:28px;align-items:center}
+.page-heading>div:first-child{min-width:0}
+.page-heading h1{font-size:clamp(28px,3vw,36px);line-height:1.45;letter-spacing:.025em}
+.page-heading .page-description{margin-top:12px;line-height:1.7}
+.page-heading .heading-meta{gap:22px;align-items:center}
+.page-heading .duration-block{min-width:120px;gap:7px}
+.page-heading .date-block{min-width:150px;padding-left:22px;row-gap:6px}
+@media(max-width:1000px){.page-heading{flex-wrap:wrap;gap:20px}.page-heading>div:first-child{flex:1 1 100%}.page-heading .heading-meta{flex:1 1 100%;justify-content:space-between}.page-heading .duration-block{justify-items:start;text-align:left}.page-heading .duration-value-line{justify-content:flex-start}}
+@media(max-width:650px){.page-heading{padding:10px 16px 8px;gap:20px}.page-heading h1{font-size:26px;letter-spacing:0}.page-heading .page-description{margin-top:9px}.page-heading .heading-meta{gap:16px}.page-heading .duration-block{min-width:0}.page-heading .date-block{min-width:0;padding-left:16px}}
+
+/* Export uses the very same heading, cards, folds and progress tray. */
+.export-surface.page-shell{position:absolute;left:0;top:0;z-index:-10;isolation:isolate;pointer-events:none;max-width:none;margin:0;padding:16px;font-family:var(--journal-font);background-color:var(--canvas)}
+.export-surface:before{content:"";position:absolute;inset:0 0 auto;height:610px;z-index:-1;pointer-events:none;background:linear-gradient(180deg,transparent 48%,#efede833 65%,#efede8 100%),url("./assets/study-backdrop.svg") center top/1600px 620px no-repeat,radial-gradient(ellipse at 91% 10%,#74213b 0,transparent 53%),linear-gradient(113deg,#1b1a1d 12%,#301d29 65%,#4c2031)}
+.export-surface .page-heading{margin-bottom:31px}
+.export-surface *{animation:none!important;transition:none!important;caret-color:transparent!important}
+.export-surface .study-card{content-visibility:visible!important;contain-intrinsic-size:none!important}
+.export-surface button:disabled,.export-surface input:disabled{opacity:1;cursor:default}
+.export-surface .subject-body,.export-surface details{height:auto!important;overflow:visible}
+.export-surface .subject-transition{height:auto!important;overflow:visible!important;contain:none!important}
+
+/* A round crest belongs to the exported header, beside the date instruments. */
+.export-surface .page-heading{display:grid;grid-template-columns:minmax(0,1fr) auto 76px;column-gap:22px}
+.export-emblem{display:block;width:76px;height:76px;object-fit:contain;border-radius:50%;align-self:start;background:transparent}
+@media(max-width:1000px){
+ .export-surface .page-heading{grid-template-columns:minmax(0,1fr) 76px;row-gap:20px}
+ .export-surface .page-heading>div:first-child{grid-column:1;grid-row:1}
+ .export-surface .page-heading .heading-meta{grid-column:1 / -1;grid-row:2}
+ .export-surface .export-emblem{grid-column:2;grid-row:1}
+}
+@media(max-width:650px){.export-surface .page-heading{grid-template-columns:minmax(0,1fr) 58px;column-gap:12px}.export-surface .export-emblem{width:58px;height:58px}}

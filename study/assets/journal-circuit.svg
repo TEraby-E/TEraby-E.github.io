@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 120" fill="none">
+  <defs>
+    <pattern id="grid" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M12 0H0v12" stroke="#987a6d" stroke-opacity=".13" stroke-width=".6"/></pattern>
+    <linearGradient id="fade"><stop stop-color="#a51c30" stop-opacity=".14"/><stop offset=".45" stop-color="#a51c30" stop-opacity=".75"/><stop offset="1" stop-color="#926f62" stop-opacity=".2"/></linearGradient>
+  </defs>
+  <path fill="url(#grid)" d="M0 0h600v120H0z"/>
+  <g stroke="url(#fade)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 23h82l22 22h105l17 15h40M0 60h127l22-22h92l20-20h28M22 98h64l22-22h94l18 18h47M75 9v14M64 110V98M153 0v21h54l16 16h45"/>
+    <path d="M332 22h25l23 23h33l20-20h52M332 42h47l24 24h48l20 20h98M332 61h42l25 37h78M332 81h18l22 29h73M478 0v25M548 86v24M552 17h39M518 44h66"/>
+    <rect x="267" y="20" width="66" height="66" rx="6"/>
+    <rect x="275" y="28" width="50" height="50" rx="3" stroke-opacity=".45"/>
+    <path d="M278 12v8m11-8v8m11-8v8m11-8v8m11-8v8M278 86v8m11-8v8m11-8v8m11-8v8m11-8v8M259 31h8m-8 11h8m-8 11h8m-8 11h8m-8 11h8M333 31h8m-8 11h8m-8 11h8m-8 11h8m-8 11h8"/>
+  </g>
+  <g stroke="#536f80" stroke-width=".9" opacity=".5">
+    <path d="m415 19 41 36-41 44m0-80 51 68m-51-29 41-3 47-31m-88 34 51 29 37-63m-88 75 51-12 37-24m-47-8 47 8m-88 36 41-44"/>
+    <circle cx="415" cy="19" r="3"/><circle cx="415" cy="58" r="3"/><circle cx="415" cy="99" r="3"/>
+    <circle cx="456" cy="55" r="4"/><circle cx="466" cy="87" r="3"/><circle cx="503" cy="24" r="3"/><circle cx="503" cy="63" r="3"/>
+  </g>
+  <g fill="#a51c30" opacity=".6"><circle cx="110" cy="45" r="2.5"/><circle cx="149" cy="38" r="2"/><circle cx="220" cy="94" r="2.5"/><circle cx="380" cy="45" r="2.5"/><circle cx="471" cy="86" r="2"/></g>
+  <g stroke="#aa8162" stroke-width=".8" opacity=".55"><path d="M281 40h38m-38 9h38m-38 9h38m-38 9h38M291 34v38m9-38v38m9-38v38"/></g>
+  <g stroke="#8d3347" stroke-width=".8" opacity=".38">
+    <circle cx="207" cy="60" r="24"/><circle cx="207" cy="60" r="17" stroke-dasharray="45 10 8 10"/>
+    <ellipse cx="207" cy="60" rx="8" ry="29" transform="rotate(42 207 60)"/>
+    <path d="M207 28v6m0 52v6m-32-32h6m52 0h6"/>
+    <circle cx="207" cy="60" r="3" fill="#8d3347"/>
+  </g>
+  <path d="M118 10h16m-8-8v16M355 102h16m-8-8v16M560 45h17v17m-17-17 17 17" stroke="#8e7565" stroke-width=".8" opacity=".35"/>
+  <path d="M8 5h15M8 5v15m569 95h15m0-15v15M0 114h227m116 0h180" stroke="#9b7a66" stroke-width=".8" opacity=".3"/>
+</svg>

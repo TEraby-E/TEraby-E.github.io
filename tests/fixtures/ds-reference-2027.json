@@ -1,0 +1,3095 @@
+{
+  "source_sha256": "3456d046a19e8d254bdf5fcbe0cd3a675daffe9e1f8a06b4933e7a64fac7b498",
+  "source_task_rows": 304,
+  "excluded_book_rows": [
+    5,
+    9,
+    11,
+    13,
+    17,
+    20,
+    23,
+    30,
+    32,
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    51,
+    53,
+    55,
+    60,
+    62,
+    64,
+    66,
+    71,
+    74,
+    76,
+    78,
+    82,
+    85,
+    87,
+    89,
+    92,
+    94,
+    99,
+    101,
+    106,
+    108,
+    114,
+    116,
+    118,
+    121,
+    124,
+    132,
+    134,
+    136,
+    141,
+    143,
+    145,
+    151,
+    155,
+    157,
+    159,
+    161,
+    168,
+    170,
+    174,
+    181,
+    187,
+    190,
+    195,
+    201,
+    203,
+    205,
+    207,
+    213,
+    219,
+    221,
+    226,
+    228,
+    230,
+    234,
+    238,
+    241,
+    243,
+    246,
+    248,
+    254,
+    257,
+    261,
+    266,
+    268,
+    275,
+    278,
+    284,
+    286,
+    287,
+    291,
+    292,
+    297,
+    299,
+    301,
+    303
+  ],
+  "tasks": [
+    {
+      "source_row": 3,
+      "title": "【考点视频】1.0 开篇_数据结构在学什么",
+      "kind": "必学",
+      "quantity": "8 min",
+      "remarks": "",
+      "section_name": "1.1 数据结构的基本概念",
+      "difficulty": "☆",
+      "exam_frequency": {
+        "small": 8,
+        "large": 11
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 4,
+      "title": "【考点视频】1.1 数据结构的基本概念",
+      "kind": "必学",
+      "quantity": "23 min",
+      "remarks": "",
+      "section_name": "1.1 数据结构的基本概念",
+      "difficulty": "☆",
+      "exam_frequency": {
+        "small": 8,
+        "large": 11
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 6,
+      "title": "【习题】1.1.3 小题：全部",
+      "kind": "必做题",
+      "quantity": "5小题",
+      "remarks": "",
+      "section_name": "1.1 数据结构的基本概念",
+      "difficulty": "☆",
+      "exam_frequency": {
+        "small": 8,
+        "large": 11
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 7,
+      "title": "【习题】1.1.3 大题：1，2",
+      "kind": "选做题（可学完第一轮再做）",
+      "quantity": "2大题",
+      "remarks": "题目涉及跨章节知识点，可学完第一轮再做这些题目",
+      "section_name": "1.1 数据结构的基本概念",
+      "difficulty": "☆",
+      "exam_frequency": {
+        "small": 8,
+        "large": 11
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 8,
+      "title": "【考点视频】1.2_1 算法的基本概念",
+      "kind": "必学",
+      "quantity": "10 min",
+      "remarks": "",
+      "section_name": "1.2 算法和算法评价",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 8,
+        "large": 11
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 10,
+      "title": "【考点视频】1.2_2 算法的时间复杂度",
+      "kind": "必学",
+      "quantity": "31 min",
+      "remarks": "",
+      "section_name": "1.2 算法和算法评价",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 8,
+        "large": 11
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 12,
+      "title": "【考点视频】1.2_3 算法的空间复杂度",
+      "kind": "必学",
+      "quantity": "15 min",
+      "remarks": "",
+      "section_name": "1.2 算法和算法评价",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 8,
+        "large": 11
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 14,
+      "title": "【习题】1.2.3 小题：全部",
+      "kind": "必做题",
+      "quantity": "18小题",
+      "remarks": "",
+      "section_name": "1.2 算法和算法评价",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 8,
+        "large": 11
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 15,
+      "title": "【习题】1.2.3 大题：1",
+      "kind": "必做题",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "1.2 算法和算法评价",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 8,
+        "large": 11
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 16,
+      "title": "【考点视频】2.1 线性表的定义和基本操作",
+      "kind": "必学",
+      "quantity": "18 min",
+      "remarks": "",
+      "section_name": "2.1 线性表的定义和基本操作",
+      "difficulty": "☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 18,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "4小题",
+      "remarks": "",
+      "section_name": "2.1 线性表的定义和基本操作",
+      "difficulty": "☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 19,
+      "title": "【考点视频】2.2.1_顺序表的定义",
+      "kind": "必学",
+      "quantity": "24 min",
+      "remarks": "",
+      "section_name": "2.2 线性表的顺序表示",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 21,
+      "title": "【考点视频】2.2.2_1_顺序表的插入删除",
+      "kind": "必学",
+      "quantity": "21 min",
+      "remarks": "",
+      "section_name": "2.2 线性表的顺序表示",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 22,
+      "title": "【考点视频】2.2.2_2_顺序表的查找",
+      "kind": "必学",
+      "quantity": "13 min",
+      "remarks": "",
+      "section_name": "2.2 线性表的顺序表示",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 24,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "13小题",
+      "remarks": "",
+      "section_name": "2.2 线性表的顺序表示",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 25,
+      "title": "【习题】大题：1，3，4，5",
+      "kind": "必做题",
+      "quantity": "4大题",
+      "remarks": "基本功训练题",
+      "section_name": "2.2 线性表的顺序表示",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 26,
+      "title": "【习题】大题：2，7",
+      "kind": "必做题",
+      "quantity": "2大题",
+      "remarks": "练习顺序表的“原地逆置”，该技巧非常重要",
+      "section_name": "2.2 线性表的顺序表示",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 27,
+      "title": "【习题】大题：6，8",
+      "kind": "选做题（可学完第一轮再做）",
+      "quantity": "2大题",
+      "remarks": "",
+      "section_name": "2.2 线性表的顺序表示",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 28,
+      "title": "【习题】大题：10~15",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "6大题",
+      "remarks": "",
+      "section_name": "2.2 线性表的顺序表示",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 29,
+      "title": "【考点视频】2.3.1_单链表的定义",
+      "kind": "必学",
+      "quantity": "12 min",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 31,
+      "title": "【考点视频】2.3.2_1_单链表的插入删除",
+      "kind": "必学",
+      "quantity": "24 min",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 33,
+      "title": "【考点视频】2.3.2_2_单链表的查找",
+      "kind": "必学",
+      "quantity": "11 min",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 35,
+      "title": "【考点视频】2.3.2_3_单链表的建立",
+      "kind": "必学",
+      "quantity": "14 min",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 37,
+      "title": "【考点视频】2.3.3_双链表",
+      "kind": "必学",
+      "quantity": "10 min",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 39,
+      "title": "【考点视频】2.3.4_循环链表",
+      "kind": "必学",
+      "quantity": "10 min",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 41,
+      "title": "【考点视频】2.3.5_静态链表",
+      "kind": "必学",
+      "quantity": "14 min",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 43,
+      "title": "【考点视频】2.3.6_顺序表和链表的比较",
+      "kind": "必学",
+      "quantity": "15 min",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 45,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "36小题",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 46,
+      "title": "【习题】大题：1，2，4",
+      "kind": "必做题",
+      "quantity": "3大题",
+      "remarks": "基本功训练题。",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 47,
+      "title": "【习题】大题：3,6,7,8,11,12",
+      "kind": "必做题",
+      "quantity": "6大题",
+      "remarks": "这些题目有一定难度。其中涉及的代码技巧在算法题中有用",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 48,
+      "title": "【习题】大题：5,10,13,14,15,16",
+      "kind": "选做题",
+      "quantity": "5大题",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 49,
+      "title": "【习题】大题：17~20",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "4大题",
+      "remarks": "",
+      "section_name": "2.3 线性表的链式表示",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 5,
+        "large": 12
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 50,
+      "title": "【考点视频】3.1.1_栈的基本概念",
+      "kind": "必学",
+      "quantity": "10 min",
+      "remarks": "",
+      "section_name": "3.1 栈",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 52,
+      "title": "【考点视频】3.1.2_栈的顺序存储实现",
+      "kind": "必学",
+      "quantity": "13 min",
+      "remarks": "",
+      "section_name": "3.1 栈",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 54,
+      "title": "【考点视频】3.1.3_栈的链式存储实现",
+      "kind": "必学",
+      "quantity": "4 min",
+      "remarks": "",
+      "section_name": "3.1 栈",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 56,
+      "title": "【习题】小题：全部",
+      "kind": "必做题",
+      "quantity": "31小题",
+      "remarks": "",
+      "section_name": "3.1 栈",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 57,
+      "title": "【习题】大题：1，2",
+      "kind": "必做题",
+      "quantity": "2大题",
+      "remarks": "在小题中常考出栈序列的合法性",
+      "section_name": "3.1 栈",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 58,
+      "title": "【习题】大题：3,4,5",
+      "kind": "选做题",
+      "quantity": "3大题",
+      "remarks": "",
+      "section_name": "3.1 栈",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 59,
+      "title": "【考点视频】3.2.1_队列的基本概念",
+      "kind": "必学",
+      "quantity": "5 min",
+      "remarks": "",
+      "section_name": "3.2 队列",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 61,
+      "title": "【考点视频】3.2.2_队列的顺序实现",
+      "kind": "必学",
+      "quantity": "17 min",
+      "remarks": "",
+      "section_name": "3.2 队列",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 63,
+      "title": "【考点视频】3.2.3_队列的链式实现",
+      "kind": "必学",
+      "quantity": "10 min",
+      "remarks": "",
+      "section_name": "3.2 队列",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 65,
+      "title": "【考点视频】3.2.4_双端队列",
+      "kind": "必学",
+      "quantity": "15 min",
+      "remarks": "",
+      "section_name": "3.2 队列",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 67,
+      "title": "【习题】小题：全部",
+      "kind": "必做题",
+      "quantity": "24小题",
+      "remarks": "",
+      "section_name": "3.2 队列",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 68,
+      "title": "【习题】大题：1，2",
+      "kind": "必做题",
+      "quantity": "2大题",
+      "remarks": "基本功训练题。",
+      "section_name": "3.2 队列",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 69,
+      "title": "【习题】大题：4",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "史上唯一一个考队列的大题，可以看看，了解真题考法和风格",
+      "section_name": "3.2 队列",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 70,
+      "title": "【考点视频】3.3.1_栈在括号匹配中的应用",
+      "kind": "必学",
+      "quantity": "12 min",
+      "remarks": "",
+      "section_name": "3.3 栈和队列的应用",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 72,
+      "title": "【考点视频】3.3.2_1_栈在表达式求值中的应用(上)",
+      "kind": "必学",
+      "quantity": "32 min",
+      "remarks": "",
+      "section_name": "3.3 栈和队列的应用",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 73,
+      "title": "【考点视频】3.3.2_2_栈在表达式求值中的应用(下)",
+      "kind": "必学",
+      "quantity": "21 min",
+      "remarks": "",
+      "section_name": "3.3 栈和队列的应用",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 75,
+      "title": "【考点视频】3.3.3_栈在递归中的应用",
+      "kind": "必学",
+      "quantity": "13 min",
+      "remarks": "",
+      "section_name": "3.3 栈和队列的应用",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 77,
+      "title": "【考点视频】3.3.4+3.3.5_队列的应用",
+      "kind": "必学",
+      "quantity": "9 min",
+      "remarks": "",
+      "section_name": "3.3 栈和队列的应用",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 79,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "10小题",
+      "remarks": "",
+      "section_name": "3.3 栈和队列的应用",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 80,
+      "title": "【习题】大题：1",
+      "kind": "选做题",
+      "quantity": "1大题",
+      "remarks": "若时间充裕，建议练习此题，“栈在括号匹配中的应用”是有可能在算法题中考察的",
+      "section_name": "3.3 栈和队列的应用",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 81,
+      "title": "【考点视频】3.4.1~3.4.4_特殊矩阵的压缩存储",
+      "kind": "必学",
+      "quantity": "28 min",
+      "remarks": "",
+      "section_name": "3.4 数组和特殊矩阵",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 83,
+      "title": "【习题】小题：全部",
+      "kind": "必做题",
+      "quantity": "16小题",
+      "remarks": "",
+      "section_name": "3.4 数组和特殊矩阵",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 25,
+        "large": 4
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 84,
+      "title": "【考点视频】4.1.1_串的定义和基本操作",
+      "kind": "必学",
+      "quantity": "24 min",
+      "remarks": "",
+      "section_name": "4.1 串的定义和实现",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 2,
+        "large": 0
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 86,
+      "title": "【考点视频】4.1.2_串的存储结构",
+      "kind": "必学",
+      "quantity": "17 min",
+      "remarks": "",
+      "section_name": "4.1 串的定义和实现",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 2,
+        "large": 0
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 88,
+      "title": "【考点视频】4.2.1_朴素模式匹配算法",
+      "kind": "必学",
+      "quantity": "17 min",
+      "remarks": "",
+      "section_name": "4.2 串的模式匹配",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 2,
+        "large": 0
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 90,
+      "title": "【考点视频】4.2.2_1_KMP算法",
+      "kind": "必学",
+      "quantity": "25 min",
+      "remarks": "",
+      "section_name": "4.2 串的模式匹配",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 2,
+        "large": 0
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 91,
+      "title": "【考点视频】4.2.2_2_求next数组",
+      "kind": "必学",
+      "quantity": "18 min",
+      "remarks": "",
+      "section_name": "4.2 串的模式匹配",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 2,
+        "large": 0
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 93,
+      "title": "【考点视频】4.2.3_KMP算法的进一步优化",
+      "kind": "必学",
+      "quantity": "21 min",
+      "remarks": "",
+      "section_name": "4.2 串的模式匹配",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 2,
+        "large": 0
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 95,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "12小题",
+      "remarks": "",
+      "section_name": "4.2 串的模式匹配",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 2,
+        "large": 0
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 96,
+      "title": "【习题】大题：1",
+      "kind": "可先跳过，未来时间充裕再做",
+      "quantity": "1大题",
+      "remarks": "本题探究kmp算法的数学原理，不是考研风格，可跳过",
+      "section_name": "4.2 串的模式匹配",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 2,
+        "large": 0
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 97,
+      "title": "【习题】大题：2",
+      "kind": "必做题",
+      "quantity": "1大题",
+      "remarks": "建议做。通过此题练习手算 next 数组、并模拟KMP算法的匹配过程。",
+      "section_name": "4.2 串的模式匹配",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 2,
+        "large": 0
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 98,
+      "title": "【考点视频】5.1.1+5.1.2 树的定义和基本术语",
+      "kind": "必学",
+      "quantity": "16 min",
+      "remarks": "",
+      "section_name": "5.1 树的基本概念",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 90.0
+    },
+    {
+      "source_row": 100,
+      "title": "【考点视频】5.1.3 树的性质",
+      "kind": "必学",
+      "quantity": "6 min",
+      "remarks": "",
+      "section_name": "5.1 树的基本概念",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 90.0
+    },
+    {
+      "source_row": 102,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "10 小题",
+      "remarks": "",
+      "section_name": "5.1 树的基本概念",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 90.0
+    },
+    {
+      "source_row": 103,
+      "title": "【习题】大题：1，2，3",
+      "kind": "必做题",
+      "quantity": "3大题",
+      "remarks": "",
+      "section_name": "5.1 树的基本概念",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 90.0
+    },
+    {
+      "source_row": 104,
+      "title": "【考点视频】5.2.1_1 二叉树的定义和基本术语",
+      "kind": "必学",
+      "quantity": "13 min",
+      "remarks": "",
+      "section_name": "5.2 二叉树的概念",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 105,
+      "title": "【考点视频】5.2.1_2 二叉树的性质",
+      "kind": "必学",
+      "quantity": "8 min",
+      "remarks": "",
+      "section_name": "5.2 二叉树的概念",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 107,
+      "title": "【考点视频】5.2.2 二叉树的存储结构",
+      "kind": "必学",
+      "quantity": "11 min",
+      "remarks": "",
+      "section_name": "5.2 二叉树的概念",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 109,
+      "title": "【习题】小题：全部",
+      "kind": "必做题",
+      "quantity": "30 小题",
+      "remarks": "",
+      "section_name": "5.2 二叉树的概念",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 110,
+      "title": "【习题】大题：1，2，3",
+      "kind": "必做题",
+      "quantity": "3大题",
+      "remarks": "二叉树的性质推导，常考，必做",
+      "section_name": "5.2 二叉树的概念",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 111,
+      "title": "【习题】大题：4,5",
+      "kind": "选做题",
+      "quantity": "2大题",
+      "remarks": "",
+      "section_name": "5.2 二叉树的概念",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 112,
+      "title": "【习题】大题：6",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "5.2 二叉树的概念",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 113,
+      "title": "【考点视频】5.3.1_1 二叉树的先中后序遍历",
+      "kind": "必学",
+      "quantity": "24 min",
+      "remarks": "",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 115,
+      "title": "【考点视频】5.3.1_2 二叉树的层次遍历",
+      "kind": "必学",
+      "quantity": "5 min",
+      "remarks": "",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 117,
+      "title": "【考点视频】5.3.1_3 由遍历序列构造二叉树",
+      "kind": "必学",
+      "quantity": "12 min",
+      "remarks": "",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 119,
+      "title": "【习题】小题：1~21、30、31、32、34~36、38~43",
+      "kind": "必做题",
+      "quantity": "33 题",
+      "remarks": "",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 120,
+      "title": "【考点视频】5.3.2_1 线索二叉树的概念",
+      "kind": "必学",
+      "quantity": "18 min",
+      "remarks": "",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 122,
+      "title": "【考点视频】5.3.2_2 二叉树的线索化",
+      "kind": "必学",
+      "quantity": "20 min",
+      "remarks": "",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 123,
+      "title": "【考点视频】5.3.2_3 在线索二叉树中找前驱后继",
+      "kind": "必学",
+      "quantity": "19 min",
+      "remarks": "",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 125,
+      "title": "【习题】小题：剩余小题",
+      "kind": "必做题",
+      "quantity": "10小题",
+      "remarks": "",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 126,
+      "title": "【习题】大题：1,2",
+      "kind": "必做题",
+      "quantity": "2大题",
+      "remarks": "",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 127,
+      "title": "【习题】大题：4,5,7",
+      "kind": "必做题",
+      "quantity": "3大题",
+      "remarks": "这几个题可以训练树的遍历算法基本功，建议所有人做",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 128,
+      "title": "【习题】大题：6,13,14",
+      "kind": "选做题",
+      "quantity": "3大题",
+      "remarks": "这几个题有一定难度，代码量接近于真题。建议尽力尝试解决",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 129,
+      "title": "【习题】大题：3,8,9,11,12",
+      "kind": "选做题",
+      "quantity": "5大题",
+      "remarks": "这些题目不太符合真题风格，有能力的同学可以作为提升训练",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 130,
+      "title": "【习题】大题：15~17",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "3大题",
+      "remarks": "",
+      "section_name": "5.3 二叉树的遍历和线索二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 420.0
+    },
+    {
+      "source_row": 131,
+      "title": "【考点视频】5.4.1 树的存储结构",
+      "kind": "必学",
+      "quantity": "19 min",
+      "remarks": "",
+      "section_name": "5.4 树、森林",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 133,
+      "title": "【考点视频】5.4.2 树、森林与二叉树的转化",
+      "kind": "必学",
+      "quantity": "15 min",
+      "remarks": "",
+      "section_name": "5.4 树、森林",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 135,
+      "title": "【考点视频】5.4.3 树和森林的遍历",
+      "kind": "必学",
+      "quantity": "11 min",
+      "remarks": "",
+      "section_name": "5.4 树、森林",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 137,
+      "title": "【习题】小题：全部",
+      "kind": "必做题",
+      "quantity": "21题",
+      "remarks": "",
+      "section_name": "5.4 树、森林",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 138,
+      "title": "【习题】大题：1，2，3",
+      "kind": "必做题",
+      "quantity": "3大题",
+      "remarks": "真题中可能出现的考法，建议训练。",
+      "section_name": "5.4 树、森林",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 139,
+      "title": "【习题】大题：4,5",
+      "kind": "选做题",
+      "quantity": "2大题",
+      "remarks": "树和森林的几种存储结构中，孩子兄弟表示法是最有可能考代码的。时间充裕的同学可以训练一下",
+      "section_name": "5.4 树、森林",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 140,
+      "title": "【考点视频】5.5.1 哈夫曼树",
+      "kind": "必学",
+      "quantity": "18 min",
+      "remarks": "",
+      "section_name": "5.5 树与二叉树的应用",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 142,
+      "title": "【考点视频】5.5.2_1 并查集",
+      "kind": "必学",
+      "quantity": "32 min",
+      "remarks": "",
+      "section_name": "5.5 树与二叉树的应用",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 144,
+      "title": "【考点视频】5.5.2_2 并查集的进一步优化",
+      "kind": "必学",
+      "quantity": "11 min",
+      "remarks": "",
+      "section_name": "5.5 树与二叉树的应用",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 146,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "23 小题",
+      "remarks": "",
+      "section_name": "5.5 树与二叉树的应用",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 147,
+      "title": "【习题】大题：1",
+      "kind": "必做题",
+      "quantity": "1大题",
+      "remarks": "此题很像408小题的考察风格",
+      "section_name": "5.5 树与二叉树的应用",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 148,
+      "title": "【习题】大题：3",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "5.5 树与二叉树的应用",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 149,
+      "title": "【习题】大题：2",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "5.5 树与二叉树的应用",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 34,
+        "large": 10
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 150,
+      "title": "【考点视频】6.1.1 图的基本概念",
+      "kind": "必学",
+      "quantity": "31 min",
+      "remarks": "",
+      "section_name": "6.1 图的基本概念",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 152,
+      "title": "【习题】小题：全部",
+      "kind": "必做题",
+      "quantity": "18 小题",
+      "remarks": "",
+      "section_name": "6.1 图的基本概念",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 153,
+      "title": "【习题】大题：1",
+      "kind": "必做题",
+      "quantity": "1大题",
+      "remarks": "此题很像408小题的考察风格",
+      "section_name": "6.1 图的基本概念",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 154,
+      "title": "【考点视频】6.2.1 邻接矩阵法",
+      "kind": "必学",
+      "quantity": "16 min",
+      "remarks": "",
+      "section_name": "6.2 图的存储及基本操作",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 156,
+      "title": "【考点视频】6.2.2 邻接表法",
+      "kind": "必学",
+      "quantity": "7 min",
+      "remarks": "",
+      "section_name": "6.2 图的存储及基本操作",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 158,
+      "title": "【考点视频】6.2.3+6.2.4 十字链表、邻接多重表",
+      "kind": "必学",
+      "quantity": "13 min",
+      "remarks": "",
+      "section_name": "6.2 图的存储及基本操作",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 160,
+      "title": "【考点视频】6.2.5 图的基本操作",
+      "kind": "必学",
+      "quantity": "14 min",
+      "remarks": "",
+      "section_name": "6.2 图的存储及基本操作",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 162,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "20小题",
+      "remarks": "",
+      "section_name": "6.2 图的存储及基本操作",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 163,
+      "title": "【习题】大题：1，2，3",
+      "kind": "必做题",
+      "quantity": "3大题",
+      "remarks": "基本功训练，考场上很实用的技巧",
+      "section_name": "6.2 图的存储及基本操作",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 164,
+      "title": "【习题】大题：5",
+      "kind": "选做题（可学完第一轮再做）",
+      "quantity": "1大题",
+      "remarks": "本题符合本章对算法的考察难度，目标考高分的同学可以训练",
+      "section_name": "6.2 图的存储及基本操作",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 165,
+      "title": "【习题】大题：7、8",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "2大题",
+      "remarks": "",
+      "section_name": "6.2 图的存储及基本操作",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 166,
+      "title": "【习题】大题：6",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "此题属于偏难怪题，需要结合线性代数的矩阵乘法解题。这题不值得花太多精力研究",
+      "section_name": "6.2 图的存储及基本操作",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 167,
+      "title": "【考点视频】6.3.1 图的广度优先遍历",
+      "kind": "必学",
+      "quantity": "26 min",
+      "remarks": "",
+      "section_name": "6.3 图的遍历",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 169,
+      "title": "【考点视频】6.3.2 图的深度优先遍历",
+      "kind": "必学",
+      "quantity": "20 min",
+      "remarks": "",
+      "section_name": "6.3 图的遍历",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 171,
+      "title": "【习题】小题：全部",
+      "kind": "必做题",
+      "quantity": "18小题",
+      "remarks": "",
+      "section_name": "6.3 图的遍历",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 172,
+      "title": "【习题】大题：1",
+      "kind": "选做题",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "6.3 图的遍历",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 173,
+      "title": "【考点视频】6.4.1 最小生成树",
+      "kind": "必学",
+      "quantity": "21 min",
+      "remarks": "",
+      "section_name": "6.4.1 最小生成树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 175,
+      "title": "【习题】小题：1~6题",
+      "kind": "必做题",
+      "quantity": "6小题",
+      "remarks": "",
+      "section_name": "6.4.1 最小生成树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 176,
+      "title": "【习题】大题：11",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "6.4.1 最小生成树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 177,
+      "title": "【习题】大题：12",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "6.4.1 最小生成树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 178,
+      "title": "【考点视频】6.4.2_1 最短路径问题_BFS算法",
+      "kind": "必学",
+      "quantity": "10 min",
+      "remarks": "",
+      "section_name": "6.4.2 最短路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 179,
+      "title": "【考点视频】6.4.2_2 最短路径问题_Dijkstra算法",
+      "kind": "必学",
+      "quantity": "19 min",
+      "remarks": "",
+      "section_name": "6.4.2 最短路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 180,
+      "title": "【考点视频】6.4.2_3 最短路径问题_Floyd算法",
+      "kind": "必学",
+      "quantity": "23 min",
+      "remarks": "",
+      "section_name": "6.4.2 最短路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 182,
+      "title": "【习题】小题：7~10",
+      "kind": "必做题",
+      "quantity": "4小题",
+      "remarks": "",
+      "section_name": "6.4.2 最短路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 183,
+      "title": "【习题】大题：3",
+      "kind": "选做题",
+      "quantity": "1大题",
+      "remarks": "本题可在备考后期用于快速回顾Dj算法过程。",
+      "section_name": "6.4.2 最短路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 184,
+      "title": "【习题】大题：10",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "6.4.2 最短路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 185,
+      "title": "【习题】大题：8",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "6.4.2 最短路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 186,
+      "title": "【考点视频】6.4.3 有向无环图描述表达式",
+      "kind": "必学",
+      "quantity": "14 min",
+      "remarks": "",
+      "section_name": "6.4.3 有向无环图描述表达式",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 30.0
+    },
+    {
+      "source_row": 188,
+      "title": "【习题】小题：39",
+      "kind": "必做题",
+      "quantity": "1小题",
+      "remarks": "",
+      "section_name": "6.4.3 有向无环图描述表达式",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 30.0
+    },
+    {
+      "source_row": 189,
+      "title": "【考点视频】6.4.4 拓扑排序",
+      "kind": "必学",
+      "quantity": "21 min",
+      "remarks": "",
+      "section_name": "6.4.4 拓扑排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 90.0
+    },
+    {
+      "source_row": 191,
+      "title": "【习题】小题：11~21",
+      "kind": "必做题",
+      "quantity": "11小题",
+      "remarks": "",
+      "section_name": "6.4.4 拓扑排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 90.0
+    },
+    {
+      "source_row": 192,
+      "title": "【习题】大题：13",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "6.4.4 拓扑排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 90.0
+    },
+    {
+      "source_row": 193,
+      "title": "【习题】大题：2,7",
+      "kind": "选做题",
+      "quantity": "2大题",
+      "remarks": "",
+      "section_name": "6.4.4 拓扑排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 90.0
+    },
+    {
+      "source_row": 194,
+      "title": "【考点视频】6.4.5 关键路径",
+      "kind": "必学",
+      "quantity": "25 min",
+      "remarks": "",
+      "section_name": "6.4.5 关键路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 196,
+      "title": "【习题】小题：22~26",
+      "kind": "必做题",
+      "quantity": "5小题",
+      "remarks": "",
+      "section_name": "6.4.5 关键路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 197,
+      "title": "【习题】小题：剩余小题",
+      "kind": "必做题",
+      "quantity": "20小题",
+      "remarks": "",
+      "section_name": "6.4.5 关键路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 198,
+      "title": "【习题】大题：9",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "2大题",
+      "remarks": "",
+      "section_name": "6.4.5 关键路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 199,
+      "title": "【习题】大题：4，5",
+      "kind": "选做题",
+      "quantity": "2大题",
+      "remarks": "",
+      "section_name": "6.4.5 关键路径",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 35,
+        "large": 11
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 200,
+      "title": "【考点视频】7.1 查找的基本概念",
+      "kind": "必学",
+      "quantity": "7min",
+      "remarks": "",
+      "section_name": "7.1 查找的基本概念",
+      "difficulty": "☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 30.0
+    },
+    {
+      "source_row": 202,
+      "title": "【考点视频】7.2.1 顺序查找",
+      "kind": "必学",
+      "quantity": "15 min",
+      "remarks": "",
+      "section_name": "7.2 顺序查找和折半查找",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 204,
+      "title": "【考点视频】7.2.2 折半查找",
+      "kind": "必学",
+      "quantity": "24 min",
+      "remarks": "",
+      "section_name": "7.2 顺序查找和折半查找",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 206,
+      "title": "【考点视频】7.2.3 分块查找",
+      "kind": "必学",
+      "quantity": "24 min",
+      "remarks": "",
+      "section_name": "7.2 顺序查找和折半查找",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 208,
+      "title": "【习题】小题：全部",
+      "kind": "必做题",
+      "quantity": "25小题",
+      "remarks": "",
+      "section_name": "7.2 顺序查找和折半查找",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 209,
+      "title": "【习题】大题：2",
+      "kind": "选做题",
+      "quantity": "1大题",
+      "remarks": "这个题值得一做，是真题的风格。求折半查找的关键字对比、ASL",
+      "section_name": "7.2 顺序查找和折半查找",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 210,
+      "title": "【习题】大题：7",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "7.2 顺序查找和折半查找",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 211,
+      "title": "【习题】大题：1、5",
+      "kind": "选做题",
+      "quantity": "2大题",
+      "remarks": "",
+      "section_name": "7.2 顺序查找和折半查找",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 212,
+      "title": "【考点视频】7.3.1 二叉排序树",
+      "kind": "必学",
+      "quantity": "19 min",
+      "remarks": "",
+      "section_name": "7.3.1 二叉排序树",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 214,
+      "title": "小题 1~10，25，27，30，32，34",
+      "kind": "必做题",
+      "quantity": "16小题",
+      "remarks": "",
+      "section_name": "7.3.1 二叉排序树",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 215,
+      "title": "【习题】大题：1，2",
+      "kind": "必做题",
+      "quantity": "2大题",
+      "remarks": "应用题很可能这么考，建议做一做。两题风格类似，选做其中一题即可",
+      "section_name": "7.3.1 二叉排序树",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 216,
+      "title": "【习题】大题：5、6、8、9",
+      "kind": "必做题",
+      "quantity": "4大题",
+      "remarks": "",
+      "section_name": "7.3.1 二叉排序树",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 217,
+      "title": "【习题】大题：10",
+      "kind": "选做题",
+      "quantity": "1大题",
+      "remarks": "本题难度与真题类似，时间充裕的同学可以挑战一下。",
+      "section_name": "7.3.1 二叉排序树",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 218,
+      "title": "【考点视频】7.3.2_1 平衡二叉树",
+      "kind": "必学",
+      "quantity": "33 min",
+      "remarks": "",
+      "section_name": "7.3.2 平衡二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 220,
+      "title": "【考点视频】7.3.2_2 平衡二叉树的删除",
+      "kind": "必学",
+      "quantity": "31 min",
+      "remarks": "",
+      "section_name": "7.3.2 平衡二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 222,
+      "title": "小题 11~15，23，24，26，28，29，31，33",
+      "kind": "必做题",
+      "quantity": "7小题",
+      "remarks": "",
+      "section_name": "7.3.2 平衡二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 223,
+      "title": "【习题】大题：3",
+      "kind": "必做题",
+      "quantity": "1大题",
+      "remarks": "应用题很可能这么考，建议做一做",
+      "section_name": "7.3.2 平衡二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 224,
+      "title": "【习题】大题：7",
+      "kind": "选做题",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "7.3.2 平衡二叉树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 225,
+      "title": "【考点视频】7.3.3_1 红黑树的定义和性质",
+      "kind": "必学",
+      "quantity": "26 min",
+      "remarks": "",
+      "section_name": "7.3.3 红黑树",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 227,
+      "title": "【考点视频】7.3.3_2 红黑树的插入",
+      "kind": "必学",
+      "quantity": "37 min",
+      "remarks": "",
+      "section_name": "7.3.3 红黑树",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 229,
+      "title": "【考点视频】7.3.3_3 红黑树的删除",
+      "kind": "必学",
+      "quantity": "5 min",
+      "remarks": "",
+      "section_name": "7.3.3 红黑树",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 231,
+      "title": "【习题】小题：16~22",
+      "kind": "必做题",
+      "quantity": "7小题",
+      "remarks": "",
+      "section_name": "7.3.3 红黑树",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 232,
+      "title": "【考点视频】7.4.1_1 B树",
+      "kind": "必学",
+      "quantity": "29 min",
+      "remarks": "",
+      "section_name": "7.4.1 B树",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 233,
+      "title": "【考点视频】7.4.1_2 B树的插入删除",
+      "kind": "必学",
+      "quantity": "21 min",
+      "remarks": "",
+      "section_name": "7.4.1 B树",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 235,
+      "title": "【习题】小题：2~9，11，14~17，20~23，25",
+      "kind": "必做题",
+      "quantity": "16小题",
+      "remarks": "",
+      "section_name": "7.4.1 B树",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 236,
+      "title": "【习题】大题：1，2",
+      "kind": "选做题",
+      "quantity": "2大题",
+      "remarks": "时间充裕建议做，画B树的插入、删除过程，选择题经常这么考",
+      "section_name": "7.4.1 B树",
+      "difficulty": "☆☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 237,
+      "title": "【考点视频】7.4.2 B+树",
+      "kind": "必学",
+      "quantity": "22 min",
+      "remarks": "",
+      "section_name": "7.4.2 B+树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 239,
+      "title": "【习题】小题：剩余小题",
+      "kind": "必做题",
+      "quantity": "8小题",
+      "remarks": "",
+      "section_name": "7.4.2 B+树",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 60.0
+    },
+    {
+      "source_row": 240,
+      "title": "【考点视频】7.5.1 散列表的基本概念",
+      "kind": "必学",
+      "quantity": "10min",
+      "remarks": "",
+      "section_name": "7.5 散列表",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 242,
+      "title": "【考点视频】7.5.2 散列函数的构造",
+      "kind": "必学",
+      "quantity": "15min",
+      "remarks": "",
+      "section_name": "7.5 散列表",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 244,
+      "title": "【考点视频】7.5.3_1 处理冲突的方法_拉链法",
+      "kind": "必学",
+      "quantity": "10min",
+      "remarks": "",
+      "section_name": "7.5 散列表",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 245,
+      "title": "【考点视频】7.5.3_2 处理冲突的方法_开放定址法",
+      "kind": "必学",
+      "quantity": "26min",
+      "remarks": "",
+      "section_name": "7.5 散列表",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 247,
+      "title": "【考点视频】7.5.4 散列表的查找性能分析",
+      "kind": "必学",
+      "quantity": "20 min",
+      "remarks": "",
+      "section_name": "7.5 散列表",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 249,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "23小题",
+      "remarks": "",
+      "section_name": "7.5 散列表",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 250,
+      "title": "【习题】大题：6，7",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "2大题",
+      "remarks": "",
+      "section_name": "7.5 散列表",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 251,
+      "title": "【习题】大题：3，4",
+      "kind": "选做题",
+      "quantity": "2大题",
+      "remarks": "这两题风格与真题类似，若时间宽裕可以做一做",
+      "section_name": "7.5 散列表",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 252,
+      "title": "【习题】大题：2",
+      "kind": "选做题",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "7.5 散列表",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 33,
+        "large": 3
+      },
+      "section_estimated_minutes": 240.0
+    },
+    {
+      "source_row": 253,
+      "title": "【考点视频】8.1 排序的基本概念",
+      "kind": "必学",
+      "quantity": "11 min",
+      "remarks": "",
+      "section_name": "8.1 排序的基本概念",
+      "difficulty": "☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 30.0
+    },
+    {
+      "source_row": 255,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "3小题",
+      "remarks": "",
+      "section_name": "8.1 排序的基本概念",
+      "difficulty": "☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 30.0
+    },
+    {
+      "source_row": 256,
+      "title": "【考点视频】8.2.1+8.2.2 插入排序",
+      "kind": "必学",
+      "quantity": "21 min",
+      "remarks": "",
+      "section_name": "8.2 插入排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 258,
+      "title": "【习题】小题：1，3，5，13，17",
+      "kind": "必做题",
+      "quantity": "5小题",
+      "remarks": "",
+      "section_name": "8.2 插入排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 259,
+      "title": "【习题】大题：1",
+      "kind": "必做题",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "8.2 插入排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 260,
+      "title": "【考点视频】8.2.3 希尔排序",
+      "kind": "必学",
+      "quantity": "22 min",
+      "remarks": "",
+      "section_name": "8.2 插入排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 262,
+      "title": "【习题】小题：7，8，10，11，12，18，19，20",
+      "kind": "必做题",
+      "quantity": "8小题",
+      "remarks": "",
+      "section_name": "8.2 插入排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 263,
+      "title": "【习题】大题：2",
+      "kind": "必做题",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "8.2 插入排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 264,
+      "title": "【习题】小题：剩余小题",
+      "kind": "选做题（可学完第一轮再做）",
+      "quantity": "7小题",
+      "remarks": "",
+      "section_name": "8.2 插入排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 265,
+      "title": "【考点视频】8.3.1 冒泡排序",
+      "kind": "必学",
+      "quantity": "13 min",
+      "remarks": "",
+      "section_name": "8.3 交换排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 267,
+      "title": "【考点视频】8.3.2 快速排序",
+      "kind": "必学",
+      "quantity": "38 min",
+      "remarks": "",
+      "section_name": "8.3 交换排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 269,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "20小题",
+      "remarks": "",
+      "section_name": "8.3 交换排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 270,
+      "title": "【习题】大题：1",
+      "kind": "必做题",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "8.3 交换排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 271,
+      "title": "【习题】大题：2",
+      "kind": "选做题",
+      "quantity": "1大题",
+      "remarks": "本题有多种解法，参考答案中给出了基于快速排序“划分”思想的解法，比较巧妙",
+      "section_name": "8.3 交换排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 272,
+      "title": "【习题】大题：4",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "8.3 交换排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 273,
+      "title": "【习题】大题：3",
+      "kind": "选做题",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "8.3 交换排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 274,
+      "title": "【考点视频】8.4.1 简单选择排序",
+      "kind": "必学",
+      "quantity": "5min",
+      "remarks": "",
+      "section_name": "8.4 选择排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 276,
+      "title": "【考点视频】8.4.2_1 堆排序",
+      "kind": "必学",
+      "quantity": "33min",
+      "remarks": "",
+      "section_name": "8.4 选择排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 277,
+      "title": "【考点视频】8.4.2_2 堆的插入删除",
+      "kind": "必学",
+      "quantity": "7min",
+      "remarks": "",
+      "section_name": "8.4 选择排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 279,
+      "title": "【习题】小题：全部",
+      "kind": "必做题",
+      "quantity": "21小题",
+      "remarks": "",
+      "section_name": "8.4 选择排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 280,
+      "title": "【习题】大题：1、2、5",
+      "kind": "必做题",
+      "quantity": "3大题",
+      "remarks": "",
+      "section_name": "8.4 选择排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 281,
+      "title": "【习题】大题：6、7",
+      "kind": "选做题（可学完第一轮再做）",
+      "quantity": "2大题",
+      "remarks": "题目有一定难度，想考高分的同学可以挑战一下",
+      "section_name": "8.4 选择排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 282,
+      "title": "【习题】大题：8",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "8.4 选择排序",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 180.0
+    },
+    {
+      "source_row": 283,
+      "title": "【考点视频】8.5.1 归并排序",
+      "kind": "必学",
+      "quantity": "23min",
+      "remarks": "",
+      "section_name": "8.5 归并排序和基数排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 285,
+      "title": "【考点视频】8.5.2 基数排序",
+      "kind": "必学",
+      "quantity": "26min",
+      "remarks": "",
+      "section_name": "8.5 归并排序和基数排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 288,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "20小题",
+      "remarks": "",
+      "section_name": "8.5 归并排序和基数排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 289,
+      "title": "【习题】大题：3",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "8.5 归并排序和基数排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 290,
+      "title": "【习题】大题：1，2",
+      "kind": "选做题",
+      "quantity": "2大题",
+      "remarks": "",
+      "section_name": "8.5 归并排序和基数排序",
+      "difficulty": "☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 150.0
+    },
+    {
+      "source_row": 293,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "23小题",
+      "remarks": "",
+      "section_name": "8.6 各种内部排序算法的比较及应用",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 294,
+      "title": "【习题】小题：回去做 8.2 节剩余小题",
+      "kind": "必做题",
+      "quantity": "8小题",
+      "remarks": "",
+      "section_name": "8.6 各种内部排序算法的比较及应用",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 295,
+      "title": "【习题】大题：1, 2，3",
+      "kind": "选做题",
+      "quantity": "3大题",
+      "remarks": "",
+      "section_name": "8.6 各种内部排序算法的比较及应用",
+      "difficulty": "☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 120.0
+    },
+    {
+      "source_row": 296,
+      "title": "【考点视频】8.7.1+8.7.2 外部排序",
+      "kind": "必学",
+      "quantity": "31 min",
+      "remarks": "",
+      "section_name": "8.7 外部排序",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 298,
+      "title": "【考点视频】8.7.3 败者树",
+      "kind": "必学",
+      "quantity": "18 min",
+      "remarks": "",
+      "section_name": "8.7 外部排序",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 300,
+      "title": "【考点视频】8.7.4 置换_选择排序",
+      "kind": "必学",
+      "quantity": "11 min",
+      "remarks": "",
+      "section_name": "8.7 外部排序",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 302,
+      "title": "【考点视频】8.7.5 最佳归并树",
+      "kind": "必学",
+      "quantity": "20 min",
+      "remarks": "",
+      "section_name": "8.7 外部排序",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 304,
+      "title": "【习题】小题：全部小题",
+      "kind": "必做题",
+      "quantity": "16小题",
+      "remarks": "",
+      "section_name": "8.7 外部排序",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 305,
+      "title": "【习题】大题：5",
+      "kind": "真题（必看，了解真题风格）",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "8.7 外部排序",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    },
+    {
+      "source_row": 306,
+      "title": "【习题】大题：3,4",
+      "kind": "选做题",
+      "quantity": "1大题",
+      "remarks": "",
+      "section_name": "8.7 外部排序",
+      "difficulty": "☆☆☆☆",
+      "exam_frequency": {
+        "small": 29,
+        "large": 3
+      },
+      "section_estimated_minutes": 210.0
+    }
+  ],
+  "exams": [
+    {
+      "section": "期中考试",
+      "scope": "考试范围：前5章选择题",
+      "kind": "必学",
+      "title": "【腾讯文档】数据结构期中试卷及答案解析（学员版）"
+    },
+    {
+      "section": "期末考试",
+      "scope": "考试范围：数据结构所有选择题",
+      "kind": "必学",
+      "title": "【腾讯文档】数据结构期末试卷及答案解析（学员版）"
+    }
+  ]
+}

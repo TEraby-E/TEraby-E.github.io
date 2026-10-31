@@ -29,9 +29,9 @@
   let historyRequest = 0;
   let loadRequest = 0;
   let installPrompt = null;
-  let estimateDraft = null;
   let completionDraft = null;
   const dialogOpeners = new Map();
+  const expandedSubjects = new Set();
 
   class ApiError extends Error {
     constructor(message, status) {
@@ -113,6 +113,8 @@
       this.completed = new Set(source.completed_ids);
       this.marked = new Set(source.library_completed_ids);
       this.reopened = new Set(source.library_reopened_ids);
+      this.modeOf = taskMode;
+      this.subjectProgress = new Map();
     }
 
     matches(source) {
@@ -130,7 +132,7 @@
   }
 
   function chapterLine(assignment, className) {
-    const chapterTitle = String(assignment.chapter_title || catalogue().chapters.get(assignment.chapter_id)?.title || '').trim();
+    const chapterTitle = String(assignment.section_name || canonicalTask(assignment)?.section_name || assignment.chapter_title || catalogue().chapters.get(assignment.chapter_id)?.title || '').trim();
     if (!chapterTitle || String(assignment.title || '').includes(chapterTitle)) return '';
     return `<span class="${className}">${escape(chapterTitle)}</span>`;
   }
@@ -142,43 +144,22 @@
     return retiredTasks.get(id) || null;
   }
 
-  function taskEstimate(task) {
-    return window.StudyTime?.getEstimate(task, canonicalTask(task)) || { minutes: null, source: '', group: null };
-  }
-
-  function timeSummary(tasks) {
-    return window.StudyTime?.summarize(tasks, library) || { minutes: 0, unknown: tasks.length, known: 0 };
+  function actualSummary(tasks) {
+    return window.StudyTime.summarizeActual(tasks);
   }
 
   function formattedTime(minutes) {
     return window.StudyTime?.formatMinutes(minutes) || `${minutes}分钟`;
   }
 
-  function estimateText(task) {
-    const estimate = taskEstimate(task);
-    return estimate.label || (estimate.minutes === null ? '预计用时待补充' : `预计 ${formattedTime(estimate.minutes)}`);
-  }
-
-  function taskActual(task) {
-    if (window.StudyTime?.getActual) return window.StudyTime.getActual(task);
-    const recorded = task.done && typeof task.actual_minutes === 'number' && Number.isFinite(task.actual_minutes) && task.actual_minutes >= 0;
-    return { minutes: recorded ? task.actual_minutes : null, recorded, label: !task.done ? '实际待完成' : recorded ? `实际${formattedTime(task.actual_minutes)}` : '实际未记录' };
-  }
-
-  function summaryText(tasks) {
-    const summary = timeSummary(tasks);
-    if (!summary.known && summary.unknown) return `预计用时待补充 · ${summary.unknown}项未设置`;
-    return `预计 ${formattedTime(summary.minutes)}${summary.unknown ? ` · 另${summary.unknown}项待补充` : ''}`;
-  }
-
   function actualSummaryText(tasks) {
-    const summary = timeSummary(tasks);
+    const summary = actualSummary(tasks);
     if (!summary.actualKnown && summary.actualUnknown) return `实际用时待补记 · ${summary.actualUnknown}项未记录`;
     return `实际 ${formattedTime(summary.actualMinutes || 0)}${summary.actualUnknown ? ` · 另${summary.actualUnknown}项未记录` : ''}`;
   }
 
   function completionKey(task) {
-    return taskEstimate(task).group || task.task_id;
+    return task.estimate_group || canonicalTask(task)?.estimate_group || task.task_id;
   }
 
   function expandedCompletionTasks(tasks, mode = 'complete') {
@@ -186,9 +167,13 @@
     return state.assignments.filter((task) => keys.has(completionKey(task)) && (mode !== 'edit' || task.done));
   }
 
+  function completionInitial(rows, multi) {
+    return window.StudyModels.defaultActualInput(rows.map(task => ({ ...task, estimated_minutes: Object.hasOwn(task, 'estimated_minutes') ? task.estimated_minutes : canonicalTask(task)?.estimated_minutes })), { useRecorded: !multi });
+  }
+
   function openCompletion(taskIds, mode = 'complete') {
     if (!state || actionBusy) return;
-    const requested = state.assignments.filter((task) => taskIds.includes(task.task_id) && (mode === 'edit' ? task.done : !task.done));
+    const requested = state.assignments.filter(task => taskIds.includes(task.task_id) && (mode === 'status' || (taskMode(task) === 'multi-day' ? !new LearningTask(task).completed : mode === 'edit' ? task.done : !task.done)));
     if (!requested.length) return;
     const tasks = expandedCompletionTasks(requested, mode);
     const groups = new Map();
@@ -197,26 +182,27 @@
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(task);
     });
-    const entries = [...groups.values()].map((rows) => ({ taskIds: rows.map((task) => task.task_id), rows }));
+    const entries = [...groups.values()].map(rows => ({ taskIds: rows.map(task => task.task_id), rows, multi: taskMode(rows[0]) === 'multi-day', statusOnly: mode === 'status' }));
     completionDraft = { date: state.date, version: changeVersion, mode, entries };
-    $('completion-title').textContent = mode === 'edit' ? '记录实际用时' : '完成任务，记下实际用时';
-    $('completion-description').textContent = mode === 'edit' ? '可修改已记录的实际用时；尚未记录时默认填入预计时间。' : entries.length > 1 ? `这 ${entries.length} 项任务的实际用时默认按预计时间填写，可修改后保存打卡。` : '实际用时默认按预计时间填写，可修改后保存打卡。';
-    $('completion-fields').innerHTML = entries.map(({ rows }, index) => {
+    $('completion-title').textContent = mode === 'status' ? '多日任务打卡记录' : entries.some(entry => entry.multi) ? '记录本次学习片段' : mode === 'edit' ? '记录实际用时' : '完成任务，记下实际用时';
+    $('completion-description').textContent = entries.some(entry => entry.multi) ? '多日任务每次用时累加到当天；只有勾选“标记完成”才结束整项任务。' : mode === 'edit' ? '可修改已记录的实际用时。' : '填写本次实际用时后保存打卡。';
+    $('completion-fields').innerHTML = entries.map(({ rows, multi, statusOnly }, index) => {
       const task = rows[0];
-      const recorded = rows.map(taskActual).filter((actual) => actual.recorded).map((actual) => actual.minutes);
-      const estimates = rows.map(taskEstimate).filter((estimate) => estimate.minutes !== null).map((estimate) => estimate.minutes);
-      const initial = recorded.length ? String(Math.max(...recorded)) : estimates.length ? String(Math.max(...estimates)) : '';
+      const initial = completionInitial(rows, multi);
       const subjects = [...new Set(rows.map((item) => subjectName(item) || subjectName(library.find((subject) => subject.id === item.subject_id) || {})))].filter(Boolean);
-      return `<section class="completion-entry"><div class="completion-entry-copy"><h3>${escape(task.title)}</h3><p>${escape(subjects.join(' · '))}${rows.length > 1 ? ` · ${rows.length} 个共享条目，只计一次` : ''}</p><span class="completion-estimate">${escape(estimateText(task))}</span></div><label class="completion-input-label" for="actual-minutes-${index}">实际用时<span class="completion-input-row"><input id="actual-minutes-${index}" data-completion-index="${index}" type="number" min="0" max="525600" step="any" inputmode="decimal" required placeholder="填写实际分钟" value="${initial}" aria-describedby="completion-help completion-error"><span>分钟</span></span></label></section>`;
+      const segments = window.StudyModels.segmentsOf(task);
+      const history = multi && segments.length ? `<p class="segment-summary">今日已记录 ${segments.length} 段 · 累计 ${escape(formattedTime(task.actual_minutes))}</p><ol class="segment-list">${segments.map((minutes, i) => `<li>第${i + 1}段 · ${escape(formattedTime(minutes))}</li>`).join('')}</ol><button type="button" class="text-button undo-segment" data-undo-segment="${escape(task.task_id)}">撤销最后一段</button>` : '';
+      const finish = multi ? `<label class="finish-multiday"><input type="checkbox" data-completion-finish="${index}" ${new LearningTask(task).completed ? 'checked' : ''}><span><strong>标记完成</strong><small>勾选后结束整项多日任务；未勾选可继续分段打卡。</small></span></label>` : '';
+      const input = statusOnly ? '' : `<label class="completion-input-label" for="actual-minutes-${index}">${multi ? '本次实际用时' : '实际用时'}<span class="completion-input-row"><input id="actual-minutes-${index}" data-completion-index="${index}" type="number" min="0" max="525600" step="any" inputmode="decimal" required placeholder="填写实际分钟" value="${initial}" aria-describedby="completion-help completion-error"><span>分钟</span></span></label>`;
+      return `<section class="completion-entry ${multi ? 'is-multiday' : ''}"><div class="completion-entry-copy"><h3>${escape(task.title)}</h3><p>${escape(subjects.join(' · '))}${rows.length > 1 ? ` · ${rows.length} 个共享条目，只计一次` : ''}</p>${history}</div>${input}${finish}</section>`;
     }).join('');
     $('completion-error').hidden = true;
-    $('save-completion').textContent = mode === 'edit' ? '保存实际用时' : '保存并打卡';
+    $('save-completion').textContent = mode === 'status' ? '保存完成状态' : mode === 'edit' ? '保存实际用时' : '保存本次打卡';
     openDialog('completion-dialog');
     [...$('completion-fields').querySelectorAll('input[data-completion-index]')].forEach((input, index) => {
-      const rows = entries[index].rows;
-      const recorded = rows.map(taskActual).filter((actual) => actual.recorded).map((actual) => actual.minutes);
-      const estimates = rows.map(taskEstimate).filter((estimate) => typeof estimate.minutes === 'number' && Number.isFinite(estimate.minutes)).map((estimate) => estimate.minutes);
-      const initial = recorded.length ? String(Math.max(...recorded)) : estimates.length ? String(Math.max(...estimates)) : '';
+      const entry = entries[Number(input.dataset.completionIndex)];
+      const rows = entry.rows;
+      const initial = completionInitial(rows, entry.multi);
       input.defaultValue = initial;
       input.value = initial;
     });
@@ -234,19 +220,28 @@
       return;
     }
     const inputs = [...$('completion-fields').querySelectorAll('input[data-completion-index]')];
-    const values = inputs.map((input) => ({ input, raw: input.value.trim(), minutes: Number(input.value) }));
+    const values = inputs.map(input => ({ input, index: Number(input.dataset.completionIndex), raw: input.value.trim(), minutes: Number(input.value) }));
     const invalid = values.find(({ input, raw, minutes }) => raw === '' || input.validity?.badInput || !Number.isFinite(minutes) || minutes < 0 || minutes > 525600);
-    if (invalid || values.length !== draft.entries.length) {
+    if (invalid || values.length !== draft.entries.filter(entry => !entry.statusOnly).length) {
       $('completion-error').textContent = '请为每项任务填写 0 至 525600 的实际分钟数，支持小数；没有耗时可填 0。';
       $('completion-error').hidden = false;
       invalid?.input.focus();
       return;
     }
-    draft.entries.forEach((entry, index) => entry.taskIds.forEach((id) => {
-      const task = state.assignments.find((item) => item.task_id === id);
-      if (draft.mode === 'complete') new LearningTask(task).recordCheckin(values[index].minutes);
-      else task.actual_minutes = values[index].minutes;
-    }));
+    try {
+      draft.entries.forEach((entry, index) => {
+        if (entry.multi && !entry.statusOnly) window.StudyModels.appendSegment(entry.rows[0], values.find(value => value.index === index).minutes);
+      });
+    } catch (error) { $('completion-error').textContent = error.message; $('completion-error').hidden = false; return; }
+    draft.entries.forEach((entry, index) => {
+      const task = state.assignments.find(item => item.task_id === entry.taskIds[0]);
+      const model = new LearningTask(task);
+      if (!entry.statusOnly) model.recordCheckin(values.find(value => value.index === index).minutes);
+      if (entry.multi) {
+        const finish = $('completion-fields').querySelector(`[data-completion-finish="${index}"]`).checked;
+        if (finish !== model.completed) model.setCompleted(finish);
+      }
+    });
     const count = draft.entries.reduce((sum, entry) => sum + entry.taskIds.length, 0);
     const focusId = draft.entries[0].taskIds[0];
     closeDialog('completion-dialog');
@@ -255,7 +250,7 @@
     try {
       await flushAutosave();
       renderDay();
-      showToast(draft.mode === 'edit' ? '实际用时已保存。' : `${count} 项任务已打卡，实际用时已保存。`, null, 4500);
+      showToast(draft.mode === 'status' ? '多日任务完成状态已保存，已记录用时保留。' : draft.mode === 'edit' ? '实际用时已保存。' : `${count} 项任务已打卡，实际用时已保存。`, null, 4500);
     } catch {
       showToast('本次打卡尚未保存，请查看页面提示后重试。', null, 6500);
     }
@@ -264,68 +259,6 @@
   function undoCompletion(tasks) {
     tasks.forEach((task) => new LearningTask(task).undoCheckin());
     changed();
-  }
-
-  function openEstimate(taskId) {
-    if (!state || actionBusy) return;
-    const task = state.assignments.find((item) => item.task_id === taskId);
-    if (!task) return;
-    const estimate = taskEstimate(task);
-    const originalTask = canonicalTask(task);
-    const original = originalTask ? taskEstimate(originalTask) : { minutes: null, source: '', label: '原资料未提供用时' };
-    const related = estimate.group ? state.assignments.filter((item) => taskEstimate(item).group === estimate.group) : [task];
-    estimateDraft = { date: state.date, taskId };
-    $('estimate-task-title').textContent = task.title;
-    $('estimate-original').textContent = `${originalTask ? '原任务：' : ''}${original.label || '原资料未提供用时'}${original.source ? ` · ${original.source}` : ''}`;
-    $('estimate-minutes').value = estimate.minutes === null ? '' : String(estimate.minutes);
-    $('estimate-error').hidden = true;
-    $('estimate-group-note').hidden = related.length < 2;
-    $('estimate-group-note').textContent = related.length > 1 ? `这 ${related.length} 个条目属于同一原任务，会一并调整，今日总时长只计一次。` : '';
-    openDialog('estimate-dialog');
-    $('estimate-minutes').focus({ preventScroll: true });
-    $('estimate-minutes').select();
-  }
-
-  function editEstimate(restore = false) {
-    if (!estimateDraft || !state || actionBusy) return;
-    const task = state.assignments.find((item) => item.task_id === estimateDraft.taskId);
-    if (!task || state.date !== estimateDraft.date) {
-      closeDialog('estimate-dialog');
-      showToast('今日清单已更新，请重新选择任务安排用时。');
-      return;
-    }
-    const raw = $('estimate-minutes').value.trim();
-    const minutes = raw === '' ? null : Number(raw);
-    if (!restore && ($('estimate-minutes').validity?.badInput || (minutes !== null && (!Number.isFinite(minutes) || minutes < 0 || minutes > 525600 || Math.abs(minutes * 2 - Math.round(minutes * 2)) > 1e-8)))) {
-      $('estimate-error').textContent = '请填写 0 至 525600 分钟，可按 0.5 分钟递增；留空表示待补充。';
-      $('estimate-error').hidden = false;
-      $('estimate-minutes').focus();
-      return;
-    }
-    const group = taskEstimate(task).group;
-    const related = group ? state.assignments.filter((item) => taskEstimate(item).group === group) : [task];
-    related.forEach((item) => {
-      if (restore) {
-        delete item.estimated_minutes;
-        delete item.estimated_source;
-        delete item.estimate_group;
-        const original = canonicalTask(item);
-        if (original) {
-          item.estimated_minutes = original.estimated_minutes ?? null;
-          item.estimated_source = original.estimated_source || '';
-          item.estimate_group = original.estimate_group || null;
-        }
-      } else {
-        item.estimated_minutes = minutes;
-        item.estimated_source = '今日手动安排';
-        item.estimate_group = group || null;
-      }
-    });
-    const taskId = task.task_id;
-    closeDialog('estimate-dialog');
-    changed();
-    [...document.querySelectorAll('[data-action="edit-time"]')].find((button) => button.dataset.task === taskId)?.focus({ preventScroll: true });
-    showToast(restore ? '已恢复原任务的预计用时。' : related.length > 1 ? `已更新 ${related.length} 个共享条目，今日总时长只计一次。` : minutes === null ? '今日用时已标为待补充。' : '今天计划投入的用时已更新。', null, 4500);
   }
 
   function setStatus(status, message) {
@@ -365,9 +298,6 @@
     $('archive-button').disabled = unavailable;
     $('confirm-archive').disabled = unavailable;
     $('export-history-button').disabled = actionBusy || !historyRecord;
-    $('save-estimate').disabled = unavailable;
-    $('reset-estimate').disabled = unavailable;
-    $('estimate-minutes').disabled = unavailable;
     $('save-completion').disabled = unavailable;
     document.querySelectorAll('#completion-fields input').forEach((input) => { input.disabled = unavailable; });
     document.querySelectorAll('#daily-tbody button, #daily-tbody input').forEach((element) => { element.disabled = unavailable; });
@@ -398,15 +328,12 @@
 
     get completed() {
       if (this.children.length) return this.children.every((child) => child.completed);
-      const ids = this.taskIds;
-      const index = currentIndex();
-      if (ids.some((id) => index.reopened.has(id))) return false;
-      if (ids.some((id) => index.marked.has(id))) return true;
-      if (this.mode === 'multi-day') return false;
-      return ids.some((id) => { const task = index.byId.get(id); return index.completed.has(id) || Boolean(task?.done && taskMode(task) !== 'multi-day'); });
+      return window.StudyModels.taskCompleted(this.taskIds, this.mode, currentIndex());
     }
 
     setCompleted(completed) {
+      if (this.children.length) { this.children.forEach(child => child.setCompleted(completed)); return completed; }
+      if (this.mode !== 'multi-day') return false;
       const marked = new Set(state.library_completed_ids);
       const reopened = new Set(state.library_reopened_ids);
       this.taskIds.forEach((id) => {
@@ -431,12 +358,28 @@
 
     recordCheckin(minutes) {
       const index = currentIndex();
-      this.taskIds.forEach((id) => { const task = index.byId.get(id); if (task) { task.done = true; task.actual_minutes = minutes; } });
+      const rows = this.taskIds.map(id => index.byId.get(id)).filter(Boolean);
+      const updates = rows.map(task => this.mode === 'multi-day' ? window.StudyModels.appendSegment(task, minutes) : { done: true, actual_minutes: minutes, ...(task.checkin_segments ? { checkin_segments: [minutes] } : {}) });
+      rows.forEach((task, index) => Object.assign(task, updates[index]));
+      if (this.mode !== 'multi-day') state.library_reopened_ids = state.library_reopened_ids.filter(id => !this.taskIds.includes(id));
     }
 
     undoCheckin() {
       const index = currentIndex();
-      this.taskIds.forEach((id) => { const task = index.byId.get(id); if (task) { task.done = false; task.actual_minutes = null; } });
+      this.taskIds.forEach((id) => { const task = index.byId.get(id); if (task) { task.done = false; task.actual_minutes = null; if (task.checkin_segments) task.checkin_segments = []; } });
+    }
+
+    undoLastCheckin() {
+      if (this.mode !== 'multi-day') return;
+      const wasCompleted = this.completed;
+      this.taskIds.forEach(id => {
+        const task = currentIndex().byId.get(id);
+        if (!task) return;
+        const segments = window.StudyModels.segmentsOf(task);
+        segments.pop();
+        Object.assign(task, { checkin_segments: segments, done: segments.length > 0, actual_minutes: segments.length ? window.StudyModels.sumSegments(segments) : null });
+      });
+      if (wasCompleted) this.setCompleted(false);
     }
 
     partition(children = this.children) {
@@ -465,18 +408,6 @@
     }
   }
 
-  class LearningStage extends LearningNode {
-    constructor(subject, phase) {
-      super({ id: `${subject.id}:${phase}` }, subject.chapters.filter(chapter => !phase || chapter.phase === phase).map(chapter => new LearningChapter(chapter)));
-    }
-
-    get progress() {
-      const tasks = this.children.flatMap(chapter => chapter.children.map(node => ({ ...node.data, done: node.completed })));
-      const summary = timeSummary(tasks);
-      return { ...summary, percent: summary.minutes > 0 ? Math.round(summary.completedMinutes / summary.minutes * 1000) / 10 : null };
-    }
-  }
-
   function taskMode(task) {
     return new LearningTask(task).mode;
   }
@@ -499,6 +430,17 @@
     get completed() { return this.model.completed; }
     get variant() { return 'task'; }
     get timeTask() { return this.options.assignment || this.task; }
+    get learningInfo() {
+      if (this.cachedLearningInfo) return this.cachedLearningInfo;
+      const subject = library.find(item => item.id === (this.task.subject_id || catalogue().tasks.get(this.id)?.subject.id));
+      return this.cachedLearningInfo = window.StudyModels.learningInfo(this.task, subject?.sectionFor?.(this.task));
+    }
+    get presentation() {
+      if (this.cachedPresentation) return this.cachedPresentation;
+      const subjectId = this.task.subject_id || catalogue().tasks.get(this.id)?.subject.id;
+      const remarks = /〔原图/.test(this.task.remarks || '') ? canonicalTask(this.task)?.remarks || this.task.remarks : this.task.remarks;
+      return this.cachedPresentation = new window.StudyModels.TaskPresentation({ ...this.task, ...this.learningInfo, remarks }, null, { showLearningInfo: ['ds', 'co', 'os', 'cn'].includes(subjectId) });
+    }
 
     status() {
       const tags = [this.mode === 'multi-day' ? '<span class="card-status is-multi">持续学习</span>' : '<span class="card-status">待学习</span>'];
@@ -511,44 +453,32 @@
 
     title() {
       const chapter = this.options.chapter ? chapterLine(this.task, 'card-eyebrow') : '';
-      return `<span class="card-titleblock">${chapter}<span class="card-title">${escape(this.task.title)}</span></span>`;
+      return `<span class="card-titleblock">${chapter}<span class="card-title">${escape(this.presentation.title)}</span></span>`;
     }
 
     heading() { return `<div class="card-heading">${this.title()}</div>`; }
 
     content() {
       const task = this.task;
-      const cleanText = (value) => String(value || '').trim().replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]*\n+/g, '\n');
-      const detail = task.detail && cleanText(task.detail).replace(/\s/g, '') !== cleanText(task.title).replace(/\s/g, '') ? `<p class="card-detail">${escape(cleanText(task.detail))}</p>` : '';
-      const metadata = [...new Set([task.kind, task.quantity, task.reference].map((value) => String(value || '').trim()).filter(Boolean))];
+      const presentation = this.presentation;
+      const detailText = presentation.detail;
+      const detail = detailText ? `<p class="card-detail">${escape(detailText)}</p>` : '';
+      const metadata = presentation.metadata.map(([label, value]) => `${label}：${value}`);
       const tags = metadata.length ? `<div class="card-metadata">${metadata.map((text) => `<span>${escape(text)}</span>`).join('')}</div>` : '';
-      const notes = task.remarks && task.remarks !== task.detail ? `<details class="card-notes"><summary>学习备注${icon('chevron')}</summary><p>${escape(cleanText(task.remarks))}</p></details>` : '';
+      const remarks = presentation.remarks;
+      const notes = remarks ? `<details class="card-notes" open><summary>学习备注${icon('chevron')}</summary><p>${escape(remarks)}</p></details>` : '';
       return detail || tags || notes ? `<div class="card-content">${detail}${tags}${notes}</div>` : '';
     }
 
-    timeCell(label, value, attributes = '', hint = '') {
-      const tag = attributes ? 'button' : 'div';
-      const classes = ['card-time-cell', label === '实际用时' ? 'is-actual' : '', /待|未/.test(value) ? 'is-unknown' : ''].filter(Boolean).join(' ');
-      return `<${tag} class="${classes}" ${attributes ? `type="button" ${attributes}` : ''}><span>${escape(label)}</span><strong>${escape(value)}</strong>${hint ? `<small>${escape(hint)}</small>` : ''}</${tag}>`;
-    }
-
-    timing() {
-      const estimate = taskEstimate(this.timeTask);
-      const count = state.task_progress[this.id]?.checkins || 0;
-      return `<div class="card-timing">${this.timeCell('预计用时', estimate.minutes === null ? '待补充' : formattedTime(estimate.minutes))}${this.timeCell('累计打卡', `${count} 天`)}</div>`;
-    }
-
-    completionButton(attributes) {
-      return `<button type="button" class="card-complete-button" ${attributes} aria-pressed="${this.completed}" aria-label="${this.completed ? '取消完成' : '标记完成'}：${escape(this.task.title)}" title="只更新任务库进度，不改动当天用时或历史记录">${icon('check')}<span>${this.completed ? '取消完成' : '标记完成'}</span></button>`;
-    }
-
     controls() { return ''; }
-    footer() { return `<div class="card-footer">${this.timing()}${this.controls()}</div>`; }
+    footer() { const controls = this.controls(); return controls ? `<div class="card-footer">${controls}</div>` : ''; }
 
     exportSnapshot() {
       const progress = state.task_progress[this.id];
       return {
         ...this.task,
+        ...this.learningInfo,
+        remarks: /〔原图/.test(this.task.remarks || '') ? canonicalTask(this.task)?.remarks || this.task.remarks : this.task.remarks,
         task_mode: this.mode,
         overall_completed: this.completed,
         checkin_days: progress?.checkins || 0,
@@ -572,14 +502,9 @@
       return `<div class="card-heading"><label class="card-selection"><input id="daily-task-${escape(this.id)}" type="checkbox" data-task="${escape(this.id)}" ${task.done ? 'checked' : ''} aria-label="${escape(task.title)}，${task.done ? '今日已打卡' : '今日未打卡'}">${this.title()}</label><button type="button" class="card-remove" data-action="remove" data-task="${escape(this.id)}" aria-label="从今日清单移除：${escape(task.title)}" title="移除今日任务">${icon('close')}</button></div>`;
     }
 
-    timing() {
-      const estimate = taskEstimate(this.task);
-      const actual = taskActual(this.task);
-      return `<div class="card-timing">${this.timeCell('预计用时', estimate.minutes === null ? '待补充' : formattedTime(estimate.minutes), `data-action="edit-time" data-task="${escape(this.id)}" aria-label="安排今日用时：${escape(this.task.title)}"`, '调整')}${this.timeCell('实际用时', actual.recorded ? formattedTime(actual.minutes) : this.task.done ? '待补记' : '待打卡', `data-action="record-actual" data-task="${escape(this.id)}" aria-label="${this.task.done ? '修改' : '记录'}实际用时：${escape(this.task.title)}"`, this.task.done ? '修改' : '打卡')}</div>`;
-    }
-
     controls() {
-      return `<div class="card-controls">${taskModeControl(this.task)}${this.completionButton(`data-action="mark-complete" data-task="${escape(this.id)}"`)}</div>`;
+      const label = this.mode === 'multi-day' ? this.completed ? '查看打卡' : this.task.done ? '继续打卡' : '打卡' : this.task.done ? '已打卡' : '打卡';
+      return `<div class="card-controls"><button type="button" class="card-checkin-button" data-action="record-actual" data-task="${escape(this.id)}" aria-label="${escape(label)}：${escape(this.task.title)}">${icon('check')}<span class="card-checkin-label">${label}</span></button>${taskModeControl(this.task)}</div>`;
     }
   }
 
@@ -591,7 +516,7 @@
     }
 
     controls() {
-      return `<div class="card-controls">${taskModeControl(this.task)}${this.completionButton(`data-library-complete="${escape(this.id)}"`)}</div>`;
+      return `<div class="card-controls">${taskModeControl(this.task)}</div>`;
     }
   }
 
@@ -614,18 +539,13 @@
       return `<div class="card-status-row"><span class="card-status ${this.task.done ? 'is-done' : ''}">${this.task.done ? '当日已打卡' : '当日未打卡'}</span><span class="card-status">${this.mode === 'multi-day' ? '多日任务' : '单日任务'}</span></div>`;
     }
 
-    timing() {
-      const estimate = taskEstimate(this.task);
-      const actual = taskActual(this.task);
-      return `<div class="card-timing">${this.timeCell('预计用时', estimate.minutes === null ? '待补充' : formattedTime(estimate.minutes))}${this.timeCell('实际用时', actual.recorded ? formattedTime(actual.minutes) : this.task.done ? '未记录' : '未打卡')}</div>`;
-    }
   }
 
   class CardMotion {
     static patch(container, html) {
-      if (container.tagName !== 'TBODY' || !document.createElement) { container.innerHTML = html; return; }
+      if ((container.tagName !== 'TBODY' && container.id !== 'daily-tbody') || !document.createElement) { container.innerHTML = html; return; }
       CardMotion.rowMarkup ||= new WeakMap();
-      const incoming = document.createElement('tbody');
+      const incoming = document.createElement(container.tagName === 'TBODY' ? 'tbody' : 'div');
       incoming.innerHTML = html;
       const existing = new Map([...container.children].map((row) => [row.dataset.subjectRow, row]));
       const retained = new Set();
@@ -654,11 +574,11 @@
       const active = document.activeElement;
       const activeCard = container.contains?.(active) ? active?.closest?.('[data-card-key]') : null;
       const focusIndex = activeCard ? [...activeCard.querySelectorAll('button,input,select,summary')].indexOf(active) : -1;
-      const openNotes = new Set([...(container.querySelectorAll?.('.card-notes[open]') || [])].map((notes) => notes.closest('[data-card-key]').dataset.cardKey));
-      const previous = new Map((reduced ? [] : [...(container.querySelectorAll?.('[data-card-key]') || [])]).map((card) => [card.dataset.cardKey, { rect: card.getBoundingClientRect(), finished: card.dataset.finished }]));
+      const noteStates = new Map([...(container.querySelectorAll?.('.card-notes') || [])].map((notes) => [notes.closest('[data-card-key]').dataset.cardKey, CardMotion.folds?.get(notes)?.opening ?? notes.open]));
+      const previous = new Map((reduced ? [] : [...(container.querySelectorAll?.('[data-card-key]') || [])].filter(card => !card.closest('[hidden]'))).map((card) => [card.dataset.cardKey, { rect: card.getBoundingClientRect(), finished: card.dataset.finished }]));
       CardMotion.patch(container, html);
       (container.querySelectorAll?.('[data-card-key]') || []).forEach((card) => {
-        if (openNotes.has(card.dataset.cardKey)) { const notes = card.querySelector('.card-notes'); if (notes) notes.open = true; }
+        if (noteStates.has(card.dataset.cardKey)) { const notes = card.querySelector('.card-notes'); if (notes) notes.open = noteStates.get(card.dataset.cardKey); }
         if (activeCard && card.dataset.cardKey === activeCard.dataset.cardKey && focusIndex >= 0) {
           const target = card.querySelectorAll('button,input,select,summary')[focusIndex];
           const fold = card.closest('details');
@@ -668,7 +588,7 @@
       if (reduced || !previous.size) return;
       let entered = 0;
       const viewportHeight = window.innerHeight || Infinity;
-      const measured = [...(container.querySelectorAll?.('[data-card-key]') || [])].map((card) => ({ card, rect: card.getBoundingClientRect() }));
+      const measured = [...(container.querySelectorAll?.('[data-card-key]') || [])].filter(card => !card.closest('[hidden]')).map((card) => ({ card, rect: card.getBoundingClientRect() }));
       measured.forEach(({ card, rect }) => {
         if (!card.animate || !rect.height || !rect.width || rect.bottom < -80 || rect.top > viewportHeight + 80 || entered >= 12) return;
         const before = previous.get(card.dataset.cardKey);
@@ -697,45 +617,169 @@
       animation.onfinish = () => { details.open = opening; details.style.overflow = ''; CardMotion.folds.delete(details); };
       return true;
     }
+
+    static finishSubject(group) {
+      const motion = CardMotion.subjectMotions?.get(group);
+      if (!motion) return;
+      motion.height.onfinish = null;
+      motion.height.cancel();
+      motion.fade.cancel();
+      motion.wrapper.style.overflow = '';
+      motion.wrapper.style.overflowAnchor = '';
+      motion.wrapper.removeAttribute('data-animating');
+      CardMotion.subjectMotions.delete(group);
+      CardMotion.activeSubjects.delete(group);
+    }
+
+    static finishSubjects() {
+      for (const group of CardMotion.activeSubjects || []) CardMotion.finishSubject(group);
+    }
+
+    static switchSubject(group, open, materialize) {
+      const wrapper = group.querySelector('.subject-transition');
+      const body = group.querySelector('.subject-body');
+      const summary = group.querySelector('.subject-stage-summary');
+      const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      // Read the current animated height before canceling, so rapid reversal is continuous.
+      const start = !reduced && wrapper.animate ? wrapper.getBoundingClientRect().height : 0;
+      CardMotion.finishSubject(group);
+      if (open && body.dataset.loaded !== 'true') {
+        materialize(body);
+        body.dataset.loaded = 'true';
+      }
+      body.hidden = !open;
+      if (summary) summary.hidden = open;
+      const incoming = open ? body : summary;
+      if (reduced || !wrapper.animate || !incoming?.animate || !group.isConnected) return;
+      const end = wrapper.getBoundingClientRect().height;
+      if (!start && !end) return;
+      wrapper.style.overflow = 'hidden';
+      wrapper.style.overflowAnchor = 'none';
+      wrapper.setAttribute('data-animating', '');
+      const options = { duration: 300, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'both' };
+      const height = wrapper.animate([{ height: `${start}px` }, { height: `${end}px` }], options);
+      const fade = incoming.animate([{ opacity: 0, transform: 'translateY(5px)' }, { opacity: 1, transform: 'translateY(0)' }], { ...options, duration: 230 });
+      CardMotion.subjectMotions ||= new WeakMap();
+      CardMotion.activeSubjects ||= new Set();
+      CardMotion.subjectMotions.set(group, { wrapper, height, fade });
+      CardMotion.activeSubjects.add(group);
+      height.onfinish = () => { if (CardMotion.subjectMotions.get(group)?.height === height) CardMotion.finishSubject(group); };
+    }
   }
 
   function libraryTaskCompleted(taskId) {
     return new LearningTask({ task_id: taskId }).completed;
   }
 
+  function subjectProgress(subject, historyProgress) {
+    if (historyProgress) return historyProgress;
+    const cache = currentIndex().subjectProgress;
+    if (cache.has(subject.id)) return cache.get(subject.id);
+    const model = subject instanceof window.StudyModels.StudySubject ? subject : window.StudyModels.createSubject(subject);
+    const progress = model.stageProgress({ phase: state.subject_phases[subject.id], selectedIds: subjectAssignments(subject.id).map(task => task.task_id), isCompleted: task => new LearningTask(task).completed });
+    cache.set(subject.id, progress);
+    return progress;
+  }
+
+  function taskCardsMarkup(tasks, CardView = DailyTaskCardView) {
+    return tasks.length ? `<ul class="task-list">${tasks.map(task => new CardView(task, { chapter: true }).render()).join('')}</ul>` : '';
+  }
+
+  function progressSummary(subject, tasks, progress, open) {
+    if (!tasks.length) return '';
+    const percent = progress.percent;
+    const label = percent === null ? '暂无用时数据' : percent > 0 && percent < 0.1 ? '<0.1%' : `${Math.min(percent < 100 ? 99.9 : 100, Math.round(percent * 10) / 10)}%`;
+    const explanation = progress.unknown ? '部分任务未提供用时，仅统计已有用时的任务。' : '按已完成任务的原计划用时占当前阶段原计划总用时统计。';
+    const bar = percent === null ? '' : `<div class="subject-stage-track" role="progressbar" aria-label="${escape(subjectName(subject))}阶段进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-valuetext="${escape(label)}"><span style="width:${percent}%"></span></div>`;
+    return `<div class="subject-stage-summary" ${open ? 'hidden' : ''}><div class="subject-stage-line"><span class="subject-phase">${escape(progress.phase || '全部阶段')}</span><span class="subject-stage-label" title="${escape(explanation)}">${progress.unknown ? '阶段进度 · 已知用时' : '阶段进度'}</span><strong class="subject-stage-value">${escape(label)}</strong></div>${bar}<span class="subject-daily-time">今日${escape(actualSummaryText(tasks))}</span></div>`;
+  }
+
+  function subjectGroupsMarkup(assignments, { history = false, stageProgress = null } = {}) {
+    const CardView = history ? HistoryTaskCardView : DailyTaskCardView;
+    return library.map((subject) => {
+      const tasks = subjectAssignments(subject.id, assignments);
+      const allDone = tasks.length && tasks.every(task => task.done);
+      const open = !history && expandedSubjects.has(subject.id);
+      // One subject fold contains all cards, without another completed-card frame.
+      const taskContent = open ? taskCardsMarkup(tasks, CardView) : '';
+      const summary = tasks.length ? progressSummary(subject, tasks, subjectProgress(subject, stageProgress?.[subject.id]), open) : '';
+      return `<section role="listitem" aria-labelledby="subject-name-${escape(subject.id)}" data-subject-row="${escape(subject.id)}" data-record-version="${state.revision}:${changeVersion}" class="subject-group ${tasks.length ? 'has-tasks' : 'is-empty'} ${allDone ? 'is-complete' : ''}">
+        <div class="subject-heading"><h3><button type="button" class="subject-button" data-action="choose" aria-haspopup="dialog" aria-controls="library-dialog" data-subject="${escape(subject.id)}" aria-label="选择${escape(subjectName(subject))}的章节任务"><strong class="subject-name" id="subject-name-${escape(subject.id)}">${escape(subjectName(subject))}</strong></button></h3><button type="button" class="subject-toggle" data-action="toggle-subject" data-subject="${escape(subject.id)}" aria-controls="subject-body-${escape(subject.id)}" aria-expanded="${open}" aria-label="${open ? '收起' : '展开'}${escape(subjectName(subject))}任务">${icon('chevron', 'subject-chevron')}</button></div>
+        <div class="subject-transition">${summary}<div class="subject-body" id="subject-body-${escape(subject.id)}" data-loaded="${open}" ${open ? '' : 'hidden'}>${taskContent}</div></div>
+      </section>`;
+    }).join('');
+  }
+
+  function toggleSubject(subjectId) {
+    if (expandedSubjects.has(subjectId)) expandedSubjects.delete(subjectId);
+    else expandedSubjects.add(subjectId);
+    const group = [...document.querySelectorAll('[data-subject-row]')].find(row => row.dataset.subjectRow === subjectId);
+    if (!group) return;
+    const open = expandedSubjects.has(subjectId);
+    const button = group.querySelector('.subject-toggle');
+    CardMotion.switchSubject(group, open, body => { body.innerHTML = taskCardsMarkup(subjectAssignments(subjectId)); });
+    button.setAttribute('aria-expanded', String(open));
+    button.setAttribute('aria-label', `${open ? '收起' : '展开'}${subjectName(library.find(subject => subject.id === subjectId))}任务`);
+  }
+
   function renderDay() {
     if (!state) return;
+    CardMotion.finishSubjects();
     const { value } = dateParts(state.date);
     $('study-date').textContent = readableDate(state.date);
     $('study-date').dateTime = state.date;
     $('study-weekday').textContent = value.toLocaleDateString('zh-CN', { weekday: 'long' });
     const total = state.assignments.length;
-    const completed = state.assignments.filter((assignment) => assignment.done).length;
     $('task-total').textContent = `${total} 项`;
-    const duration = timeSummary(state.assignments);
-    const allUnknown = !duration.known && duration.unknown;
-    $('estimated-time').textContent = allUnknown ? '待补充' : formattedTime(duration.minutes);
+    const duration = actualSummary(state.assignments);
     $('actual-time').textContent = !duration.actualKnown && duration.actualUnknown ? '待补记' : formattedTime(duration.actualMinutes || 0);
-    const expanded = new Set([...document.querySelectorAll('#daily-tbody details[data-completed-group][open]')].map((group) => group.dataset.completedGroup));
-    CardMotion.update($('daily-tbody'), library.map((subject) => {
-      const tasks = subjectAssignments(subject.id);
-      const done = tasks.filter((task) => task.done).length;
-      const allDone = tasks.length && done === tasks.length;
-      const subjectLabel = tasks.length ? `${subjectName(subject)}，${allDone ? '取消该科全部完成' : '完成该科全部任务'}` : `${subjectName(subject)}，选择章节任务`;
-      const group = new LearningNode({ id: `daily:${state.date}:${subject.id}` }, tasks.map((task) => new LearningTask(task)));
-      const taskRows = (entries) => `<ul class="task-list">${entries.map((task) => new DailyTaskCardView(task, { chapter: true }).render()).join('')}</ul>`;
-      const groupKey = `daily:${state.date}:${subject.id}`;
-      const taskContent = group.renderGroups((nodes) => taskRows(nodes.map((node) => node.data)), { key: groupKey, open: expanded.has(groupKey) });
-      return `<tr data-subject-row="${escape(subject.id)}" class="${tasks.length ? 'has-tasks' : ''} ${allDone ? 'is-complete' : ''}">
-        <td class="subject-cell"><div class="subject-control"><button type="button" class="subject-button" data-action="subject" data-subject="${escape(subject.id)}" aria-label="${escape(subjectLabel)}"><strong class="subject-name">${escape(subjectName(subject))}</strong></button><button type="button" class="add-task-button" data-action="choose" data-subject="${escape(subject.id)}" aria-label="选择${escape(subjectName(subject))}的章节任务" title="选择章节任务">${icon('plus')}</button></div></td>
-        <td>${tasks.length ? taskContent : `<div class="empty-row"><span>还没有安排任务</span><button type="button" class="empty-choose" data-action="choose" data-subject="${escape(subject.id)}">选择章节任务${icon('chevron')}</button></div>`}</td>
-        <td class="row-progress">${allDone ? `<span class="all-done-icon" aria-label="${done} 项全部完成">${icon('check')}</span>` : tasks.length ? `<span class="done-count">${done}</span><span class="total-count"> / ${tasks.length}</span>` : '<span class="zero-count">—</span>'}</td>
-      </tr>`;
-    }).join(''));
-    $('completion-text').innerHTML = total ? (completed === total ? `今日 <strong>${total}</strong> 项任务已全部完成` : `已完成 <strong>${completed}</strong> / ${total} 项任务`) : '今天，从一项任务开始';
-    $('summary-progress-fill').style.width = total ? `${completed / total * 100}%` : '0%';
-    $('action-note').textContent = completed && completed === total ? '今天的任务都完成了，给这份坚持留个记录。' : '任务会自动保存，可以随时回来继续。';
+    CardMotion.update($('daily-tbody'), subjectGroupsMarkup(state.assignments));
+    renderDayProgress($, state.assignments);
     updateControls();
+  }
+
+  function renderDayProgress(find, assignments) {
+    const total = assignments.length;
+    const completed = assignments.filter(task => task.done).length;
+    find('completion-text').innerHTML = total ? (completed === total ? `今日 <strong>${total}</strong> 项任务已全部完成` : `已完成 <strong>${completed}</strong> / ${total} 项任务`) : '今天，从一项任务开始';
+    find('summary-progress-fill').style.width = total ? `${completed / total * 100}%` : '0%';
+    const progress = total ? completed / total * 100 : 0;
+    find('completion-summary').style.setProperty?.('--progress', `${progress}%`);
+    find('completion-summary').style.setProperty?.('--progress-step', `${100 / Math.max(total, 1)}%`);
+    find('completion-rate').textContent = `${Math.round(progress)}%`;
+    find('summary-progress').setAttribute('aria-valuemax', String(total || 1));
+    find('summary-progress').setAttribute('aria-valuenow', String(completed));
+    find('summary-progress').setAttribute('aria-valuetext', total ? `已完成 ${completed} / ${total} 项任务` : '今天还未安排任务');
+  }
+
+  function imageSurface(record, isCurrent) {
+    CardMotion.finishSubjects();
+    const surface = document.createElement('div');
+    surface.className = 'page-shell export-surface';
+    surface.style.width = `${Math.ceil($('task-sheet').getBoundingClientRect().width) + 32}px`;
+    surface.append(document.querySelector('.page-heading').cloneNode(true), $('task-sheet').cloneNode(true));
+    const emblem = document.createElement('img');
+    emblem.className = 'export-emblem';
+    emblem.src = new URL('./assets/sjtu-emblem-round.svg', document.baseURI).href;
+    emblem.alt = '上海交通大学校徽';
+    emblem.width = emblem.height = 76;
+    surface.querySelector('.page-heading').append(emblem);
+    const find = id => surface.querySelector(`[id="${id}"]`);
+    find('task-sheet').setAttribute('aria-busy', 'false');
+    find('save-status-text').textContent = '已保存';
+    if (!isCurrent) {
+      const { value } = dateParts(record.date);
+      find('study-date').textContent = readableDate(record.date);
+      find('study-date').dateTime = record.date;
+      find('study-weekday').textContent = value.toLocaleDateString('zh-CN', { weekday: 'long' });
+      const duration = actualSummary(record.assignments);
+      find('actual-time').textContent = !duration.actualKnown && duration.actualUnknown ? '待补记' : formattedTime(duration.actualMinutes || 0);
+      find('sheet-title').textContent = '当天的任务';
+      find('task-total').textContent = `${record.assignments.length} 项`;
+      find('daily-tbody').innerHTML = subjectGroupsMarkup(record.assignments, { history: true, stageProgress: record.subject_stage_progress });
+      renderDayProgress(find, record.assignments);
+    }
+    return surface;
   }
 
   function changed() {
@@ -755,9 +799,7 @@
     changeVersion += 1;
     closeDialog('library-dialog');
     closeDialog('archive-dialog');
-    closeDialog('estimate-dialog');
     closeDialog('completion-dialog');
-    estimateDraft = null;
     completionDraft = null;
     renderDay();
     setStatus('saved', '已同步最新记录');
@@ -824,8 +866,7 @@
     const selected = new Set(subjectAssignments(id).filter((assignment) => available.has(assignment.task_id)).map((assignment) => assignment.task_id));
     const firstSelected = subject.chapters.find((chapter) => !new LearningChapter(chapter).completed && chapter.tasks.some((task) => selected.has(task.id)));
     const nextChapter = subject.chapters.find((chapter) => chapter.tasks.some((task) => !libraryTaskCompleted(task.id)));
-    const phases = [...new Set(subject.chapters.map(chapter => chapter.phase).filter(Boolean))];
-    const phase = state.subject_phases[id] ?? (nextChapter?.phase || phases[0] || '');
+    const phase = subject.resolvePhase(state.subject_phases[id], task => libraryTaskCompleted(task.id), [...selected]);
     subjectDraft = { subject, selected, chapterId: firstSelected?.id || nextChapter?.id || subject.chapters[0]?.id, query: '', phase };
     $('library-title').textContent = `${subjectName(subject)} · 选择学习任务`;
     $('library-search').value = '';
@@ -854,8 +895,7 @@
 
   function updateSelectionSummary() {
     const size = subjectDraft.selected.size;
-    const selected = [...subjectDraft.selected].map((id) => catalogue().tasks.get(id)?.task).filter(Boolean);
-    $('selection-summary').innerHTML = `已选 <strong>${size}</strong> 项任务<span class="selection-time">${escape(summaryText(selected))}</span>`;
+    $('selection-summary').innerHTML = `已选 <strong>${size}</strong> 项任务`;
     $('apply-library').innerHTML = `${subjectAssignments(subjectDraft.subject.id).length ? '更新今日清单' : '加入今日清单'}${icon('arrow')}`;
   }
 
@@ -913,40 +953,7 @@
     renderLibraryNavigation();
     renderLibraryContent();
     updateSelectionSummary();
-    const progress = new LearningStage(subjectDraft.subject, subjectDraft.phase).progress;
-    const percent = progress.percent === null ? '—' : `${progress.percent}%`;
-    $('stage-progress').innerHTML = `<div class="stage-progress-heading"><strong>${escape(subjectDraft.phase || '全部阶段')} · 预计用时完成度</strong><strong>${percent}</strong></div><progress max="100" value="${progress.percent ?? 0}" aria-label="当前阶段按预计用时计算的完成百分比">${percent}</progress><p>已完成 ${escape(formattedTime(progress.completedMinutes))} / 共 ${escape(formattedTime(progress.minutes))}${progress.unknown ? ` · ${progress.unknown}项未设置预计用时，暂未计入` : ''}${progress.percent === null ? ' · 暂无可计算的预计用时' : ''}</p>`;
-  }
 
-  function refreshLibraryCompletion(taskId) {
-    const scrollTop = $('chapter-content').scrollTop;
-    const restoreFocus = document.activeElement?.dataset.libraryComplete === taskId;
-    renderLibrary();
-    $('chapter-content').scrollTop = scrollTop;
-    if (restoreFocus) {
-      const button = [...$('chapter-content').querySelectorAll('[data-library-complete]')].find((item) => item.dataset.libraryComplete === taskId);
-      const group = button?.closest('details');
-      (group && !group.open ? group.querySelector('summary') : button)?.focus({ preventScroll: true });
-    }
-  }
-
-  async function toggleLibraryCompletion(taskId) {
-    if (!state || actionBusy || !canonicalTask({ task_id: taskId })) return;
-    const draft = subjectDraft;
-    const fromLibrary = Boolean(draft && $('library-dialog').open);
-    const complete = new LearningTask({ task_id: taskId }).toggleCompleted();
-    changed();
-    const version = changeVersion;
-    if (fromLibrary) refreshLibraryCompletion(taskId);
-    try {
-      await flushAutosave();
-      if (version !== changeVersion) return;
-      if (fromLibrary && subjectDraft === draft && $('library-dialog').open) refreshLibraryCompletion(taskId);
-      renderDay();
-      showToast(complete ? '已保存任务库完成标记，不计入今日清单。' : '已取消任务库完成标记。', null, 3500);
-    } catch (error) {
-      if (error.status !== 409) showToast('本次修改尚未保存，请查看页面提示后重试。', null, 6500);
-    }
   }
 
   function applyLibrary() {
@@ -958,14 +965,13 @@
     const replacement = [];
     subjectDraft.subject.chapters.forEach((chapter) => chapter.tasks.forEach((task) => {
       if (subjectDraft.selected.has(task.id)) {
-        const estimate = taskEstimate(existing.get(task.id) || task);
-        replacement.push({ ...(existing.get(task.id) || { task_id: task.id, subject_id: id, chapter_id: chapter.id, title: task.title, detail: task.detail || '', done: false }), subject_name: subjectDraft.subject.name, chapter_title: chapter.title, task_mode: taskMode(task), estimated_minutes: estimate.minutes, estimated_source: estimate.source || '', estimate_group: estimate.group || null });
+        replacement.push({ ...(existing.get(task.id) || { task_id: task.id, subject_id: id, chapter_id: chapter.id, title: task.title, detail: task.detail || '', done: false }), subject_name: subjectDraft.subject.name, chapter_title: chapter.title, task_mode: taskMode(task), estimate_group: task.estimate_group || null });
       }
     }));
     state.assignments = state.assignments.filter((assignment) => assignment.subject_id !== id).concat(replacement, preserved);
     closeDialog('library-dialog');
     changed();
-    [...document.querySelectorAll('.add-task-button')].find((element) => element.dataset.subject === id)?.focus({ preventScroll: true });
+    [...document.querySelectorAll('.subject-button')].find((element) => element.dataset.subject === id)?.focus({ preventScroll: true });
     showToast(replacement.length ? `${subjectName(subjectDraft.subject)}已安排 ${replacement.length} 项任务。${preserved.length ? '既有记录已保留。' : ''}` : preserved.length ? '可选任务已清空，既有记录已保留。' : `已清空${subjectName(subjectDraft.subject)}今天的任务。`, null, 3000);
   }
 
@@ -994,7 +1000,7 @@
       historyRecord = record;
       const assignments = Array.isArray(record.assignments) ? record.assignments : [];
       const completed = assignments.filter((assignment) => assignment.done).length;
-      $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(date))}</h3><span>完成 ${completed} / ${assignments.length} 项任务<small class="history-time-line">${escape(summaryText(assignments))} / ${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? library.map((subject) => {
+      $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(date))}</h3><span>完成 ${completed} / ${assignments.length} 项任务<small class="history-time-line">${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? library.map((subject) => {
         const tasks = subjectAssignments(subject.id, assignments);
         if (!tasks.length) return '';
         return `<section class="history-subject"><h4 class="subject-name">${escape(subjectName(subject))}</h4>${tasks.map((task) => new HistoryTaskCardView(task, { chapter: true }).render()).join('')}</section>`;
@@ -1075,7 +1081,7 @@
       await flushAutosave();
       const record = isCurrent ? { date: state.date, assignments: cloneAssignments() } : await api(`/api/history/${encodeURIComponent(date)}`);
       record.assignments = record.assignments.map((task) => new (isCurrent ? DailyTaskCardView : HistoryTaskCardView)(task).exportSnapshot());
-      record.compact408 = $('compact-export').checked;
+      record.surface = imageSurface(record, isCurrent);
       const result = await window.StudyImage.exportDaily(record);
       if (!result.files?.length) throw new Error('没有收到图片保存结果，请重试。');
       clearError();
@@ -1148,7 +1154,7 @@
       const [libraryResult, stateResult] = await Promise.all([api('/api/library'), api('/api/state')]);
       if (!canApply()) return;
       if (!Array.isArray(libraryResult.subjects)) throw new Error('章节任务库的格式不正确。');
-      if (!preparedCatalogues.has(libraryResult)) preparedCatalogues.set(libraryResult, { subjects: SUBJECT_NAMES.map((name) => libraryResult.subjects.find((subject) => subject.name === name)).filter(Boolean).map((subject) => ({ ...subject, chapters: Array.isArray(subject.chapters) ? subject.chapters.map((chapter) => ({ ...chapter, tasks: Array.isArray(chapter.tasks) ? chapter.tasks : [] })) : [] })), retired: new Map((libraryResult.metadata?.retired_tasks || []).map((task) => [task.id, task])) });
+      if (!preparedCatalogues.has(libraryResult)) preparedCatalogues.set(libraryResult, { subjects: SUBJECT_NAMES.map((name) => libraryResult.subjects.find((subject) => subject.name === name)).filter(Boolean).map((subject) => window.StudyModels.createSubject(subject)), retired: new Map((libraryResult.metadata?.retired_tasks || []).map((task) => [task.id, task])) });
       const prepared = preparedCatalogues.get(libraryResult);
       const freshLibrary = prepared.subjects;
       const freshRetired = prepared.retired;
@@ -1158,17 +1164,13 @@
       const externalUpdate = state && fresh.revision !== state.revision;
       if (externalUpdate) {
         const choosing = $('library-dialog').open;
-        const editingEstimate = $('estimate-dialog').open;
         const recordingCompletion = $('completion-dialog').open;
         closeDialog('library-dialog');
         closeDialog('archive-dialog');
-        closeDialog('estimate-dialog');
         closeDialog('completion-dialog');
         subjectDraft = null;
-        estimateDraft = null;
         completionDraft = null;
         if (choosing) showToast('另一页面更新了学习记录，请按最新进度重新选择任务。', null, 6500);
-        else if (editingEstimate) showToast('另一页面更新了学习记录，请按最新清单重新安排用时。', null, 6500);
         else if (recordingCompletion) showToast('另一页面更新了学习记录，请按最新清单重新打卡。', null, 6500);
       }
       library = freshLibrary;
@@ -1180,7 +1182,7 @@
     } catch (error) {
       if (!canApply()) return;
       setStatus('error', '载入未完成');
-      $('daily-tbody').innerHTML = `<tr><td colspan="3"><div class="empty-state">${icon('book')}<strong>学习清单暂时没有载入</strong><p>请检查网络及浏览器存储权限，再点上方“重试”。</p></div></td></tr>`;
+      $('daily-tbody').innerHTML = `<div class="empty-state">${icon('book')}<strong>学习清单暂时没有载入</strong><p>请检查网络及浏览器存储权限，再点上方“重试”。</p></div>`;
       showError(error.message, load);
       $('task-sheet').setAttribute('aria-busy', 'false');
     } finally {
@@ -1209,27 +1211,16 @@
     if (!button || actionBusy || !state) return;
     const { action, subject: subjectId, task: taskId } = button.dataset;
     if (action === 'choose') chooseSubject(subjectId);
-    else if (action === 'subject') {
-      const assignments = subjectAssignments(subjectId);
-      if (!assignments.length) chooseSubject(subjectId);
-      else {
-        const allDone = assignments.every((assignment) => assignment.done);
-        if (allDone) undoCompletion(assignments);
-        else openCompletion(assignments.filter((task) => !task.done).map((task) => task.task_id));
-        const replacement = [...document.querySelectorAll('.subject-button')].find((element) => element.dataset.subject === subjectId);
-        replacement?.focus({ preventScroll: true });
-      }
-    } else if (action === 'mark-complete') toggleLibraryCompletion(taskId);
-    else if (action === 'edit-time') openEstimate(taskId);
+    else if (action === 'toggle-subject') toggleSubject(subjectId);
     else if (action === 'record-actual') {
       const task = state.assignments.find((item) => item.task_id === taskId);
-      if (task) openCompletion([taskId], task.done ? 'edit' : 'complete');
+      if (task) openCompletion([taskId], taskMode(task) === 'multi-day' ? new LearningTask(task).completed ? 'status' : 'segment' : task.done ? 'edit' : 'complete');
     }
     else if (action === 'remove') {
       const removedSubject = state.assignments.find((assignment) => assignment.task_id === taskId)?.subject_id;
       state.assignments = state.assignments.filter((assignment) => assignment.task_id !== taskId);
       changed();
-      [...document.querySelectorAll('.add-task-button')].find((element) => element.dataset.subject === removedSubject)?.focus({ preventScroll: true });
+      [...document.querySelectorAll('.subject-button')].find((element) => element.dataset.subject === removedSubject)?.focus({ preventScroll: true });
     }
   });
 
@@ -1293,8 +1284,6 @@
     if ($('toggle-chapter')) $('toggle-chapter').textContent = tasks.every((task) => subjectDraft.selected.has(task.id)) ? '取消未完成全选' : '全选未完成';
   });
   $('chapter-content').addEventListener('click', (event) => {
-    const completion = event.target.closest('[data-library-complete]');
-    if (completion) { toggleLibraryCompletion(completion.dataset.libraryComplete); return; }
     if (!event.target.closest('#toggle-chapter') || !subjectDraft) return;
     const chapter = subjectDraft.subject.chapters.find((item) => item.id === subjectDraft.chapterId);
     const tasks = visibleTasks(chapter).filter((task) => !libraryTaskCompleted(task.id));
@@ -1305,9 +1294,19 @@
   });
 
   $('apply-library').addEventListener('click', applyLibrary);
-  $('estimate-form').addEventListener('submit', (event) => { event.preventDefault(); editEstimate(false); });
+  $('completion-fields').addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-undo-segment]');
+    if (!button || !completionDraft || actionBusy || completionDraft.version !== changeVersion) return;
+    const id = button.dataset.undoSegment;
+    const task = state.assignments.find(item => item.task_id === id);
+    if (!task || taskMode(task) !== 'multi-day') return;
+    new LearningTask(task).undoLastCheckin();
+    closeDialog('completion-dialog');
+    changed();
+    try { await flushAutosave(); openCompletion([id], 'segment'); showToast('已撤销最后一段，其余学习记录保留。'); }
+    catch { showToast('撤销尚未保存，请查看页面提示后重试。'); }
+  });
   $('completion-form').addEventListener('submit', (event) => { event.preventDefault(); saveCompletion(); });
-  $('reset-estimate').addEventListener('click', () => editEstimate(true));
   $('data-button').addEventListener('click', () => {
     openDialog('data-dialog');
     updateDirectoryInfo();
@@ -1388,7 +1387,6 @@
     });
     dialog.addEventListener('close', () => {
       if (dialog.id === 'history-dialog') historyRequest += 1;
-      if (dialog.id === 'estimate-dialog') estimateDraft = null;
       if (dialog.id === 'completion-dialog') completionDraft = null;
       if (dialog.contains($('toast'))) {
         $('toast').hidden = true;
