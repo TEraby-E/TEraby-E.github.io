@@ -954,6 +954,9 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 .subject-stage-track{height:5px;border-radius:3px;background:#e1d7ca;overflow:hidden;min-width:0}
 .subject-stage-track>span{display:block;height:100%;background:linear-gradient(90deg,#742a3e,#a44b5d);border-radius:inherit}
 .subject-daily-time{font-size:12px;line-height:1.6;color:#647260;white-space:nowrap}
+.library-stage-summary{flex:0 0 auto;display:grid;gap:8px;margin:0;padding:12px 28px 15px;border-bottom:1px solid #e3d6c7;background:linear-gradient(110deg,#eee4d54d,transparent)}
+.library-stage-summary .subject-stage-track{width:100%;height:6px}
+.library-stage-summary .subject-stage-value{font-size:17px}
 .subject-transition{display:flow-root;min-width:0}
 .subject-transition[data-animating]{contain:paint}
 .subject-body{padding-top:12px;min-width:0}
@@ -968,6 +971,7 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
  .subject-group{padding:10px 0 16px}.subject-group.is-empty{padding:3px 0}
  .subject-heading{gap:11px;min-height:44px}.subject-heading .subject-button{min-height:44px}.subject-toggle{width:44px;height:44px}
  .subject-stage-summary{gap:7px 12px;margin-top:3px}.subject-stage-line{flex-wrap:wrap;gap:4px 9px}.subject-stage-label{font-size:11px}.subject-daily-time{font-size:11px}.subject-stage-value{font-size:17px}
+ .library-stage-summary{padding:10px 19px 12px;gap:7px}
  .subject-body{padding-top:7px}.subject-body .study-card{padding:16px}.subject-body .card-controls{justify-content:space-between;gap:10px}
  .task-sheet .sheet-bottom{padding:15px 16px;gap:10px}
  .save-status{font-size:11px;white-space:nowrap}

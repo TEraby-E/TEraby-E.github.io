@@ -671,13 +671,14 @@
     return new LearningTask({ task_id: taskId }).completed;
   }
 
-  function subjectProgress(subject, historyProgress) {
+  function subjectProgress(subject, historyProgress, phase = state.subject_phases[subject.id]) {
     if (historyProgress) return historyProgress;
     const cache = currentIndex().subjectProgress;
-    if (cache.has(subject.id)) return cache.get(subject.id);
+    const key = `${subject.id}:${phase ?? '<auto>'}`;
+    if (cache.has(key)) return cache.get(key);
     const model = subject instanceof window.StudyModels.StudySubject ? subject : window.StudyModels.createSubject(subject);
-    const progress = model.stageProgress({ phase: state.subject_phases[subject.id], selectedIds: subjectAssignments(subject.id).map(task => task.task_id), isCompleted: task => new LearningTask(task).completed });
-    cache.set(subject.id, progress);
+    const progress = model.stageProgress({ phase, selectedIds: subjectAssignments(subject.id).map(task => task.task_id), isCompleted: task => new LearningTask(task).completed });
+    cache.set(key, progress);
     return progress;
   }
 
@@ -685,13 +686,17 @@
     return tasks.length ? `<ul class="task-list">${tasks.map(task => new CardView(task, { chapter: true }).render()).join('')}</ul>` : '';
   }
 
-  function progressSummary(subject, tasks, progress, open) {
-    if (!tasks.length) return '';
+  function stageProgressMarkup(subject, progress) {
     const percent = progress.percent;
     const label = percent === null ? '暂无用时数据' : percent > 0 && percent < 0.1 ? '<0.1%' : `${Math.min(percent < 100 ? 99.9 : 100, Math.round(percent * 10) / 10)}%`;
     const explanation = progress.unknown ? '部分任务未提供用时，仅统计已有用时的任务。' : '按已完成任务的原计划用时占当前阶段原计划总用时统计。';
     const bar = percent === null ? '' : `<div class="subject-stage-track" role="progressbar" aria-label="${escape(subjectName(subject))}阶段进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-valuetext="${escape(label)}"><span style="width:${percent}%"></span></div>`;
-    return `<div class="subject-stage-summary" ${open ? 'hidden' : ''}><div class="subject-stage-line"><span class="subject-phase">${escape(progress.phase || '全部阶段')}</span><span class="subject-stage-label" title="${escape(explanation)}">${progress.unknown ? '阶段进度 · 已知用时' : '阶段进度'}</span><strong class="subject-stage-value">${escape(label)}</strong></div>${bar}<span class="subject-daily-time">今日${escape(actualSummaryText(tasks))}</span></div>`;
+    return `<div class="subject-stage-line"><span class="subject-phase">${escape(progress.phase || '全部阶段')}</span><span class="subject-stage-label" title="${escape(explanation)}">${progress.unknown ? '阶段进度 · 已知用时' : '阶段进度'}</span><strong class="subject-stage-value">${escape(label)}</strong></div>${bar}`;
+  }
+
+  function progressSummary(subject, tasks, progress, open) {
+    if (!tasks.length) return '';
+    return `<div class="subject-stage-summary" ${open ? 'hidden' : ''}>${stageProgressMarkup(subject, progress)}<span class="subject-daily-time">今日${escape(actualSummaryText(tasks))}</span></div>`;
   }
 
   function subjectGroupsMarkup(assignments, { history = false, stageProgress = null } = {}) {
@@ -953,7 +958,14 @@
     renderLibraryNavigation();
     renderLibraryContent();
     updateSelectionSummary();
+    renderLibraryProgress();
+  }
 
+  function renderLibraryProgress() {
+    const subject = subjectDraft.subject;
+    const markup = stageProgressMarkup(subject, subjectProgress(subject, null, subjectDraft.phase));
+    const target = $('library-stage-summary');
+    if (target.innerHTML !== markup) target.innerHTML = markup;
   }
 
   function applyLibrary() {

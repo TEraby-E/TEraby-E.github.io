@@ -1,8 +1,8 @@
 'use strict';
 
 const PREFIX = `sjtu-checkin-${new URL(self.registration.scope).pathname}-`;
-const CACHE = `${PREFIX}v37`;
-const RELEASE = '20261101-smooth-performance';
+const CACHE = `${PREFIX}v38`;
+const RELEASE = '20261103-library-progress';
 const FILES = [
   './', './index.html', './styles.css', './cards.css', './app.js', './study-time.js', './learning-model.js', './storage.js', './export-image.js',
   './vendor/html-to-image.js', './manifest.webmanifest', './data/library.json', './assets/sjtu-emblem-round.svg', './assets/app-icon-192.png', './assets/app-icon-512.png',

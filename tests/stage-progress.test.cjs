@@ -102,3 +102,38 @@ test('daily and exported subject layouts omit the completed frame and hide summa
   assert(context.image.includes('subject-stage-value">25%</strong>'));
   assert(!context.image.includes('completed-group'));
 });
+
+test('task picker shows shared stage progress without daily tasks and keeps phase caches separate from search and selection', () => {
+  const source = fs.readFileSync(path.join(__dirname,'../study/app.js'),'utf8');
+  const prefix = source.slice(0,source.indexOf("\n  $('daily-tbody').addEventListener"));
+  const nodes = new Map();
+  const element = id => {
+    if (!nodes.has(id)) nodes.set(id,{id,innerHTML:'',querySelector:()=>null,querySelectorAll:()=>[],contains:()=>false});
+    return nodes.get(id);
+  };
+  const context = vm.createContext({raw,document:{getElementById:element,activeElement:null},window:{StudyModels:models,StudyTime:time,clearTimeout(){}}});
+  vm.runInContext(prefix+`
+    library = raw.subjects.map(window.StudyModels.createSubject);
+    state = normaliseState({date:'2026-11-03',assignments:[],completed_ids:['short'],subject_phases:{ds:'一轮'}});
+    subjectDraft = {subject:library.find(s=>s.id==='ds'),selected:new Set(),phase:'一轮',chapterId:'ds-a',query:''};
+    renderLibrary();
+    globalThis.initial = $('library-stage-summary').innerHTML;
+    subjectDraft.query='没有匹配结果';
+    subjectDraft.selected.add('long');
+    renderLibrary();
+    globalThis.filtered = $('library-stage-summary').innerHTML;
+    subjectDraft.phase='二轮';
+    renderLibrary();
+    globalThis.next = $('library-stage-summary').innerHTML;
+    subjectDraft.phase='';
+    renderLibrary();
+    globalThis.all = $('library-stage-summary').innerHTML;
+    globalThis.main = stageProgressMarkup(subjectDraft.subject,subjectProgress(subjectDraft.subject));
+  })();`,context);
+  assert(context.initial.includes('role="progressbar"'));
+  assert(context.initial.includes('subject-stage-value">5%</strong>'));
+  assert.equal(context.initial,context.filtered);
+  assert(context.next.includes('subject-stage-value">0%</strong>'));
+  assert(context.all.includes('subject-stage-value">2%</strong>'));
+  assert.equal(context.main,context.initial);
+});
