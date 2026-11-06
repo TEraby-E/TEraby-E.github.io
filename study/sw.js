@@ -1,11 +1,11 @@
 'use strict';
 
 const PREFIX = `sjtu-checkin-${new URL(self.registration.scope).pathname}-`;
-const CACHE = `${PREFIX}v38`;
-const RELEASE = '20261103-library-progress';
+const CACHE = `${PREFIX}v39`;
+const RELEASE = '20261106-cloud-sync';
 const FILES = [
   './', './index.html', './styles.css', './cards.css', './app.js', './study-time.js', './learning-model.js', './storage.js', './export-image.js',
-  './vendor/html-to-image.js', './manifest.webmanifest', './data/library.json', './assets/sjtu-emblem-round.svg', './assets/app-icon-192.png', './assets/app-icon-512.png',
+  './cloud-config.js', './cloud.js', './vendor/supabase.js', './vendor/html-to-image.js', './manifest.webmanifest', './data/library.json', './assets/sjtu-emblem-round.svg', './assets/app-icon-192.png', './assets/app-icon-512.png',
   './assets/journal-circuit.svg', './assets/study-backdrop.svg', './assets/paper-texture.svg'
 ];
 const allowed = new Set(FILES.map((path) => new URL(path, self.registration.scope).href));
@@ -36,11 +36,12 @@ self.addEventListener('fetch', (event) => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(url.href);
     const isDocument = request.mode === 'navigate' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/');
+    const isCloudConfig = url.pathname.endsWith('/cloud-config.js');
     // This cache is replaced as a unit when the service worker release changes.
     // Static versioned assets need no network round trip on repeat visits.
-    if (cached && !isDocument && (!requestedRelease || requestedRelease === RELEASE)) return cached;
+    if (cached && !isDocument && !isCloudConfig && (!requestedRelease || requestedRelease === RELEASE)) return cached;
     try {
-      const response = await fetch(request);
+      const response = isCloudConfig ? await fetch(request, { cache: 'no-cache' }) : await fetch(request);
       if (response.ok) await cache.put(url.href, response.clone());
       return response.ok || !cached ? response : cached;
     } catch (error) {

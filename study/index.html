@@ -6,16 +6,18 @@
   <meta name="theme-color" content="#9e1b32">
   <meta name="description" content="安排章节任务，记录每天的学习进展。">
   <title>交大学习手账 · 每日任务</title>
-  <link rel="stylesheet" href="./styles.css?v=20261103-library-progress">
-  <link rel="stylesheet" href="./cards.css?v=20261103-library-progress">
-  <link rel="icon" type="image/svg+xml" href="./assets/sjtu-emblem-round.svg?v=20261103-library-progress">
+  <link rel="stylesheet" href="./styles.css?v=20261106-cloud-sync">
+  <link rel="stylesheet" href="./cards.css?v=20261106-cloud-sync">
+  <link rel="icon" type="image/svg+xml" href="./assets/sjtu-emblem-round.svg?v=20261106-cloud-sync">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/app-icon-192.png">
-  <script src="./learning-model.js?v=20261103-library-progress" defer></script>
-  <script src="./study-time.js?v=20261103-library-progress" defer></script>
-  <script src="./storage.js?v=20261103-library-progress" defer></script>
-  <script src="./export-image.js?v=20261103-library-progress" defer></script>
-  <script src="./app.js?v=20261103-library-progress" defer></script>
+  <script src="./learning-model.js?v=20261106-cloud-sync" defer></script>
+  <script src="./study-time.js?v=20261106-cloud-sync" defer></script>
+  <script src="./storage.js?v=20261106-cloud-sync" defer></script>
+  <script src="./export-image.js?v=20261106-cloud-sync" defer></script>
+  <script src="./cloud-config.js?v=20261106-cloud-sync" defer></script>
+  <script src="./cloud.js?v=20261106-cloud-sync" defer></script>
+  <script src="./app.js?v=20261106-cloud-sync" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -29,6 +31,7 @@
     <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1m0-15c3-2 6-2 9-1v15c-3-1-6-1-9 1V5Z"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a5 5 0 1 1 .6-10 6 6 0 0 1 11.6 2 4 4 0 0 1-.2 8Z"/></symbol>
   </svg>
 
   <header class="site-header">
@@ -45,6 +48,9 @@
       </button>
       <button class="button button-quiet history-trigger" id="history-button" type="button" aria-label="历史记录" disabled>
         <svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><span>历史记录</span>
+      </button>
+      <button class="button button-quiet history-trigger" id="cloud-button" type="button" aria-label="云端同步账号" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#i-cloud"/></svg><span id="cloud-button-text">登录同步</span>
       </button>
       </div>
     </div>
@@ -79,6 +85,7 @@
     <div class="day-actions">
       <img class="journal-circuit action-circuit" src="./assets/journal-circuit.svg" width="600" height="120" alt="" aria-hidden="true" loading="lazy" decoding="async">
       <div class="action-buttons">
+        <button class="button button-secondary" id="custom-button" type="button" aria-haspopup="dialog" aria-controls="custom-dialog" disabled><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>自定义打卡</span></button>
         <button class="button button-secondary" id="export-button" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg><span>导出今日图片</span></button>
         <button class="button button-primary" id="archive-button" type="button" disabled><span>保存并进入下一天</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
       </div>
@@ -93,6 +100,22 @@
     <section class="library-stage-summary" id="library-stage-summary" aria-label="当前学科阶段进度" aria-live="polite"></section>
     <div class="library-layout"><nav class="chapter-list" id="chapter-list" aria-label="选择章节"></nav><section class="chapter-content" id="chapter-content" aria-live="polite"></section></div>
     <div class="modal-footer"><span class="selection-summary" id="selection-summary">已选 0 项任务</span><div class="modal-footer-buttons"><button type="button" class="button button-secondary" data-close="library-dialog">取消</button><button type="button" class="button button-primary" id="apply-library">加入今日清单<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div></div>
+  </dialog>
+
+  <dialog class="modal data-modal" id="custom-dialog" aria-labelledby="custom-title">
+    <div class="modal-heading"><div><h2 id="custom-title">自定义打卡</h2><p class="modal-description" id="custom-description"></p></div><button type="button" class="icon-button close-button" data-close="custom-dialog" aria-label="关闭自定义打卡"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="data-sections">
+      <section class="data-section">
+        <form class="journal-form" id="custom-form">
+          <label>学习内容<input id="custom-title-input" type="text" maxlength="400" required autofocus></label>
+          <label>所属学科<select id="custom-subject" required></select></label>
+          <label>备注（选填）<textarea id="custom-detail" rows="3" maxlength="10000"></textarea></label>
+          <label>实际用时（分钟）<input id="custom-minutes" type="number" min="0" max="525600" step="any" inputmode="decimal" required></label>
+          <p id="custom-error" class="journal-form-message" role="alert"></p>
+          <div class="data-section-actions"><button type="submit" class="button button-primary" id="save-custom">保存并打卡</button></div>
+        </form>
+      </section>
+    </div>
   </dialog>
 
   <dialog class="modal history-modal" id="history-dialog" aria-labelledby="history-title">
@@ -116,13 +139,33 @@
   </dialog>
 
   <dialog class="modal data-modal" id="data-dialog" aria-labelledby="data-title">
-    <div class="modal-heading"><div><p class="eyebrow">YOUR STUDY, KEPT SAFE</p><h2 id="data-title">记录管理</h2><p class="modal-description">换设备前，先把学习记录带上。</p></div><button type="button" class="icon-button close-button" data-close="data-dialog" aria-label="关闭记录管理"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="modal-heading"><div><p class="eyebrow">YOUR STUDY, KEPT SAFE</p><h2 id="data-title">记录管理</h2><p class="modal-description">导出备份或调整图片保存位置。</p></div><button type="button" class="icon-button close-button" data-close="data-dialog" aria-label="关闭记录管理"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="data-sections">
-      <section class="data-section"><h3>学习记录备份</h3><p>清单和历史保存在当前浏览器。导出备份后，可以在其他设备或新网址中导入，继续学习。</p><div class="data-section-actions"><button class="button button-secondary" id="backup-button" type="button">导出全部记录</button><button class="button button-secondary" id="import-button" type="button">导入记录备份</button></div><p class="data-hint">导入会合并记录，保留已有的任务和打卡进度。</p><input id="backup-file" type="file" accept=".json,application/json" hidden></section>
+      <section class="data-section"><h3>学习记录备份</h3><p>导出当前使用的学习记录。登录后，可导入此前保存的本机备份。</p><div class="data-section-actions"><button class="button button-secondary" id="backup-button" type="button">导出全部记录</button><button class="button button-secondary" id="import-button" type="button">导入记录备份</button></div><p class="data-hint">导入会合并记录，保留已有的任务和打卡进度。</p><input id="backup-file" type="file" accept=".json,application/json" hidden></section>
       <section class="data-section"><h3>打卡图片保存位置</h3><p id="directory-status">图片将按浏览器的下载设置保存。</p><div class="data-section-actions"><button class="button button-secondary" id="directory-button" type="button">选择桌面或其他文件夹</button><button class="text-button" id="clear-directory-button" type="button" hidden>恢复普通下载</button></div><p class="data-hint" id="directory-hint">选择一次文件夹，之后导出图片会优先保存到这里。</p></section>
       <section class="data-section"><h3>随时打开</h3><p id="offline-status">把这个网址收藏起来，之后直接打开就能继续打卡。</p><button class="button button-primary" id="install-button" type="button" hidden>安装到桌面</button></section>
     </div>
     <div class="modal-footer"><span class="muted">备份包含当前清单与全部历史</span><button class="button button-secondary" type="button" data-close="data-dialog">完成</button></div>
+  </dialog>
+
+  <dialog class="modal data-modal" id="cloud-dialog" aria-labelledby="cloud-title">
+    <div class="modal-heading"><div><h2 id="cloud-title">云端同步</h2><p class="modal-description" id="cloud-status" role="status"></p></div><button type="button" class="icon-button close-button" data-close="cloud-dialog" aria-label="关闭云端同步"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="data-sections">
+      <section class="data-section">
+        <form class="journal-form" id="cloud-form">
+          <p>用管理员创建的账号登录。同一账号在不同设备上共用一份手账。</p>
+          <label>用户名或邮箱<input id="cloud-identifier" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+          <label>密码<input id="cloud-password" type="password" autocomplete="current-password" required></label>
+          <div class="data-section-actions"><button type="submit" class="button button-primary">登录</button></div>
+        </form>
+        <div id="cloud-signed-in" hidden>
+          <p id="cloud-account-name"></p>
+          <p>此浏览器会保留登录状态。云端记录需要联网读写。</p>
+          <div class="data-section-actions"><button type="button" class="button button-secondary" id="cloud-sign-out">退出登录</button></div>
+        </div>
+        <p id="cloud-message" class="journal-form-message" role="alert"></p>
+      </section>
+    </div>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toast-message"></span><button type="button" id="toast-action" hidden>继续<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button><button type="button" class="toast-close" id="toast-close" aria-label="关闭提示"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>

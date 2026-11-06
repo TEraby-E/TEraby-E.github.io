@@ -1,4 +1,4 @@
-/* Browser-local persistence for the buildless GitHub Pages edition. */
+/* Study record operations and browser-local persistence. */
 (function (root, factory) {
   'use strict';
   const api = factory(root);
@@ -357,6 +357,11 @@
     return result.sort((a, b) => SUBJECT_ORDER.indexOf(a.subject_id) - SUBJECT_ORDER.indexOf(b.subject_id));
   }
 
+  function hasStudyContent(record) {
+    return Boolean(record.current.assignments.length || record.archives.length || record.library_completed_ids?.length ||
+      record.library_reopened_ids?.length || Object.keys(record.task_modes || {}).length || Object.keys(record.subject_phases || {}).length);
+  }
+
   function importRecord(record, incoming, options = {}) {
     if (!Number.isSafeInteger(options.revision) || options.revision !== record.revision || record.revision >= Number.MAX_SAFE_INTEGER) throw new StoreError('内容已在另一个页面更新，请刷新后再导入。', 409);
     if ('replace' in options && typeof options.replace !== 'boolean') throw new StoreError('备份导入选项不正确。');
@@ -364,7 +369,7 @@
     const incomingMarkers = Array.isArray(incoming.library_completed_ids) ? incoming.library_completed_ids : [];
     const existingReopened = Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : [];
     const incomingReopened = Array.isArray(incoming.library_reopened_ids) ? incoming.library_reopened_ids : [];
-    if (options.replace || (!record.current.assignments.length && !record.archives.length && !existingMarkers.length && !existingReopened.length && !Object.keys(record.task_modes || {}).length && !Object.keys(record.subject_phases || {}).length)) return { revision: record.revision + 1, ...copy(incoming), task_modes: copy(incoming.task_modes || {}), library_completed_ids: [...incomingMarkers], library_reopened_ids: [...incomingReopened] };
+    if (options.replace || !hasStudyContent(record)) return { ...record, revision: record.revision + 1, ...copy(incoming), task_modes: copy(incoming.task_modes || {}), library_completed_ids: [...incomingMarkers], library_reopened_ids: [...incomingReopened] };
     const merged = new Map(record.archives.map((day) => [day.date, copy(day)]));
     const current = copy(record.current);
     for (const day of [...incoming.archives, incoming.current]) {
@@ -385,7 +390,7 @@
     return new StoreError('浏览器中的学习记录暂时无法读写，请导出备份或重新载入后重试。', 503);
   }
 
-  function createStore(env = root) {
+  function createStore(env = root, remoteTransact = null) {
     const href = env.location?.href || 'https://example.invalid/';
     const dbName = namespace(href);
     const scriptSource = env.document?.currentScript?.src || env.document?.querySelector?.('script[src*="storage.js"]')?.src;
@@ -441,6 +446,7 @@
     }
 
     async function transact(operation, readOnly = false) {
+      if (remoteTransact) return remoteTransact(operation);
       const db = await openDb();
       return new Promise((resolve, reject) => {
         let transaction;
@@ -512,12 +518,24 @@
       return transact((record) => { const next = importRecord(record, incoming, options); return { record: next, result: stateOf(next) }; });
     }
 
-    return { request, exportBackup, importBackup, subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); }, async close() { const db = dbPromise ? await dbPromise : null; db?.close(); dbPromise = null; channel?.close(); channel = null; }, databaseName: dbName };
+    async function importLocalOnce(backup) {
+      if (!hasStudyContent(backup)) return;
+      const { index } = await loadLibrary();
+      return transact((record) => {
+        if (record.local_imported) return {};
+        const incoming = validateBackup(backup, index);
+        const next = importRecord(record, incoming, { revision: record.revision });
+        return { record: { ...next, local_imported: true } };
+      });
+    }
+
+    return { request, exportBackup, importBackup, importLocalOnce, subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); }, async close() { const db = dbPromise ? await dbPromise : null; db?.close(); dbPromise = null; channel?.close(); channel = null; }, databaseName: dbName };
   }
 
   const api = createStore();
   api.createStore = createStore;
   api.StoreError = StoreError;
+  api.MAX_TASKS = MAX_TASKS;
   api.helpers = Object.freeze({ validateDate, nextDate, localDate, namespace, libraryIndex, normaliseAssignments, normaliseLibraryCompletedIds, initialRecord, hydrateRecordEstimates, stateOf, subjectStageProgress, saveRecord, archiveRecord, validateBackup, mergeTasks, importRecord, storageError });
   return api;
 });

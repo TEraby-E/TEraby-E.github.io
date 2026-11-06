@@ -150,6 +150,32 @@ test('import into empty storage adopts backup date and increments revision', () 
   assert.equal(result.current.assignments.length, 1);
 });
 
+test('owner migration saves custom check-ins once and keeps the receipt across later writes', async () => {
+  let record = initial();
+  const target = store.createStore({ fetch: async () => ({ ok: true, json: async () => library }) }, async (operation) => {
+    const { record: next, result } = operation(record);
+    if (next) record = next;
+    return result;
+  });
+  await target.importLocalOnce(backup(record.current));
+  assert.equal(record.revision, 1);
+  assert.equal(record.local_imported, undefined);
+
+  const custom = { task_id: 'custom-owner', subject_id: 'english', title: '听力练习', detail: '复听错题', done: true, actual_minutes: 12.5 };
+  const oldBackup = backup({ date: '2026-10-20', assignments: [custom] });
+  await target.importLocalOnce(oldBackup);
+  assert.equal(record.local_imported, true);
+  assert.equal(record.current.date, '2026-10-20');
+  assert.equal(record.current.assignments[0].actual_minutes, 12.5);
+  record = h.archiveRecord(record, { date: record.current.date, revision: record.revision });
+  assert.equal(record.archives[0].assignments[0].detail, '复听错题');
+  const replacement = backup(initial().current);
+  await target.importBackup(replacement, { replace: true, revision: record.revision });
+  const replaced = record;
+  await target.importLocalOnce(oldBackup);
+  assert.equal(record, replaced, 'a removed check-in must not be resurrected on the next login');
+});
+
 test('merge import keeps existing tasks, deduplicates by id and preserves completed work', () => {
   const record = save(initial(), [task(first)]);
   const incoming = h.validateBackup(backup({ date: '2026-10-25', assignments: [task(first, true), task(second)] }), index);

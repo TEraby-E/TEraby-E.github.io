@@ -52,10 +52,10 @@ test('all website JavaScript files parse without requiring a build step', () => 
   }
 });
 
-test('application uses browser storage instead of a remote or localhost API', () => {
+test('the static app routes record operations through the storage adapter', () => {
   const app = read('app.js');
   const storage = read('storage.js');
-  assert.match(app, /StudyStore\.request/);
+  assert.match(app, /recordStore\(\)\.request/);
   assert.doesNotMatch(app, /fetch\s*\(\s*["'`](?:https?:\/\/|\/api\/)/);
   assert.doesNotMatch(storage, /https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/);
   assert.match(storage, /library\.json/);

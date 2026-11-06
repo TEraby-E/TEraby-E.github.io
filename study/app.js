@@ -30,8 +30,14 @@
   let loadRequest = 0;
   let installPrompt = null;
   let completionDraft = null;
+  let customDate = null;
+  let cloudAccount = null;
+  let cloudRefreshRevision = 0;
+  let accountChanging = false;
+  let accountReloading = false;
   const dialogOpeners = new Map();
   const expandedSubjects = new Set();
+  const recordStore = () => cloudAccount?.store || window.StudyStore;
 
   class ApiError extends Error {
     constructor(message, status) {
@@ -43,7 +49,7 @@
 
   async function api(path, options = {}) {
     if (!window.StudyStore) throw new ApiError('记录模块没有载入，请刷新页面后重试。', 0);
-    return window.StudyStore.request(path, options);
+    return recordStore().request(path, options);
   }
 
   function normaliseState(value) {
@@ -264,6 +270,7 @@
   function setStatus(status, message) {
     $('save-status').dataset.status = status;
     $('save-status-text').textContent = message;
+    if (cloudAccount?.user) $('cloud-status').textContent = `云端记录 · ${message}`;
   }
 
   function showError(message, retry = null) {
@@ -294,6 +301,8 @@
     const unavailable = !state || actionBusy;
     $('history-button').disabled = unavailable;
     $('data-button').disabled = unavailable;
+    $('custom-button').disabled = unavailable;
+    $('save-custom').disabled = unavailable;
     $('export-button').disabled = unavailable;
     $('archive-button').disabled = unavailable;
     $('confirm-archive').disabled = unavailable;
@@ -504,7 +513,7 @@
 
     controls() {
       const label = this.mode === 'multi-day' ? this.completed ? '查看打卡' : this.task.done ? '继续打卡' : '打卡' : this.task.done ? '已打卡' : '打卡';
-      return `<div class="card-controls"><button type="button" class="card-checkin-button" data-action="record-actual" data-task="${escape(this.id)}" aria-label="${escape(label)}：${escape(this.task.title)}">${icon('check')}<span class="card-checkin-label">${label}</span></button>${taskModeControl(this.task)}</div>`;
+      return `<div class="card-controls"><button type="button" class="card-checkin-button" data-action="record-actual" data-task="${escape(this.id)}" aria-label="${escape(label)}：${escape(this.task.title)}">${icon('check')}<span class="card-checkin-label">${label}</span></button>${this.id.startsWith('custom-') ? '' : taskModeControl(this.task)}</div>`;
     }
   }
 
@@ -808,8 +817,8 @@
     completionDraft = null;
     renderDay();
     setStatus('saved', '已同步最新记录');
-    showError('另一个窗口更新了学习记录，页面已同步。请确认清单后再操作。');
-    showToast('已同步其他窗口的最新记录，请重新操作。');
+    showError('另一个窗口或设备更新了学习记录。页面已载入最新内容，请重新操作。');
+    showToast('已载入最新记录，请重新操作。');
   }
 
   async function flushAutosave() {
@@ -846,6 +855,7 @@
         throw error;
       } finally {
         savePromise = null;
+        refreshCloudIfIdle();
       }
     })();
     await savePromise;
@@ -987,6 +997,59 @@
     showToast(replacement.length ? `${subjectName(subjectDraft.subject)}已安排 ${replacement.length} 项任务。${preserved.length ? '既有记录已保留。' : ''}` : preserved.length ? '可选任务已清空，既有记录已保留。' : `已清空${subjectName(subjectDraft.subject)}今天的任务。`, null, 3000);
   }
 
+  function openCustomCheckin() {
+    if (!state || actionBusy) return;
+    customDate = state.date;
+    $('custom-error').textContent = '';
+    const selected = $('custom-subject').value;
+    $('custom-subject').innerHTML = library.map((subject) => `<option value="${escape(subject.id)}">${escape(subject.name)}</option>`).join('');
+    if (selected) $('custom-subject').value = selected;
+    $('custom-description').textContent = `为 ${readableDate(customDate)} 添加一条已完成的学习记录。`;
+    openDialog('custom-dialog');
+  }
+
+  async function saveCustomCheckin(event) {
+    event.preventDefault();
+    if (!state || actionBusy) return;
+    const title = $('custom-title-input').value.trim();
+    const detail = $('custom-detail').value.trim();
+    const minutes = $('custom-minutes').valueAsNumber;
+    const subject = library.find(({ id }) => id === $('custom-subject').value);
+    const error = $('custom-error');
+    if (state.date !== customDate) {
+      error.textContent = '学习日期已更新。请关闭窗口后重新打开，确认要打卡的日期。';
+      return;
+    }
+    if (!title || !subject || !Number.isFinite(minutes) || minutes < 0 || minutes > 525600) {
+      error.textContent = '请填写学习内容、所属学科和有效的实际分钟数。';
+      return;
+    }
+    if (state.assignments.length >= window.StudyStore.MAX_TASKS) {
+      error.textContent = `每天最多记录 ${window.StudyStore.MAX_TASKS} 项任务。`;
+      return;
+    }
+    const entry = {
+      task_id: `custom-${crypto.randomUUID()}`, subject_id: subject.id, subject_name: subject.name,
+      chapter_id: 'custom', chapter_title: '自定义任务', kind: '自定义', title, detail,
+      task_mode: 'single-day', done: true, actual_minutes: minutes,
+    };
+    setBusy(true);
+    state.assignments = [...state.assignments, entry];
+    expandedSubjects.add(subject.id);
+    changed();
+    closeDialog('custom-dialog');
+    try {
+      await flushAutosave();
+      $('custom-form').reset();
+      renderDay();
+      showToast('自定义打卡已保存。');
+    } catch {
+      showToast('自定义打卡尚未保存，请查看页面提示。', null, 6500);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function historyEntries() {
     return [...state.history].sort((a, b) => b.date.localeCompare(a.date));
   }
@@ -1044,6 +1107,7 @@
     updateControls();
     $('export-button').innerHTML = `${busy && action === 'export' ? '<span class="loading-spinner" aria-hidden="true"></span>' : icon('image')}<span>${busy && action === 'export' ? '正在导出' : '导出今日图片'}</span>`;
     $('archive-button').innerHTML = `<span>${busy && action === 'archive' ? '正在保存' : '保存并进入下一天'}</span>${busy && action === 'archive' ? '<span class="loading-spinner" aria-hidden="true"></span>' : icon('arrow')}`;
+    if (!busy) refreshCloudIfIdle();
   }
 
   async function archiveDay(carryPending) {
@@ -1163,6 +1227,7 @@
     $('task-sheet').setAttribute('aria-busy', 'true');
     setStatus('saving', '正在载入');
     try {
+      if (cloudAccount?.user) await cloudAccount.migrateLocal();
       const [libraryResult, stateResult] = await Promise.all([api('/api/library'), api('/api/state')]);
       if (!canApply()) return;
       if (!Array.isArray(libraryResult.subjects)) throw new Error('章节任务库的格式不正确。');
@@ -1191,10 +1256,11 @@
       dirty = false;
       renderDay();
       setStatus('saved', '已自动保存');
+      if (externalUpdate && $('history-dialog').open) openHistory();
     } catch (error) {
       if (!canApply()) return;
       setStatus('error', '载入未完成');
-      $('daily-tbody').innerHTML = `<div class="empty-state">${icon('book')}<strong>学习清单暂时没有载入</strong><p>请检查网络及浏览器存储权限，再点上方“重试”。</p></div>`;
+      if (!state) $('daily-tbody').innerHTML = `<div class="empty-state">${icon('book')}<strong>学习清单暂时没有载入</strong><p>请检查网络及存储配置，再点上方“重试”。</p></div>`;
       showError(error.message, load);
       $('task-sheet').setAttribute('aria-busy', 'false');
     } finally {
@@ -1203,6 +1269,80 @@
         if (!dirty && !savePromise && !actionBusy && $('save-status').dataset.status === 'saving') setStatus('saved', '已自动保存');
       }
     }
+  }
+
+  function refreshCloudIfIdle() {
+    if (accountReloading || dirty || savePromise || actionBusy || !cloudRefreshRevision) return;
+    const revision = cloudRefreshRevision;
+    cloudRefreshRevision = 0;
+    if (!state || revision > state.revision) load();
+  }
+
+  function queueCloudRefresh(revision) {
+    cloudRefreshRevision = Math.max(cloudRefreshRevision, Number.isSafeInteger(revision) ? revision : Infinity);
+    refreshCloudIfIdle();
+  }
+
+  function reloadAccount() {
+    accountReloading = true;
+    if (cloudAccount?.user) document.body.hidden = true;
+    window.location.reload();
+  }
+
+  async function changeAccount(action) {
+    if (!cloudAccount || actionBusy || accountReloading) return;
+    accountChanging = true;
+    setBusy(true);
+    $('cloud-form').querySelectorAll('input, button').forEach((element) => { element.disabled = true; });
+    $('cloud-sign-out').disabled = true;
+    $('cloud-message').textContent = '';
+    try {
+      await flushAutosave();
+      await action();
+      reloadAccount();
+    } catch (error) {
+      $('cloud-message').textContent = error.message;
+    } finally {
+      $('cloud-password').value = '';
+      accountChanging = false;
+      if (!accountReloading) {
+        $('cloud-form').querySelectorAll('input, button').forEach((element) => { element.disabled = false; });
+        $('cloud-sign-out').disabled = false;
+        setBusy(false);
+      }
+    }
+  }
+
+  async function start() {
+    if (!window.StudyCloud?.configured) return load();
+    try {
+      cloudAccount = await window.StudyCloud.connect();
+    } catch (error) {
+      showError(error.message, start);
+      setStatus('error', '登录状态载入未完成');
+      $('daily-tbody').textContent = '请检查同步设置后重试。';
+      $('task-sheet').setAttribute('aria-busy', 'false');
+      return;
+    }
+
+    const { user } = cloudAccount;
+    $('cloud-button').hidden = false;
+    $('cloud-button-text').textContent = user ? '云端同步' : '登录同步';
+    $('cloud-status').textContent = user ? '云端记录 · 正在载入' : '当前使用本机记录';
+    $('cloud-account-name').textContent = cloudAccount.accountName || '';
+    $('cloud-form').hidden = Boolean(user);
+    $('cloud-signed-in').hidden = !user;
+    if (user) $('offline-status').textContent = '页面可以安装到桌面，云端记录需要联网读写。';
+    cloudAccount.onAccountChange(async () => {
+      if (accountChanging || accountReloading) return;
+      if (!user) {
+        // Let an in-flight local save finish before switching to the account.
+        try { await flushAutosave(); } catch { return; }
+      }
+      if (!accountChanging && !accountReloading) reloadAccount();
+    });
+    await load();
+    if (user && !accountReloading) cloudAccount.watch(queueCloudRefresh);
   }
 
   function handleTaskModeChange(event) {
@@ -1319,12 +1459,14 @@
     catch { showToast('撤销尚未保存，请查看页面提示后重试。'); }
   });
   $('completion-form').addEventListener('submit', (event) => { event.preventDefault(); saveCompletion(); });
+  $('custom-button').addEventListener('click', openCustomCheckin);
+  $('custom-form').addEventListener('submit', saveCustomCheckin);
   $('data-button').addEventListener('click', () => {
     openDialog('data-dialog');
     updateDirectoryInfo();
   });
   $('backup-button').addEventListener('click', () => dataAction(async () => {
-    downloadBackup(await window.StudyStore.exportBackup());
+    downloadBackup(await recordStore().exportBackup());
     showToast('全部学习记录已开始下载。');
   }));
   $('import-button').addEventListener('click', () => { if (!actionBusy) $('backup-file').click(); });
@@ -1336,7 +1478,7 @@
       if (file.size > 50 * 1024 * 1024) throw new Error('备份文件超过 50 MB，请确认选中了学习记录备份。');
       let value;
       try { value = JSON.parse(await file.text()); } catch { throw new Error('这个文件不是有效的 JSON 备份，请重新选择。'); }
-      state = normaliseState(await window.StudyStore.importBackup(value, { replace: false, revision: state.revision }));
+      state = normaliseState(await recordStore().importBackup(value, { replace: false, revision: state.revision }));
       dirty = false;
       changeVersion += 1;
       renderDay();
@@ -1358,6 +1500,18 @@
   });
   window.addEventListener('study-store-changed', () => {
     if (!dirty && !savePromise && !actionBusy) load();
+  });
+  $('cloud-button').addEventListener('click', () => {
+    if (actionBusy) return;
+    $('cloud-message').textContent = '';
+    openDialog('cloud-dialog');
+  });
+  $('cloud-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (!cloudAccount?.user) changeAccount(() => cloudAccount.signIn($('cloud-identifier').value.trim(), $('cloud-password').value));
+  });
+  $('cloud-sign-out').addEventListener('click', () => {
+    if (cloudAccount?.user) changeAccount(() => cloudAccount.signOut());
   });
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
@@ -1410,21 +1564,29 @@
     });
   });
   window.addEventListener('beforeunload', (event) => {
-    if (!dirty) return;
+    if (!dirty || accountReloading) return;
     event.preventDefault();
     event.returnValue = '';
   });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && dirty) flushAutosave().catch(() => {}); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && dirty) flushAutosave().catch(() => {});
+    if (document.visibilityState === 'visible' && cloudAccount?.user) queueCloudRefresh();
+  });
+  window.addEventListener('online', () => {
+    if (!cloudAccount?.user) return;
+    if (dirty) flushAutosave().catch(() => {});
+    queueCloudRefresh();
+  });
   if ('serviceWorker' in navigator && window.isSecureContext) {
     window.addEventListener('load', async () => {
       try {
         await navigator.serviceWorker.register(new URL('./sw.js', document.baseURI), { scope: './' });
         await navigator.serviceWorker.ready;
-        $('offline-status').textContent = '页面和任务库已支持离线使用。收藏这个网址，或通过浏览器菜单安装到桌面，以后直接打开即可。';
+        if (!cloudAccount?.user) $('offline-status').textContent = '本机记录支持离线使用。可以收藏这个网址，或通过浏览器菜单安装到桌面。';
       } catch {
-        $('offline-status').textContent = '把这个网址收藏起来，之后联网打开就能继续打卡。';
+        if (!cloudAccount?.user) $('offline-status').textContent = '把这个网址收藏起来，之后联网打开就能继续打卡。';
       }
     });
   }
-  load();
+  start();
 })();

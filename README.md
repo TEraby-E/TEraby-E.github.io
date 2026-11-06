@@ -36,6 +36,7 @@
    “选择学习任务”窗口在搜索栏下方始终显示当前学科阶段进度，与主页共用计算和展示组件；切换阶段会更新，搜索和临时勾选不改变进度分母，未添加今日任务时也能查看。
 3. 点击 **导出今日图片**，保存当天清单及实际用时。
 4. 点击 **保存并进入下一天**，当天内容进入历史；未完成任务可以选择带到下一天。
+5. 临时增加的学习内容可以用 **自定义打卡** 记录。选所属学科，填写内容和实际分钟数，可附备注。保存后直接计入当天用时，随当天归档。登录时，这条记录也会同步到同一账号的其他设备。
 
 ## 实际学习时长
 
@@ -49,13 +50,52 @@
 
 408 可选任务库已移除标题含“王道书”的阅读卡，其他视频、练习与综合题保留。以前保存的相关清单、历史与备份仍然可读，这些退役条目不会再出现在新任务选项中。
 
-任务和完成状态会自动保存在当前浏览器中。Chrome、Edge 等浏览器支持时，可以使用页面或地址栏的安装入口，将手账安装到桌面或任务栏。安装后直接像普通应用一样打开。首次完整载入并缓存完成后，可以离线继续使用；新设备第一次打开仍需联网。
+任务和完成状态会自动保存。未登录时使用当前浏览器的记录。配置并登录云端同步后，同一账号可在不同设备上查看今日清单、实际用时和归档历史。Chrome、Edge 等浏览器支持时，可以将手账安装到桌面或任务栏。首次完整载入并缓存后，本机模式可离线使用，云端模式需要联网读写。
+
+## 配置数据库与账号
+
+### 1. 创建 Supabase 项目
+
+打开 [Supabase 控制台](https://supabase.com/dashboard)，选择 **New project**。填写项目名，例如 `study-journal`，设置数据库密码，等待项目准备完成。数据库密码留在你自己的密码管理器中，学习手账登录会用到下面单独创建的账号。
+
+### 2. 建表并开启实时同步
+
+在项目左侧打开 **SQL Editor → New query**，把 [`supabase/study-journal.sql`](supabase/study-journal.sql) 的全部内容复制进去，点击 **Run**。在 **Table Editor** 中可以看到 `public.study_journals`。
+
+每个账号对应一行。`user_id` 是 Supabase Auth 分配的用户 UUID，`snapshot` 保存当前清单、归档、打卡用时和进度，`revision` 用来防止两台设备互相覆盖。脚本同时配置了行级权限（RLS）与 Realtime 发布，登录用户只能读取和修改自己的记录。项目的 **Integrations → Data API** 中应启用 Data API 并保留 `public` 在可访问的 schema 列表中。如果项目限制了具体表的访问，把 `study_journals` 加进去。[Data API](https://supabase.com/docs/guides/api/creating-routes) · [行级权限](https://supabase.com/docs/guides/database/postgres/row-level-security) · [Realtime](https://supabase.com/docs/guides/realtime/postgres-changes)
+
+### 3. 创建 `terabyte` 账号
+
+在 **Authentication → Sign In / Providers** 中启用 Email 登录，关闭 **Allow new users to sign up** 和 **Allow anonymous sign-ins**。进入 **Authentication → Users → Add user → Create new user**，邮箱填 `terabyte@study.terabyte.top`，密码填你为手账设定的值。勾选 **Auto Confirm User** 后保存。从用户列表复制 Supabase 生成的 **UID**。手账把 `terabyte` 映射到这个登录邮箱。如果需要创建其他账号，可以在同一处添加，其他账号用各自的邮箱登录。[Supabase Auth 设置](https://supabase.com/docs/guides/auth/general-configuration)
+
+### 4. 填写项目地址、公开密钥和自己的用户 UID
+
+点击 Supabase 项目顶部的 **Connect**，复制 **Project URL** 和 **Publishable key**。打开 [`study/cloud-config.js`](study/cloud-config.js)，填入这两项和第 3 步复制的 UID，保留引号。[Supabase API 密钥](https://supabase.com/docs/guides/getting-started/api-keys)
+
+```js
+window.STUDY_CLOUD_CONFIG = Object.freeze({
+  url: 'https://你的项目标识.supabase.co',
+  publishableKey: 'sb_publishable_你的公开密钥',
+  ownerUserId: '你的用户 UID',
+});
+```
+
+网页会公开这三项。`sb_secret_`、`service_role`、数据库密码和账号密码都应留在网页与 Git 仓库之外。所有配置留空时，手账使用本机模式。`ownerUserId` 决定哪个账号会自动迁入旧的浏览器记录。
+
+### 5. 预览、迁移并验证
+
+1. 在仓库根目录运行 `python -m http.server 8767`，打开 [本地手账](http://127.0.0.1:8767/study/)。点右上角的云朵，输入用户名 `terabyte` 和第 3 步设置的密码。验证通过后，按上面的 GitHub Pages 步骤发布。
+2. 发布后，在你一直打卡的浏览器中打开[正式手账](https://terabyte.top/study/)，登录第 3 步创建的本人账号。旧记录会自动合并到该账号一次，本机副本仍可在退出后查看。预览地址和正式网址各有独立的本机存储。若旧记录分散在多个浏览器，首次自动迁移后，其余备份可以在 **记录管理** 中手动导入本人账号。
+3. 用两台设备或两个独立浏览器配置文件登录同一个账号。一边新增自定义打卡或归档，另一边保持在线打开手账，观察清单与历史是否更新。首次打开账号手账后，可以在 **Table Editor → study_journals** 看到该账号的行，保存后 `revision` 会增加。
+4. 在另一个浏览器配置文件或无痕窗口登录第二个账号，确认它只显示自己的清单与历史。同一浏览器的普通标签页共享登录状态。其他账号登录时，只同步各自账号里的内容，旧本机记录等你本人登录后才上传。
+
+如果两边同时保存，先提交的版本会保留，另一边会提示载入最新记录后重做这次操作。断网时页面会提示保存失败，保留当前页面即可在恢复联网后重试。退出登录后，页面会回到该浏览器的本机记录。
+
+登录成功后，会话会保存在当前浏览器并自动续期。刷新或关闭重开同一个网址时会恢复登录。换设备、换浏览器、主动退出、清除网站数据或会话被撤销时，需要重新登录。[Supabase 会话](https://supabase.com/docs/guides/auth/sessions)
 
 ## 记录备份与迁移
 
-学习记录保存在当前浏览器的 IndexedDB 中，不会上传到 GitHub。关闭页面后，再用相同浏览器打开相同网址，就能继续使用已有记录。
-
-更换浏览器、设备、域名或应用路径时，记录不会自动同步；清除网站数据也会清除本机记录。进入 **记录管理** 导出备份，再到目标浏览器导入。导入前会检查格式，默认合并已有记录。
+本机记录保存在当前浏览器的 IndexedDB 中，清除该网址的网站数据会清除本机记录。云端记录存入所配置的 Supabase 项目。进入 **记录管理** 可以导出当前模式的完整备份，导入时会检查格式并合并已有记录。
 
 旧本地程序的迁移备份作为独立文件交付，可在发布后的手账中导入。将个人备份保留在自己的电脑上，不要放进 `study/` 或上传到公开仓库。本项目包含章节任务库，不包含个人打卡数据。
 
@@ -88,16 +128,19 @@ study/                        完整学习打卡程序
   index.html                  当天清单与隐藏任务库
   styles.css                  红黑背景与暖色纸面卡片
   app.js                      选任务、打卡、归档与记录管理
-  storage.js                  浏览器本地记录
+  storage.js                  学习记录规则与 IndexedDB 存储
+  cloud.js                    登录、云端读写与实时订阅
+  cloud-config.js             Supabase 项目地址和公开密钥
   export-image.js             页面截图、分张与保存
-  vendor/                     固定版本截图组件与许可证
+  vendor/                     截图组件、Supabase JS 2.119.0 与许可证
   data/library.json           八科章节任务库
   assets/                     交大校徽与静态纹理
   manifest.webmanifest        安装信息
   sw.js                       离线缓存
+supabase/study-journal.sql    建表、行级权限和实时同步配置
 .github/workflows/pages.yml   检查、组装与部署
 tests/                        Node.js 原生测试
-package.json                  测试命令，无运行依赖
+package.json                  测试命令，无 npm 安装步骤
 ```
 
 ## 开发验证

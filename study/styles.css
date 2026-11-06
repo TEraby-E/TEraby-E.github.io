@@ -254,6 +254,14 @@ h2{font-size:21px;font-weight:650;line-height:1.45;margin:0;letter-spacing:.02em
 .data-section .data-hint{font-size:10px;color:#a38f86;margin:11px 0 0}
 .data-section-actions{display:flex;align-items:center;flex-wrap:wrap;gap:11px}
 .data-section .button{font-size:12px;min-height:40px}
+.journal-form{display:grid;gap:13px}
+.journal-form p{margin:0}
+.journal-form label{display:grid;gap:5px;color:#503d40;font-size:13px}
+.journal-form :is(input,select,textarea){width:100%;min-height:40px;padding:8px 11px;border:1px solid var(--line);border-radius:7px;background:#fffaf4;color:#503d40;font:inherit}
+.journal-form textarea{resize:vertical}
+#cloud-account-name{overflow-wrap:anywhere}
+.data-section .journal-form-message{color:#9e1b32}
+.journal-form-message:empty{display:none}
 @media(max-width:600px){.header-actions{gap:1px}.header-inner{gap:5px}.data-modal{width:calc(100vw - 22px)}.data-sections{padding:18px 20px 22px}.data-section h3{font-size:13px}.data-section p{font-size:11px}.data-section .button{font-size:10px;min-height:37px;padding:8px 11px}.data-section .data-hint{font-size:9px}.data-modal .modal-footer>.muted{font-size:9px}}
 @media(max-width:600px){body:before{height:470px;background-position:center top,right -78px top 26px,center top,center top;background-size:100% 100%,900px auto,100% 100%,100% 100%}}
 @media(max-width:600px){.page-heading h1{font-size:22px;letter-spacing:0}.page-heading .page-description{font-size:11px;letter-spacing:.06em}}
