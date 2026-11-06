@@ -1,4 +1,4 @@
-# Terabyte 主页与交大学习手账
+# Terabyte 主页与学习手账
 
 学习打卡程序位于个人网站的独立 `study/` 页面。主页保留学习资源、社交链接与素材，不显示学习手账跳转模块。网站全部使用静态 HTML、CSS 和 JavaScript，部署后不需要启动 Python、本地服务或 OneNote。
 
