@@ -247,7 +247,7 @@
   function stateOf(record) {
     const completed = new Set();
     for (const day of [record.current, ...record.archives]) for (const task of day.assignments) if (task.done && (record.task_modes?.[task.task_id] || task.task_mode) !== 'multi-day') completed.add(task.task_id);
-    return copy({ date: record.current.date, revision: record.revision, assignments: record.current.assignments, history: record.archives.map((day) => ({ date: day.date, total: day.assignments.length, completed: day.assignments.filter((task) => task.done).length })).sort((a, b) => b.date.localeCompare(a.date)), completed_ids: [...completed].sort(), library_completed_ids: Array.isArray(record.library_completed_ids) ? record.library_completed_ids : [], library_reopened_ids: Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : [], task_modes: record.task_modes || {}, subject_phases: record.subject_phases || {}, task_progress: progressOf(record) });
+    return copy({ date: record.current.date, revision: record.revision, assignments: record.current.assignments, history: record.archives.filter((day) => day.date < record.current.date && day.assignments.some(task => task.done)).map((day) => ({ date: day.date, total: day.assignments.length, completed: day.assignments.filter((task) => task.done).length })).sort((a, b) => b.date.localeCompare(a.date)), completed_ids: [...completed].sort(), library_completed_ids: Array.isArray(record.library_completed_ids) ? record.library_completed_ids : [], library_reopened_ids: Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : [], task_modes: record.task_modes || {}, subject_phases: record.subject_phases || {}, task_progress: progressOf(record) });
   }
 
   function checkRevision(record, payload) {
@@ -301,6 +301,14 @@
     return { ...copy(record), ...markers, revision: record.revision + 1, current: { date: record.current.date, assignments } };
   }
 
+  function archivedDay(record, index) {
+    const finished = new Set(record.library_completed_ids || []);
+    return { ...copy(record.current), ...(index ? { subject_stage_progress: subjectStageProgress(record, index) } : {}), assignments: record.current.assignments.map(task =>
+      (record.task_modes?.[task.task_id] || task.task_mode) === 'multi-day'
+        ? { ...copy(task), task_mode: 'multi-day', overall_completed: finished.has(task.task_id) }
+        : copy(task)) };
+  }
+
   function archiveRecord(record, payload, index = null) {
     checkRevision(record, payload);
     if ('carry_pending' in payload && typeof payload.carry_pending !== 'boolean') throw new StoreError('未完成任务的保留选项不正确。');
@@ -308,16 +316,26 @@
     const existingTomorrow = record.archives.find((day) => day.date === next);
     const archives = record.archives.filter((day) => day.date !== record.current.date && day.date !== next);
     const finished = new Set(record.library_completed_ids || []);
-    archives.push({ ...copy(record.current), ...(index ? { subject_stage_progress: subjectStageProgress(record, index) } : {}), assignments: record.current.assignments.map(task =>
-      (record.task_modes?.[task.task_id] || task.task_mode) === 'multi-day'
-        ? { ...copy(task), task_mode: 'multi-day', overall_completed: finished.has(task.task_id) }
-        : copy(task)) });
+    archives.push(archivedDay(record, index));
     const carried = payload.carry_pending === false ? [] : record.current.assignments.filter((task) => (record.task_modes?.[task.task_id] || task.task_mode) === 'multi-day' ? !finished.has(task.task_id) : !task.done).map((task) => (record.task_modes?.[task.task_id] || task.task_mode) === 'multi-day' ? { ...task, task_mode: 'multi-day', done: false, actual_minutes: null, checkin_segments: [] } : task);
     return { ...copy(record), revision: record.revision + 1, current: { date: next, assignments: mergeTasks(existingTomorrow?.assignments || [], carried) }, archives };
   }
 
+  function alignDate(record, today, index) {
+    if (record.current.date === today) return record;
+    const savedToday = record.archives.find(day => day.date === today);
+    const archives = record.archives.filter(day => day.date !== today);
+    if (record.current.date > today || record.current.assignments.some(task => task.done)) {
+      archives.push(archivedDay(record, index));
+    }
+    return { ...record, revision: record.revision + 1, current: { date: today, assignments: savedToday?.assignments || [] }, archives };
+  }
+
+  const studyDateFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const studyDate = (now = new Date()) => studyDateFormat.format(now);
+
   function validateBackup(value, index) {
-    if (!value || value.format !== BACKUP_FORMAT || value.version !== 1 || !value.current || !Array.isArray(value.archives) || value.archives.length > MAX_ARCHIVES) throw new StoreError('请选择交大学习手账导出的完整 JSON 备份。');
+    if (!value || value.format !== BACKUP_FORMAT || value.version !== 1 || !value.current || !Array.isArray(value.archives) || value.archives.length > MAX_ARCHIVES) throw new StoreError('请选择学习手账导出的完整 JSON 备份。');
     const day = (entry) => {
       if (!entry || typeof entry !== 'object') throw new StoreError('备份中的日期记录不正确。');
       return { date: validateDate(entry.date), assignments: normaliseAssignments(entry.assignments, index), ...(entry.subject_stage_progress ? { subject_stage_progress: normaliseStageProgress(entry.subject_stage_progress) } : {}) };
@@ -390,15 +408,16 @@
     return new StoreError('浏览器中的学习记录暂时无法读写，请导出备份或重新载入后重试。', 503);
   }
 
-  function createStore(env = root, remoteTransact = null) {
+  function createStore(env = root, remoteTransact = null, scope = '') {
     const href = env.location?.href || 'https://example.invalid/';
-    const dbName = namespace(href);
+    const dbName = namespace(href) + scope;
     const scriptSource = env.document?.currentScript?.src || env.document?.querySelector?.('script[src*="storage.js"]')?.src;
     const assetVersion = scriptSource ? new URL(scriptSource, href).searchParams.get('v') : null;
     let libraryPromise;
     let dbPromise;
     let channel;
     const subscribers = new Set();
+    const today = () => studyDate(env.now ? env.now() : new Date());
 
     function loadLibrary() {
       if (!libraryPromise) libraryPromise = (async () => {
@@ -446,7 +465,7 @@
     }
 
     async function transact(operation, readOnly = false) {
-      if (remoteTransact) return remoteTransact(operation);
+      if (remoteTransact) return remoteTransact(operation, readOnly);
       const db = await openDb();
       return new Promise((resolve, reject) => {
         let transaction;
@@ -459,7 +478,7 @@
           const request = store.get('main');
           request.onsuccess = () => {
             try {
-              const previous = request.result || initialRecord(localDate(env.now ? env.now() : new Date()));
+              const previous = request.result || initialRecord(today());
               const outcome = operation(previous);
               result = outcome.result;
               if (outcome.record || (!readOnly && !request.result)) store.put(outcome.record || previous, 'main');
@@ -486,17 +505,15 @@
       if (path === '/api/state' && method === 'GET') {
         const { index } = await loadLibrary();
         return transact((record) => {
-          const next = hydrateRecordEstimates(record, index);
+          const hydrated = hydrateRecordEstimates(record, index);
+          const aligned = alignDate(hydrated, today(), index);
+          const next = aligned === record ? record : { ...aligned, revision: record.revision + 1 };
           return { ...(next === record ? {} : { record: next }), result: stateOf(next) };
         });
       }
       if (path === '/api/state' && method === 'PUT') {
         const { index } = await loadLibrary();
         return transact((record) => { const next = saveRecord(record, payload, index); return { record: next, result: stateOf(next) }; });
-      }
-      if (path === '/api/archive' && method === 'POST') {
-        const { index } = await loadLibrary();
-        return transact((record) => { const next = archiveRecord(record, payload, index); return { record: next, result: { ...stateOf(next), saved_date: record.current.date } }; });
       }
       if (path.startsWith('/api/history/') && method === 'GET') {
         let date;
@@ -515,7 +532,11 @@
     async function importBackup(value, options = {}) {
       const { index } = await loadLibrary();
       const incoming = validateBackup(value, index);
-      return transact((record) => { const next = importRecord(record, incoming, options); return { record: next, result: stateOf(next) }; });
+      return transact((record) => {
+        const imported = importRecord(record, incoming, options);
+        const next = { ...alignDate(imported, today(), index), revision: imported.revision };
+        return { record: next, result: stateOf(next) };
+      });
     }
 
     async function importLocalOnce(backup) {
@@ -529,13 +550,14 @@
       });
     }
 
-    return { request, exportBackup, importBackup, importLocalOnce, subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); }, async close() { const db = dbPromise ? await dbPromise : null; db?.close(); dbPromise = null; channel?.close(); channel = null; }, databaseName: dbName };
+    return { request, exportBackup, importBackup, importLocalOnce, transact, subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); }, async close() { const db = dbPromise ? await dbPromise : null; db?.close(); dbPromise = null; channel?.close(); channel = null; }, databaseName: dbName };
   }
 
   const api = createStore();
   api.createStore = createStore;
   api.StoreError = StoreError;
   api.MAX_TASKS = MAX_TASKS;
+  api.studyDate = studyDate;
   api.helpers = Object.freeze({ validateDate, nextDate, localDate, namespace, libraryIndex, normaliseAssignments, normaliseLibraryCompletedIds, initialRecord, hydrateRecordEstimates, stateOf, subjectStageProgress, saveRecord, archiveRecord, validateBackup, mergeTasks, importRecord, storageError });
   return api;
 });

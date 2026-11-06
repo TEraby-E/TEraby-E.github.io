@@ -33,6 +33,7 @@
   let customDate = null;
   let cloudAccount = null;
   let cloudRefreshRevision = 0;
+  let refreshing = false;
   let accountChanging = false;
   let accountReloading = false;
   const dialogOpeners = new Map();
@@ -270,7 +271,6 @@
   function setStatus(status, message) {
     $('save-status').dataset.status = status;
     $('save-status-text').textContent = message;
-    if (cloudAccount?.user) $('cloud-status').textContent = `云端记录 · ${message}`;
   }
 
   function showError(message, retry = null) {
@@ -304,8 +304,6 @@
     $('custom-button').disabled = unavailable;
     $('save-custom').disabled = unavailable;
     $('export-button').disabled = unavailable;
-    $('archive-button').disabled = unavailable;
-    $('confirm-archive').disabled = unavailable;
     $('export-history-button').disabled = actionBusy || !historyRecord;
     $('save-completion').disabled = unavailable;
     document.querySelectorAll('#completion-fields input').forEach((input) => { input.disabled = unavailable; });
@@ -774,8 +772,8 @@
     surface.append(document.querySelector('.page-heading').cloneNode(true), $('task-sheet').cloneNode(true));
     const emblem = document.createElement('img');
     emblem.className = 'export-emblem';
-    emblem.src = new URL('./assets/sjtu-emblem-round.svg', document.baseURI).href;
-    emblem.alt = '上海交通大学校徽';
+    emblem.src = new URL('./assets/terabyte-flow.svg', document.baseURI).href;
+    emblem.alt = 'Terabyte 标志';
     emblem.width = emblem.height = 76;
     surface.querySelector('.page-heading').append(emblem);
     const find = id => surface.querySelector(`[id="${id}"]`);
@@ -812,7 +810,6 @@
     dirty = false;
     changeVersion += 1;
     closeDialog('library-dialog');
-    closeDialog('archive-dialog');
     closeDialog('completion-dialog');
     completionDraft = null;
     renderDay();
@@ -1097,7 +1094,7 @@
     if (historyDate) selectHistoryDate(historyDate);
     else {
       historyRecord = null;
-      $('history-content').innerHTML = `<div class="empty-state">${icon('book')}<strong>还没有保存过的学习记录</strong><p>完成今天后，点击“保存并进入下一天”，<br>这一天的清单就会留在这里。</p></div>`;
+      $('history-content').innerHTML = `<div class="empty-state">${icon('book')}<strong>还没有保存过的学习记录</strong><p>有打卡的日期会在换日后自动出现在这里。</p></div>`;
       $('export-history-button').hidden = true;
     }
   }
@@ -1106,46 +1103,7 @@
     actionBusy = busy;
     updateControls();
     $('export-button').innerHTML = `${busy && action === 'export' ? '<span class="loading-spinner" aria-hidden="true"></span>' : icon('image')}<span>${busy && action === 'export' ? '正在导出' : '导出今日图片'}</span>`;
-    $('archive-button').innerHTML = `<span>${busy && action === 'archive' ? '正在保存' : '保存并进入下一天'}</span>${busy && action === 'archive' ? '<span class="loading-spinner" aria-hidden="true"></span>' : icon('arrow')}`;
     if (!busy) refreshCloudIfIdle();
-  }
-
-  async function archiveDay(carryPending) {
-    if (actionBusy || !state) return;
-    setBusy(true, 'archive');
-    closeDialog('archive-dialog');
-    closeDialog('completion-dialog');
-    completionDraft = null;
-    try {
-      await flushAutosave();
-      const previousDate = state.date;
-      state = normaliseState(await api('/api/archive', { method: 'POST', body: JSON.stringify({ date: state.date, revision: state.revision, carry_pending: carryPending }) }));
-      dirty = false;
-      changeVersion += 1;
-      clearError();
-      setStatus('saved', '已自动保存');
-      renderDay();
-      showToast(`${readableDate(previousDate)} 已保存，开始新的一天。`, null, 5500);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (error) {
-      if (error.status === 409) {
-        if (!String($('error-text').textContent).includes('另一个窗口')) await recoverConflict().catch(() => {});
-      } else showError(`今天还没有归档：${error.message}`, () => archiveDay(carryPending));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function requestArchive() {
-    if (actionBusy || !state) return;
-    const pending = state.assignments.filter((assignment) => !assignment.done).length;
-    if (!pending) {
-      archiveDay(false);
-      return;
-    }
-    $('archive-description').textContent = `今天共安排 ${state.assignments.length} 项任务，已完成 ${state.assignments.length - pending} 项，还有 ${pending} 项未完成。`;
-    $('carry-pending').checked = true;
-    openDialog('archive-dialog');
   }
 
   async function exportDay(date, isCurrent) {
@@ -1243,7 +1201,6 @@
         const choosing = $('library-dialog').open;
         const recordingCompletion = $('completion-dialog').open;
         closeDialog('library-dialog');
-        closeDialog('archive-dialog');
         closeDialog('completion-dialog');
         subjectDraft = null;
         completionDraft = null;
@@ -1272,10 +1229,16 @@
   }
 
   function refreshCloudIfIdle() {
-    if (accountReloading || dirty || savePromise || actionBusy || !cloudRefreshRevision) return;
+    if (accountReloading || dirty || savePromise || actionBusy || refreshing || !cloudRefreshRevision) return;
     const revision = cloudRefreshRevision;
     cloudRefreshRevision = 0;
-    if (!state || revision > state.revision) load();
+    if (!state || revision > state.revision) {
+      refreshing = true;
+      load().finally(() => {
+        refreshing = false;
+        refreshCloudIfIdle();
+      });
+    }
   }
 
   function queueCloudRefresh(revision) {
@@ -1314,7 +1277,10 @@
   }
 
   async function start() {
-    if (!window.StudyCloud?.configured) return load();
+    if (!window.StudyCloud?.configured) {
+      cloudAccount = { store: window.StudyStore.createStore(window, null, ':guest') };
+      return load();
+    }
     try {
       cloudAccount = await window.StudyCloud.connect();
     } catch (error) {
@@ -1328,7 +1294,7 @@
     const { user } = cloudAccount;
     $('cloud-button').hidden = false;
     $('cloud-button-text').textContent = user ? '云端同步' : '登录同步';
-    $('cloud-status').textContent = user ? '云端记录 · 正在载入' : '当前使用本机记录';
+    $('cloud-status').textContent = user ? '云端记录 · 正在载入' : '访客手账 · 仅保存在此浏览器';
     $('cloud-account-name').textContent = cloudAccount.accountName || '';
     $('cloud-form').hidden = Boolean(user);
     $('cloud-signed-in').hidden = !user;
@@ -1342,7 +1308,10 @@
       if (!accountChanging && !accountReloading) reloadAccount();
     });
     await load();
-    if (user && !accountReloading) cloudAccount.watch(queueCloudRefresh);
+    if (user && !accountReloading) {
+      cloudAccount.sync().then(() => queueCloudRefresh()).catch(() => {});
+      cloudAccount.watch(queueCloudRefresh);
+    }
   }
 
   function handleTaskModeChange(event) {
@@ -1513,6 +1482,13 @@
   $('cloud-sign-out').addEventListener('click', () => {
     if (cloudAccount?.user) changeAccount(() => cloudAccount.signOut());
   });
+  $('cloud-use-remote').addEventListener('click', () => {
+    changeAccount(async () => {
+      const revision = state.revision;
+      downloadBackup(await recordStore().exportBackup());
+      await cloudAccount.useCloud(revision);
+    });
+  });
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
     installPrompt = event;
@@ -1535,8 +1511,6 @@
   $('history-content').addEventListener('click', (event) => { if (event.target.closest('#retry-history') && historyDate) selectHistoryDate(historyDate); });
   $('export-button').addEventListener('click', () => exportDay(state.date, true));
   $('export-history-button').addEventListener('click', () => { if (historyDate) exportDay(historyDate, false); });
-  $('archive-button').addEventListener('click', requestArchive);
-  $('confirm-archive').addEventListener('click', () => archiveDay($('carry-pending').checked));
   $('retry-button').addEventListener('click', async () => {
     if (!errorRetry) return;
     $('retry-button').disabled = true;
@@ -1570,13 +1544,24 @@
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && dirty) flushAutosave().catch(() => {});
-    if (document.visibilityState === 'visible' && cloudAccount?.user) queueCloudRefresh();
+    if (document.visibilityState === 'visible') {
+      if (state && state.date !== window.StudyStore.studyDate()) queueCloudRefresh();
+      cloudAccount?.sync?.().then(() => queueCloudRefresh()).catch(() => {});
+    }
   });
   window.addEventListener('online', () => {
     if (!cloudAccount?.user) return;
     if (dirty) flushAutosave().catch(() => {});
-    queueCloudRefresh();
+    cloudAccount.sync().then(() => queueCloudRefresh()).catch(() => {});
   });
+  window.addEventListener('study-cloud-status', event => {
+    $('cloud-status').textContent = event.detail;
+    $('cloud-button').title = event.detail;
+    $('cloud-use-remote').hidden = !event.detail.startsWith('同步冲突');
+  });
+  window.setInterval(() => {
+    if (state && state.date !== window.StudyStore.studyDate()) queueCloudRefresh();
+  }, 1000);
   if ('serviceWorker' in navigator && window.isSecureContext) {
     window.addEventListener('load', async () => {
       try {

@@ -35,6 +35,64 @@
     };
   }
 
+  function cachedAccount(local, remote, scope, report) {
+    const cache = local.createStore(root, null, scope);
+    let syncing;
+
+    function sync() {
+      if (!syncing) {
+        const run = async () => {
+          if (!root.navigator.onLine) throw new local.StoreError('当前离线。', 503);
+          const cached = await cache.transact(record => ({ result: record }), true);
+          const { cloud_base: base, ...snapshot } = cached;
+          const pending = base != null && cached.revision > base;
+          const cloud = await remote(record => {
+            if (!pending) return { result: record };
+            if (record.sync_commit && record.sync_commit === snapshot.sync_commit) return { result: record };
+            if (record.revision !== base) throw new local.StoreError('云端有更新，本机修改已保留。', 409);
+            return { record: snapshot, result: snapshot };
+          });
+          const stillPending = await cache.transact(record => {
+            if (record.cloud_base !== base) return { result: record.revision > record.cloud_base };
+            if (base == null || (!pending && record.revision === base && cloud.revision !== base)) {
+              return { record: { ...cloud, cloud_base: cloud.revision }, result: false };
+            }
+            if (pending) return { record: { ...record, cloud_base: cloud.revision }, result: record.revision > cloud.revision };
+            return { result: record.revision > record.cloud_base };
+          });
+          report(stillPending ? '本机已保存，等待同步' : '云端已同步');
+          return stillPending;
+        };
+        const work = root.navigator.locks ? root.navigator.locks.request(cache.databaseName, run) : run();
+        syncing = work.catch(error => {
+          report(error.status === 409 ? '同步冲突，本机修改已保留' : '云端暂不可用，继续使用本机缓存');
+          throw error;
+        }).finally(() => { syncing = null; });
+      }
+      return syncing;
+    }
+
+    const transact = async (operation, readOnly) => {
+      const ready = await cache.transact(record => ({ result: record.cloud_base != null }), true);
+      if (!ready) await sync();
+      const result = await cache.transact(record => {
+        const outcome = operation(record);
+        if (outcome.record) outcome.record = { ...outcome.record, sync_commit: root.crypto.randomUUID() };
+        return outcome;
+      }, readOnly);
+      if (!readOnly) sync().then(pending => { if (pending) sync().catch(() => {}); }).catch(() => {});
+      return result;
+    };
+    async function useCloud(revision) {
+      const cloud = await remote(record => ({ result: record }));
+      await cache.transact(record => {
+        if (record.revision !== revision) throw new local.StoreError('本机记录已更新，请重新备份。', 409);
+        return { record: { ...cloud, cloud_base: cloud.revision } };
+      });
+    }
+    return { store: local.createStore(root, transact), sync, useCloud };
+  }
+
   let sdkPromise;
   function loadSdk() {
     if (!sdkPromise) sdkPromise = new Promise((resolve, reject) => {
@@ -69,17 +127,27 @@
     client ||= root.supabase.createClient(url.origin, config.publishableKey, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
     });
+    const storageKey = `study-account:${url.host}`;
     const { data, error } = await client.auth.getSession();
-    if (error) throw new Error('暂时无法读取登录状态，请检查网络后重试。');
-    const user = data.session?.user || null;
+    let user = data.session?.user || null;
+    if (error) {
+      if (error.name !== 'AuthRetryableFetchError') throw new Error('暂时无法读取登录状态，请重试。');
+      user = JSON.parse(root.localStorage.getItem(storageKey));
+      if (!user) throw new Error('首次登录需要联网。');
+    } else if (user) root.localStorage.setItem(storageKey, JSON.stringify({ id: user.id, email: user.email }));
+    else root.localStorage.removeItem(storageKey);
     const local = root.StudyStore;
-    const store = user ? local.createStore(root, createTransaction(client, user.id, local.helpers.initialRecord, local.StoreError)) : local;
+    const report = (message) => root.dispatchEvent(new CustomEvent('study-cloud-status', { detail: message }));
+    const account = user ? cachedAccount(local, createTransaction(client, user.id, local.helpers.initialRecord, local.StoreError), `:account:${url.host}:${user.id}`, report) : null;
+    const store = account?.store || local.createStore(root, null, ':guest');
     let migration;
 
     return {
       user,
       accountName: user?.email === OWNER_EMAIL ? OWNER_USERNAME : user?.email,
       store,
+      sync: account?.sync,
+      useCloud: account?.useCloud,
       migrateLocal() {
         if (user?.id !== ownerId) return;
         if (!migration) migration = local.exportBackup().then(async (backup) => {
@@ -101,16 +169,19 @@
         if (failure) throw new Error('退出未完成，请检查网络后重试。');
       },
       onAccountChange(callback) {
-        client.auth.onAuthStateChange((_event, session) => {
+        client.auth.onAuthStateChange((event, session) => {
+          if (event === 'INITIAL_SESSION' && error && !session) return;
+          if (event === 'SIGNED_OUT') root.localStorage.removeItem(storageKey);
           if ((session?.user?.id || null) !== (user?.id || null)) root.setTimeout(callback, 0);
         });
       },
       watch(callback) {
+        const refresh = () => account.sync().then(() => callback()).catch(() => {});
         const channel = client.channel(`study-journal:${user.id}`);
         for (const event of ['INSERT', 'UPDATE']) {
-          channel.on('postgres_changes', { event, schema: 'public', table: TABLE, filter: `user_id=eq.${user.id}` }, (change) => callback(change.new?.revision));
+          channel.on('postgres_changes', { event, schema: 'public', table: TABLE, filter: `user_id=eq.${user.id}` }, refresh);
         }
-        channel.subscribe((status) => { if (status === 'SUBSCRIBED') callback(); });
+        channel.subscribe((status) => { if (status === 'SUBSCRIBED') refresh(); });
       },
     };
   }

@@ -1001,7 +1001,7 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 
 /* A round crest belongs to the exported header, beside the date instruments. */
 .export-surface .page-heading{display:grid;grid-template-columns:minmax(0,1fr) auto 76px;column-gap:22px}
-.export-emblem{display:block;width:76px;height:76px;object-fit:contain;border-radius:50%;align-self:start;background:transparent}
+.export-emblem{display:block;width:76px;height:76px;object-fit:contain;border-radius:50%;align-self:start;background:#36232f;padding:9px}
 @media(max-width:1000px){
  .export-surface .page-heading{grid-template-columns:minmax(0,1fr) 76px;row-gap:20px}
  .export-surface .page-heading>div:first-child{grid-column:1;grid-row:1}

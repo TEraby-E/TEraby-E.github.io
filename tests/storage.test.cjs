@@ -176,6 +176,28 @@ test('owner migration saves custom check-ins once and keeps the receipt across l
   assert.equal(record, replaced, 'a removed check-in must not be resurrected on the next login');
 });
 
+test('the current day follows Shanghai midnight and history skips days without check-ins', async () => {
+  let now = new Date('2026-10-27T15:59:59Z');
+  const pendingDay = { date: '2026-10-24', assignments: [task()] };
+  let record = { ...save(initial(), [{ ...task(first, true), actual_minutes: 20 }]), archives: [pendingDay] };
+  const target = store.createStore({ now: () => now, fetch: async () => ({ ok: true, json: async () => library }) }, async (operation) => {
+    const { record: next, result } = operation(record);
+    if (next) record = next;
+    return result;
+  });
+  const before = await target.request('/api/state');
+  assert.equal(before.date, '2026-10-27');
+  assert.deepEqual(before.assignments, []);
+  assert.deepEqual(before.history.map(day => day.date), ['2026-10-25']);
+  assert.equal((await target.request('/api/history/2026-10-25')).assignments[0].actual_minutes, 20);
+
+  now = new Date('2026-10-27T16:00:00Z');
+  const after = await target.request('/api/state');
+  assert.equal(after.date, '2026-10-28');
+  assert.deepEqual(after.history, before.history);
+  assert.equal((await target.request('/api/state')).revision, after.revision);
+});
+
 test('merge import keeps existing tasks, deduplicates by id and preserves completed work', () => {
   const record = save(initial(), [task(first)]);
   const incoming = h.validateBackup(backup({ date: '2026-10-25', assignments: [task(first, true), task(second)] }), index);

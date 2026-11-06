@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#9e1b32">
   <meta name="description" content="安排章节任务，记录每天的学习进展。">
-  <title>交大学习手账 · 每日任务</title>
-  <link rel="stylesheet" href="./styles.css?v=20261106-cloud-sync">
-  <link rel="stylesheet" href="./cards.css?v=20261106-cloud-sync">
-  <link rel="icon" type="image/svg+xml" href="./assets/sjtu-emblem-round.svg?v=20261106-cloud-sync">
+  <title>学习手账 · 每日任务</title>
+  <link rel="stylesheet" href="./styles.css?v=20261107-study-journal">
+  <link rel="stylesheet" href="./cards.css?v=20261107-study-journal">
+  <link rel="icon" type="image/svg+xml" href="./assets/terabyte-flow.svg?v=20261107-study-journal">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./assets/app-icon-192.png">
-  <script src="./learning-model.js?v=20261106-cloud-sync" defer></script>
-  <script src="./study-time.js?v=20261106-cloud-sync" defer></script>
-  <script src="./storage.js?v=20261106-cloud-sync" defer></script>
-  <script src="./export-image.js?v=20261106-cloud-sync" defer></script>
-  <script src="./cloud-config.js?v=20261106-cloud-sync" defer></script>
-  <script src="./cloud.js?v=20261106-cloud-sync" defer></script>
-  <script src="./app.js?v=20261106-cloud-sync" defer></script>
+  <link rel="apple-touch-icon" href="./assets/terabyte-touch-icon.png">
+  <script src="./learning-model.js?v=20261107-study-journal" defer></script>
+  <script src="./study-time.js?v=20261107-study-journal" defer></script>
+  <script src="./storage.js?v=20261107-study-journal" defer></script>
+  <script src="./export-image.js?v=20261107-study-journal" defer></script>
+  <script src="./cloud-config.js?v=20261107-study-journal" defer></script>
+  <script src="./cloud.js?v=20261107-study-journal" defer></script>
+  <script src="./app.js?v=20261107-study-journal" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -36,10 +36,10 @@
 
   <header class="site-header">
     <div class="header-inner">
-      <a class="brand" href="./" aria-label="交大学习手账首页">
-        <img class="university-emblem" src="./assets/sjtu-emblem-round.svg" alt="上海交通大学校徽" width="60" height="60">
+      <a class="brand" href="./" aria-label="学习手账首页">
+        <img class="university-emblem" src="./assets/terabyte-flow.svg" alt="Terabyte 标志" width="60" height="60">
         <span class="brand-rule" aria-hidden="true"></span>
-        <span class="brand-copy"><strong>交大学习手账</strong><span>SJTU</span></span>
+        <span class="brand-copy"><strong>学习手账</strong></span>
       </a>
       <div class="header-actions">
       <a class="button button-quiet history-trigger" href="../" aria-label="返回主页" title="返回 Terabyte 主页"><svg class="icon home-arrow" aria-hidden="true"><use href="#i-arrow"/></svg><span>主页</span></a>
@@ -87,7 +87,6 @@
       <div class="action-buttons">
         <button class="button button-secondary" id="custom-button" type="button" aria-haspopup="dialog" aria-controls="custom-dialog" disabled><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>自定义打卡</span></button>
         <button class="button button-secondary" id="export-button" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg><span>导出今日图片</span></button>
-        <button class="button button-primary" id="archive-button" type="button" disabled><span>保存并进入下一天</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
       </div>
     </div>
 
@@ -124,11 +123,7 @@
     <div class="modal-footer"><span id="history-summary" class="muted"></span><button class="button button-secondary" id="export-history-button" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>导出这天图片</button></div>
   </dialog>
 
-  <dialog class="modal archive-modal" id="archive-dialog" aria-labelledby="archive-title">
-    <div class="modal-heading"><div><p class="eyebrow">NEXT DAY</p><h2 id="archive-title">收好今天，继续向前</h2></div><button type="button" class="icon-button close-button" data-close="archive-dialog" aria-label="关闭"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <div class="archive-content"><p id="archive-description"></p><label class="carry-option"><input type="checkbox" id="carry-pending" checked><span><strong>将未完成任务带到下一天</strong><span>包括今天已打卡但尚未标记完成的多日任务；今天的用时和打卡会留在历史记录中。</span></span></label></div>
-    <div class="modal-footer"><button type="button" class="button button-secondary" data-close="archive-dialog">继续今天</button><button type="button" class="button button-primary" id="confirm-archive">保存并进入下一天<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
-  </dialog>
+
 
 <dialog class="modal completion-modal" id="completion-dialog" aria-labelledby="completion-title">
     <div class="modal-heading"><div><h2 id="completion-title">完成任务，记下实际用时</h2><p class="modal-description" id="completion-description">填写这项任务实际花费的时间，保存后完成打卡。</p></div><button type="button" class="icon-button close-button" data-close="completion-dialog" aria-label="关闭实际用时记录"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
@@ -160,8 +155,9 @@
         </form>
         <div id="cloud-signed-in" hidden>
           <p id="cloud-account-name"></p>
-          <p>此浏览器会保留登录状态。云端记录需要联网读写。</p>
+          <p>此浏览器会保留登录状态。断网可继续打卡，联网后同步。</p>
           <div class="data-section-actions"><button type="button" class="button button-secondary" id="cloud-sign-out">退出登录</button></div>
+          <button type="button" class="button button-secondary" id="cloud-use-remote" hidden>备份本机并载入云端</button>
         </div>
         <p id="cloud-message" class="journal-form-message" role="alert"></p>
       </section>
