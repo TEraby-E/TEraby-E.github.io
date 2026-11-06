@@ -3,21 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#9e1b32">
+  <meta name="theme-color" content="#18485d">
   <meta name="description" content="安排章节任务，记录每天的学习进展。">
   <title>学习手账 · 每日任务</title>
-  <link rel="stylesheet" href="./styles.css?v=20261107-study-journal">
-  <link rel="stylesheet" href="./cards.css?v=20261107-study-journal">
-  <link rel="icon" type="image/svg+xml" href="./assets/terabyte-flow.svg?v=20261107-study-journal">
+  <link rel="stylesheet" href="./styles.css?v=20261107-teal-journal">
+  <link rel="stylesheet" href="./cards.css?v=20261107-teal-journal">
+  <link rel="icon" type="image/svg+xml" href="./assets/terabyte-flow.svg?v=20261107-teal-journal">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/terabyte-touch-icon.png">
-  <script src="./learning-model.js?v=20261107-study-journal" defer></script>
-  <script src="./study-time.js?v=20261107-study-journal" defer></script>
-  <script src="./storage.js?v=20261107-study-journal" defer></script>
-  <script src="./export-image.js?v=20261107-study-journal" defer></script>
-  <script src="./cloud-config.js?v=20261107-study-journal" defer></script>
-  <script src="./cloud.js?v=20261107-study-journal" defer></script>
-  <script src="./app.js?v=20261107-study-journal" defer></script>
+  <script src="./learning-model.js?v=20261107-teal-journal" defer></script>
+  <script src="./study-time.js?v=20261107-teal-journal" defer></script>
+  <script src="./storage.js?v=20261107-teal-journal" defer></script>
+  <script src="./export-image.js?v=20261107-teal-journal" defer></script>
+  <script src="./cloud-config.js?v=20261107-teal-journal" defer></script>
+  <script src="./cloud.js?v=20261107-teal-journal" defer></script>
+  <script src="./app.js?v=20261107-teal-journal" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -38,7 +38,6 @@
     <div class="header-inner">
       <a class="brand" href="./" aria-label="学习手账首页">
         <img class="university-emblem" src="./assets/terabyte-flow.svg" alt="Terabyte 标志" width="60" height="60">
-        <span class="brand-rule" aria-hidden="true"></span>
         <span class="brand-copy"><strong>学习手账</strong></span>
       </a>
       <div class="header-actions">
@@ -60,10 +59,9 @@
     <section class="page-heading" aria-labelledby="page-title">
       <div>
         <h1 id="page-title">饮水思源<span class="motto-separator"> · </span>爱国荣校</h1>
-        <p class="page-description">不要把梦想埋没</p>
       </div>
       <div class="heading-meta">
-        <div class="duration-block" aria-live="polite"><span class="duration-label">今日学习时长</span><span class="duration-value-line is-actual"><span>实际</span><strong id="actual-time">0分钟</strong></span></div>
+        <div class="duration-block" aria-live="polite"><span class="duration-label">今日实际用时</span><span class="duration-value-line is-actual"><strong id="actual-time">0分钟</strong></span></div>
         <div class="date-block"><span class="date-label">学习日期</span><time id="study-date">正在载入</time><span id="study-weekday" class="date-weekday"></span></div>
       </div>
     </section>
@@ -77,20 +75,21 @@
       </div>
       <div class="subject-groups" id="daily-tbody" role="list" aria-label="各学科学习任务"><div class="initial-loading"><span class="loading-spinner" aria-hidden="true"></span>正在载入你的学习清单</div></div>
       <div class="sheet-bottom">
-        <div class="completion-summary" id="completion-summary"><span class="completion-symbol" aria-hidden="true"><span id="completion-rate">0%</span></span><div><span id="completion-text">今天，从一项任务开始</span><div class="summary-progress" id="summary-progress" role="progressbar" aria-label="今日任务完成进度" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0"><span id="summary-progress-fill"></span></div></div></div>
+        <div class="completion-summary" id="completion-summary">
+          <div class="completion-caption"><strong>不要把梦想埋没</strong><span id="completion-text" hidden></span><span id="completion-rate" aria-hidden="true">0%</span></div>
+          <div class="summary-progress" id="summary-progress" role="progressbar" aria-label="今日任务完成进度" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0"><span id="summary-progress-fill"></span></div>
+        </div>
         <img class="journal-circuit sheet-circuit" src="./assets/journal-circuit.svg" width="600" height="120" alt="" aria-hidden="true" loading="lazy" decoding="async">
       </div>
     </section>
 
     <div class="day-actions">
-      <img class="journal-circuit action-circuit" src="./assets/journal-circuit.svg" width="600" height="120" alt="" aria-hidden="true" loading="lazy" decoding="async">
       <div class="action-buttons">
-        <button class="button button-secondary" id="custom-button" type="button" aria-haspopup="dialog" aria-controls="custom-dialog" disabled><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>自定义打卡</span></button>
+        <button class="button button-primary" id="custom-button" type="button" aria-haspopup="dialog" aria-controls="custom-dialog" disabled><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>自定义打卡</span></button>
         <button class="button button-secondary" id="export-button" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg><span>导出今日图片</span></button>
       </div>
     </div>
 
-    <footer class="page-footer"><span>饮水思源 · 爱国荣校</span><span>学有所得，日有所进</span></footer>
   </main>
 
   <dialog class="modal library-modal" id="library-dialog" aria-labelledby="library-title">

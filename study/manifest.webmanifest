@@ -8,7 +8,7 @@
   "scope": "./",
   "display": "standalone",
   "background_color": "#efede8",
-  "theme_color": "#3b1d2b",
+  "theme_color": "#18485d",
   "icons": [
     { "src": "./assets/terabyte-flow.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]

@@ -753,11 +753,10 @@
   function renderDayProgress(find, assignments) {
     const total = assignments.length;
     const completed = assignments.filter(task => task.done).length;
-    find('completion-text').innerHTML = total ? (completed === total ? `今日 <strong>${total}</strong> 项任务已全部完成` : `已完成 <strong>${completed}</strong> / ${total} 项任务`) : '今天，从一项任务开始';
-    find('summary-progress-fill').style.width = total ? `${completed / total * 100}%` : '0%';
+    find('completion-text').textContent = total ? `${completed} / ${total} 项` : '';
+    find('completion-text').hidden = !total;
     const progress = total ? completed / total * 100 : 0;
-    find('completion-summary').style.setProperty?.('--progress', `${progress}%`);
-    find('completion-summary').style.setProperty?.('--progress-step', `${100 / Math.max(total, 1)}%`);
+    find('summary-progress-fill').style.width = `${progress}%`;
     find('completion-rate').textContent = `${Math.round(progress)}%`;
     find('summary-progress').setAttribute('aria-valuemax', String(total || 1));
     find('summary-progress').setAttribute('aria-valuenow', String(completed));
