@@ -6,18 +6,18 @@
   <meta name="theme-color" content="#18485d">
   <meta name="description" content="安排章节任务，记录每天的学习进展。">
   <title>学习手账 · 每日任务</title>
-  <link rel="stylesheet" href="./styles.css?v=20261107-teal-journal">
-  <link rel="stylesheet" href="./cards.css?v=20261107-teal-journal">
-  <link rel="icon" type="image/svg+xml" href="./assets/terabyte-flow.svg?v=20261107-teal-journal">
+  <link rel="stylesheet" href="./styles.css?v=20261107-learning-plans">
+  <link rel="stylesheet" href="./cards.css?v=20261107-learning-plans">
+  <link rel="icon" type="image/svg+xml" href="./assets/terabyte-flow.svg?v=20261107-learning-plans">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/terabyte-touch-icon.png">
-  <script src="./learning-model.js?v=20261107-teal-journal" defer></script>
-  <script src="./study-time.js?v=20261107-teal-journal" defer></script>
-  <script src="./storage.js?v=20261107-teal-journal" defer></script>
-  <script src="./export-image.js?v=20261107-teal-journal" defer></script>
-  <script src="./cloud-config.js?v=20261107-teal-journal" defer></script>
-  <script src="./cloud.js?v=20261107-teal-journal" defer></script>
-  <script src="./app.js?v=20261107-teal-journal" defer></script>
+  <script src="./learning-model.js?v=20261107-learning-plans" defer></script>
+  <script src="./study-time.js?v=20261107-learning-plans" defer></script>
+  <script src="./storage.js?v=20261107-learning-plans" defer></script>
+  <script src="./export-image.js?v=20261107-learning-plans" defer></script>
+  <script src="./cloud-config.js?v=20261107-learning-plans" defer></script>
+  <script src="./cloud.js?v=20261107-learning-plans" defer></script>
+  <script src="./app.js?v=20261107-learning-plans" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -42,6 +42,7 @@
       </a>
       <div class="header-actions">
       <a class="button button-quiet history-trigger" href="../" aria-label="返回主页" title="返回 Terabyte 主页"><svg class="icon home-arrow" aria-hidden="true"><use href="#i-arrow"/></svg><span>主页</span></a>
+      <button class="button button-quiet history-trigger" id="plan-button" type="button" aria-label="学习计划" title="学习计划" disabled><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span>计划</span></button>
       <button class="button button-quiet history-trigger" id="data-button" type="button" aria-label="记录管理" disabled>
         <svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg><span>记录管理</span>
       </button>
@@ -93,11 +94,31 @@
   </main>
 
   <dialog class="modal library-modal" id="library-dialog" aria-labelledby="library-title">
-    <div class="modal-heading"><div><p class="eyebrow">CHAPTER LIBRARY</p><h2 id="library-title">选择学习任务</h2><p class="modal-description">按今天的进度，自由选择章节和任务。</p></div><button type="button" class="icon-button close-button" data-close="library-dialog" aria-label="关闭任务库"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <div class="library-search-wrap"><label class="search-field"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="library-search" type="search" autocomplete="off" placeholder="搜索章节或任务" aria-label="搜索当前科目的章节或任务"></label><label class="phase-filter"><span>当前学习阶段</span><select id="library-phase" aria-label="切换当前学科的学习阶段"><option value="">全部阶段</option></select></label><span id="library-subject-count" class="muted"></span></div>
+    <div class="modal-heading"><h2 id="library-title">选择学习任务</h2><button type="button" class="icon-button close-button" data-close="library-dialog" aria-label="关闭任务库"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="library-search-wrap"><label class="search-field"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="library-search" type="search" autocomplete="off" placeholder="搜索章节或任务" aria-label="搜索当前科目的章节或任务"></label><label class="phase-filter"><select id="library-phase" aria-label="切换当前学科的学习阶段"><option value="">全部阶段</option></select></label></div>
     <section class="library-stage-summary" id="library-stage-summary" aria-label="当前学科阶段进度" aria-live="polite"></section>
     <div class="library-layout"><nav class="chapter-list" id="chapter-list" aria-label="选择章节"></nav><section class="chapter-content" id="chapter-content" aria-live="polite"></section></div>
-    <div class="modal-footer"><span class="selection-summary" id="selection-summary">已选 0 项任务</span><div class="modal-footer-buttons"><button type="button" class="button button-secondary" data-close="library-dialog">取消</button><button type="button" class="button button-primary" id="apply-library">加入今日清单<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div></div>
+    <div class="modal-footer"><span class="selection-summary" id="selection-summary">已选 0 项</span><div class="modal-footer-buttons"><button type="button" class="button button-secondary" id="copy-to-plan">存入计划</button><button type="button" class="button button-primary" id="apply-library">加入今日清单</button></div></div>
+  </dialog>
+
+  <dialog class="modal data-modal plan-modal" id="plan-dialog" aria-labelledby="plan-title">
+    <div class="modal-heading"><h2 id="plan-title">学习计划</h2><button type="button" class="icon-button close-button" data-close="plan-dialog" aria-label="关闭学习计划"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="data-sections">
+      <section class="data-section">
+        <form class="journal-form" id="plan-form">
+          <label>任务名称<input id="plan-task-title" maxlength="400" required></label>
+          <label>学科<select id="plan-subject" required></select></label>
+          <label>内容（选填）<textarea id="plan-detail" rows="2" maxlength="10000"></textarea></label>
+          <div class="data-section-actions"><button type="submit" class="button button-primary" id="save-plan-task">保存任务</button><button type="button" class="text-button" id="cancel-plan-edit" hidden>取消编辑</button></div>
+        </form>
+      </section>
+      <section class="data-section">
+        <label class="search-field"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input type="search" id="plan-search" aria-label="搜索计划任务" placeholder="搜索计划任务"></label>
+        <ul id="plan-list" class="plan-list"></ul>
+        <p id="plan-message" class="journal-form-message" role="alert"></p>
+      </section>
+    </div>
+    <div class="modal-footer"><button type="button" class="button button-secondary" id="download-plan">下载计划</button><button type="button" class="button button-secondary" id="upload-plan">上传计划</button><input type="file" id="plan-file" accept=".json,application/json" hidden></div>
   </dialog>
 
   <dialog class="modal data-modal" id="custom-dialog" aria-labelledby="custom-title">

@@ -30,6 +30,7 @@
   let loadRequest = 0;
   let installPrompt = null;
   let completionDraft = null;
+  let planEditing = null;
   let customDate = null;
   let cloudAccount = null;
   let cloudRefreshRevision = 0;
@@ -57,7 +58,7 @@
     if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value.date) || !Array.isArray(value.assignments)) {
       throw new Error('学习记录的格式不正确，请重新载入。');
     }
-    return { ...value, history: Array.isArray(value.history) ? value.history : [], completed_ids: Array.isArray(value.completed_ids) ? value.completed_ids : [], library_completed_ids: Array.isArray(value.library_completed_ids) ? value.library_completed_ids : [], library_reopened_ids: Array.isArray(value.library_reopened_ids) ? value.library_reopened_ids : [], task_modes: value.task_modes || {}, subject_phases: value.subject_phases || {}, task_progress: value.task_progress || {}, assignments: value.assignments.map((assignment) => ({ ...assignment, done: Boolean(assignment.done) })) };
+    return { ...value, history: Array.isArray(value.history) ? value.history : [], completed_ids: Array.isArray(value.completed_ids) ? value.completed_ids : [], library_completed_ids: Array.isArray(value.library_completed_ids) ? value.library_completed_ids : [], library_reopened_ids: Array.isArray(value.library_reopened_ids) ? value.library_reopened_ids : [], task_modes: value.task_modes || {}, subject_phases: value.subject_phases || {}, plan_tasks: Array.isArray(value.plan_tasks) ? value.plan_tasks : [], task_progress: value.task_progress || {}, assignments: value.assignments.map((assignment) => ({ ...assignment, done: Boolean(assignment.done) })) };
   }
 
   function dateParts(date) {
@@ -301,6 +302,7 @@
     const unavailable = !state || actionBusy;
     $('history-button').disabled = unavailable;
     $('data-button').disabled = unavailable;
+    $('plan-button').disabled = unavailable;
     $('custom-button').disabled = unavailable;
     $('save-custom').disabled = unavailable;
     $('export-button').disabled = unavailable;
@@ -455,6 +457,7 @@
       else if (this.timeTask.done) tags.push('<span class="card-status is-today">今日已打卡</span>');
       if (this.completed && this.mode !== 'multi-day') tags.shift();
       if (this.mode === 'multi-day' && this.variant === 'daily') tags.push(`<span class="card-progress">累计打卡 ${state.task_progress[this.id]?.checkins || 0} 天</span>`);
+      if (this.options.compact && this.mode !== 'multi-day' && !this.completed && !this.timeTask.done) return '';
       return `<div class="card-status-row">${tags.join('')}</div>`;
     }
 
@@ -466,6 +469,7 @@
     heading() { return `<div class="card-heading">${this.title()}</div>`; }
 
     content() {
+      if (this.options.compact) return '';
       const task = this.task;
       const presentation = this.presentation;
       const detailText = presentation.detail;
@@ -496,7 +500,7 @@
 
     render() {
       const tag = this.variant === 'daily' ? 'li' : 'article';
-      const classes = ['study-card', `${this.variant}-card`, this.completed ? 'is-finished' : '', this.options.selected ? 'is-selected' : '', this.timeTask.done ? 'is-checked-in' : ''].filter(Boolean).join(' ');
+      const classes = ['study-card', `${this.variant}-card`, this.options.compact ? 'is-compact' : '', this.completed ? 'is-finished' : '', this.options.selected ? 'is-selected' : '', this.timeTask.done ? 'is-checked-in' : ''].filter(Boolean).join(' ');
       return `<${tag} class="${classes}" data-card-key="${this.variant}:${escape(this.id)}" data-finished="${this.completed}">${this.status()}${this.heading()}${this.content()}${this.footer()}</${tag}>`;
     }
   }
@@ -690,15 +694,14 @@
   }
 
   function taskCardsMarkup(tasks, CardView = DailyTaskCardView) {
-    return tasks.length ? `<ul class="task-list">${tasks.map(task => new CardView(task, { chapter: true }).render()).join('')}</ul>` : '';
+    return tasks.length ? `<ul class="task-list">${tasks.map(task => new CardView(task, { compact: true }).render()).join('')}</ul>` : '';
   }
 
   function stageProgressMarkup(subject, progress) {
     const percent = progress.percent;
     const label = percent === null ? '暂无用时数据' : percent > 0 && percent < 0.1 ? '<0.1%' : `${Math.min(percent < 100 ? 99.9 : 100, Math.round(percent * 10) / 10)}%`;
-    const explanation = progress.unknown ? '部分任务未提供用时，仅统计已有用时的任务。' : '按已完成任务的原计划用时占当前阶段原计划总用时统计。';
     const bar = percent === null ? '' : `<div class="subject-stage-track" role="progressbar" aria-label="${escape(subjectName(subject))}阶段进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-valuetext="${escape(label)}"><span style="width:${percent}%"></span></div>`;
-    return `<div class="subject-stage-line"><span class="subject-phase">${escape(progress.phase || '全部阶段')}</span><span class="subject-stage-label" title="${escape(explanation)}">${progress.unknown ? '阶段进度 · 已知用时' : '阶段进度'}</span><strong class="subject-stage-value">${escape(label)}</strong></div>${bar}`;
+    return `<div class="subject-stage-line"><span class="subject-phase">${escape(progress.phase || '全部阶段')}</span><strong class="subject-stage-value" aria-label="阶段进度${progress.unknown ? '（按已知用时）' : ''}：${escape(label)}">${escape(label)}</strong></div>${bar}`;
   }
 
   function progressSummary(subject, tasks, progress, open) {
@@ -812,6 +815,7 @@
     closeDialog('completion-dialog');
     completionDraft = null;
     renderDay();
+    if ($('plan-dialog').open) renderPlans();
     setStatus('saved', '已同步最新记录');
     showError('另一个窗口或设备更新了学习记录。页面已载入最新内容，请重新操作。');
     showToast('已载入最新记录，请重新操作。');
@@ -826,7 +830,7 @@
     }
     if (!dirty || !state) return;
     const version = changeVersion;
-    const snapshot = { date: state.date, revision: state.revision, assignments: cloneAssignments(), library_completed_ids: [...state.library_completed_ids], library_reopened_ids: [...state.library_reopened_ids], task_modes: { ...state.task_modes }, subject_phases: { ...state.subject_phases } };
+    const snapshot = { date: state.date, revision: state.revision, assignments: cloneAssignments(), library_completed_ids: [...state.library_completed_ids], library_reopened_ids: [...state.library_reopened_ids], task_modes: { ...state.task_modes }, subject_phases: { ...state.subject_phases }, plan_tasks: state.plan_tasks };
     setStatus('saving', '正在保存');
     savePromise = (async () => {
       try {
@@ -883,7 +887,6 @@
     $('library-search').value = '';
     $('library-phase').innerHTML = '<option value="">全部阶段</option>' + [...new Set(subject.chapters.map((chapter) => chapter.phase).filter(Boolean))].map((phase) => `<option value="${escape(phase)}">${escape(phase)}</option>`).join('');
     $('library-phase').value = phase;
-    $('library-subject-count').textContent = `${subject.chapters.length} 个章节`;
     renderLibrary();
     openDialog('library-dialog');
     $('library-search').focus({ preventScroll: true });
@@ -932,7 +935,7 @@
     const renderChapters = (nodes) => nodes.map((node) => {
       const chapter = node.data;
       const chosen = chapter.tasks.filter((task) => subjectDraft.selected.has(task.id)).length;
-      return `<button type="button" class="chapter-button" data-chapter="${escape(chapter.id)}" aria-current="${chapter.id === subjectDraft.chapterId}"><span>${chapter.phase ? `<span class="chapter-phase">${escape(chapter.phase)}</span>` : ''}<span>${escape(chapter.title)}</span></span>${chosen ? `<span class="chapter-selected" aria-label="已选 ${chosen} 项">${chosen}</span>` : ''}</button>`;
+      return `<button type="button" class="chapter-button" data-chapter="${escape(chapter.id)}" aria-current="${chapter.id === subjectDraft.chapterId}"><span>${escape(chapter.title)}</span>${chosen ? `<span class="chapter-selected" aria-label="已选 ${chosen} 项">${chosen}</span>` : ''}</button>`;
     }).join('');
     $('chapter-list').innerHTML = chapters.length ? subject.renderGroups(renderChapters, { key: groupKey, open, title: '已完成章节' }) : '<div class="empty-state"><p>没有匹配的章节</p></div>';
   }
@@ -940,7 +943,7 @@
   function renderLibraryContent() {
     const chapter = subjectDraft.subject.chapters.find((item) => item.id === subjectDraft.chapterId);
     if (!chapter) {
-      $('chapter-content').innerHTML = `<div class="empty-state">${icon('search')}<strong>${subjectDraft.query ? '没有找到匹配的任务' : '这个科目还没有章节任务'}</strong><p>${subjectDraft.query ? '换一个关键词试试。' : '任务库准备好后会显示在这里。'}</p></div>`;
+      $('chapter-content').innerHTML = `<div class="empty-state">${icon('search')}<strong>${subjectDraft.query ? '没有找到匹配的任务' : '这个科目还没有章节任务'}</strong></div>`;
       return;
     }
     const tasks = visibleTasks(chapter);
@@ -953,8 +956,8 @@
     const previousGroup = $('chapter-content').querySelector('details[data-completed-group]');
     const expanded = previousGroup?.dataset.completedGroup === groupKey && previousGroup.open;
     const today = new Map(subjectAssignments(subjectDraft.subject.id).map((task) => [task.task_id, task]));
-    const taskCards = (entries) => `<div class="library-tasks">${entries.map((task) => new LibraryTaskCardView(task, { assignment: today.get(task.id), selected: subjectDraft.selected.has(task.id) }).render()).join('')}</div>`;
-    CardMotion.update($('chapter-content'), `<div class="chapter-heading"><div><h3>${escape(chapter.title)}</h3><p>${subjectDraft.query ? `找到 ${tasks.length} 项任务` : `${tasks.length} 项学习任务`}</p></div>${pending.length ? `<button class="text-button" id="toggle-chapter" type="button">${allChosen ? '取消未完成全选' : '全选未完成'}</button>` : ''}</div>${visible.renderGroups((nodes) => taskCards(nodes.map((node) => node.data)), { key: groupKey, open: expanded })}`);
+    const taskCards = (entries) => `<div class="library-tasks">${entries.map((task) => new LibraryTaskCardView(task, { compact: true, assignment: today.get(task.id), selected: subjectDraft.selected.has(task.id) }).render()).join('')}</div>`;
+    CardMotion.update($('chapter-content'), `<div class="chapter-heading"><div><h3>${escape(chapter.title)}</h3></div>${pending.length ? `<button class="text-button" id="toggle-chapter" type="button">${allChosen ? '取消未完成全选' : '全选未完成'}</button>` : ''}</div>${visible.renderGroups((nodes) => taskCards(nodes.map((node) => node.data)), { key: groupKey, open: expanded })}`);
   }
 
   function renderLibrary() {
@@ -1074,7 +1077,7 @@
       $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(date))}</h3><span>完成 ${completed} / ${assignments.length} 项任务<small class="history-time-line">${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? library.map((subject) => {
         const tasks = subjectAssignments(subject.id, assignments);
         if (!tasks.length) return '';
-        return `<section class="history-subject"><h4 class="subject-name">${escape(subjectName(subject))}</h4>${tasks.map((task) => new HistoryTaskCardView(task, { chapter: true }).render()).join('')}</section>`;
+        return `<section class="history-subject"><h4 class="subject-name">${escape(subjectName(subject))}</h4>${tasks.map((task) => new HistoryTaskCardView(task, { compact: true }).render()).join('')}</section>`;
       }).join('') : `<div class="empty-state">${icon('book')}<strong>这一天没有安排任务</strong></div>`}`;
       $('export-history-button').hidden = !assignments.length;
       updateControls();
@@ -1135,12 +1138,72 @@
     }
   }
 
-  function downloadBackup(value) {
+  function renderPlans() {
+    const query = $('plan-search').value.trim().toLowerCase();
+    const tasks = state.plan_tasks.filter(task => `${task.title} ${task.detail}`.toLowerCase().includes(query));
+    $('plan-list').innerHTML = tasks.map(task => {
+      const subject = library.find(item => item.id === task.subject_id);
+      const planned = state.assignments.some(item => item.task_id === task.task_id);
+      return `<li data-plan-task="${escape(task.task_id)}"><div><strong>${escape(task.title)}</strong><span>${escape(subjectName(subject))}</span></div><div class="plan-actions"><button class="text-button" type="button" data-plan-action="add" ${planned ? 'disabled' : ''}>${planned ? '已在今日清单' : '加入今天'}</button><button class="text-button" type="button" data-plan-action="edit">编辑</button><button class="text-button" type="button" data-plan-action="remove">删除</button></div></li>`;
+    }).join('') || `<li>${query ? '没有匹配的任务' : '暂无计划任务'}</li>`;
+  }
+
+  function editPlanTask(task = null) {
+    planEditing = task?.task_id || null;
+    $('plan-task-title').value = task?.title || '';
+    $('plan-detail').value = task?.detail || '';
+    if (task) $('plan-subject').value = task.subject_id;
+    $('cancel-plan-edit').hidden = !task;
+  }
+
+  function openPlans() {
+    if (!state || actionBusy) return;
+    $('plan-subject').innerHTML = library.map(subject => `<option value="${escape(subject.id)}">${escape(subjectName(subject))}</option>`).join('');
+    $('plan-search').value = '';
+    $('plan-message').textContent = '';
+    editPlanTask();
+    renderPlans();
+    openDialog('plan-dialog');
+  }
+
+  async function savePlan(tasks, message) {
+    state.plan_tasks = window.StudyStore.plan.normalise(tasks);
+    changed();
+    if ($('plan-dialog').open) renderPlans();
+    await flushAutosave();
+    showToast(message);
+  }
+
+  function planError(error) {
+    if ($('plan-dialog').open) $('plan-message').textContent = error.message;
+    else showToast(error.message);
+  }
+
+  function newPlanTask(subject_id, title, detail) {
+    return { task_id: `custom-${crypto.randomUUID()}`, subject_id, title, detail };
+  }
+
+  async function copySelectedToPlan() {
+    if (!subjectDraft || actionBusy) return;
+    const subject = subjectDraft.subject;
+    const known = new Set(state.plan_tasks.map(task => task.task_id));
+    const additions = [];
+    for (const chapter of subject.chapters) for (const task of chapter.tasks) {
+      const task_id = `custom-template-${task.id}`;
+      if (!subjectDraft.selected.has(task.id) || known.has(task_id)) continue;
+      additions.push({ task_id, subject_id: subject.id, title: task.title, detail: task.detail || '' });
+      known.add(task_id);
+    }
+    if (!additions.length) { showToast('请选择尚未存入计划的任务。'); return; }
+    await savePlan([...state.plan_tasks, ...additions], `已存入 ${additions.length} 项计划任务。`);
+  }
+
+  function downloadBackup(value, filename = `学习记录备份_${state.date}_${Date.now()}.json`) {
     const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `交大学习记录备份_${state.date}_${Date.now()}.json`;
+    link.download = filename;
     document.body.append(link);
     link.click();
     link.remove();
@@ -1212,6 +1275,7 @@
       dirty = false;
       renderDay();
       setStatus('saved', '已自动保存');
+      if ($('plan-dialog').open) renderPlans();
       if (externalUpdate && $('history-dialog').open) openHistory();
     } catch (error) {
       if (!canApply()) return;
@@ -1414,6 +1478,72 @@
   });
 
   $('apply-library').addEventListener('click', applyLibrary);
+  $('copy-to-plan').addEventListener('click', () => copySelectedToPlan().catch(planError));
+  $('plan-button').addEventListener('click', openPlans);
+  $('plan-search').addEventListener('input', renderPlans);
+  $('cancel-plan-edit').addEventListener('click', () => editPlanTask());
+  $('plan-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!state || actionBusy) return;
+    $('save-plan-task').disabled = true;
+    $('plan-message').textContent = '';
+    const task = newPlanTask($('plan-subject').value, $('plan-task-title').value, $('plan-detail').value);
+    try {
+      const index = planEditing ? state.plan_tasks.findIndex(item => item.task_id === planEditing) : -1;
+      if (planEditing && index < 0) throw new Error('该任务已删除，请取消编辑。');
+      const tasks = [...state.plan_tasks];
+      if (index < 0) tasks.push(task);
+      else tasks[index] = { ...task, task_id: planEditing };
+      await savePlan(tasks, '计划任务已保存。');
+      editPlanTask();
+    } catch (error) { planError(error); }
+    finally { $('save-plan-task').disabled = false; }
+  });
+  $('plan-list').addEventListener('click', event => {
+    if (!state || actionBusy) return;
+    const button = event.target.closest('[data-plan-action]');
+    if (!button) return;
+    const task = state.plan_tasks.find(item => item.task_id === button.closest('[data-plan-task]')?.dataset.planTask);
+    if (!task) return;
+    $('plan-message').textContent = '';
+    const action = button.dataset.planAction;
+    if (action === 'edit') {
+      editPlanTask(task);
+      $('plan-task-title').focus();
+    } else if (action === 'remove') {
+      if (planEditing === task.task_id) editPlanTask();
+      savePlan(state.plan_tasks.filter(item => item.task_id !== task.task_id), '已从计划删除。').catch(planError);
+    } else if (action === 'add' && !state.assignments.some(item => item.task_id === task.task_id)) {
+      if (state.assignments.length >= window.StudyStore.MAX_TASKS) { planError(new Error('今日任务已达上限。')); return; }
+      const subject = library.find(item => item.id === task.subject_id);
+      state.assignments = [...state.assignments, { ...task, subject_name: subject.name, chapter_id: 'custom', chapter_title: '自定义任务', task_mode: 'single-day', done: false }];
+      expandedSubjects.add(task.subject_id);
+      changed();
+      renderPlans();
+      flushAutosave().then(() => showToast('已加入今日清单。')).catch(planError);
+    }
+  });
+  $('download-plan').addEventListener('click', () => {
+    if (!state) return;
+    downloadBackup(window.StudyStore.plan.pack(state.plan_tasks), `学习计划_${state.date}.json`);
+  });
+  $('upload-plan').addEventListener('click', () => $('plan-file').click());
+  $('plan-file').addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !state || actionBusy) return;
+    $('plan-message').textContent = '';
+    try {
+      if (file.size > 24 * 1024 * 1024) throw new Error('计划文件超过 24 MB。');
+      const incoming = window.StudyStore.plan.unpack(JSON.parse(await file.text()));
+      const merged = window.StudyStore.plan.merge(state.plan_tasks, incoming);
+      const added = merged.length - state.plan_tasks.length;
+      if (added) await savePlan(merged, `已导入 ${added} 项计划任务。`);
+      else showToast('计划里已有这些任务。');
+    } catch (error) {
+      planError(error instanceof SyntaxError ? new Error('计划文件需要是有效的 JSON。') : error);
+    }
+  });
   $('completion-fields').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-undo-segment]');
     if (!button || !completionDraft || actionBusy || completionDraft.version !== changeVersion) return;
