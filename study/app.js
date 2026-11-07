@@ -32,6 +32,7 @@
   let completionDraft = null;
   let planEditing = null;
   let planCatalogue = null;
+  const planIndexes = new WeakMap();
   const planPages = new Map();
   const planChapterFilters = new Map();
   const PLAN_PAGE_SIZE = 12;
@@ -106,6 +107,21 @@
   function catalogue() {
     if (!catalogIndex || catalogIndex.source !== library || catalogIndex.retired !== retiredTasks) catalogIndex = new CatalogueIndex(library, retiredTasks);
     return catalogIndex;
+  }
+
+  function applyCatalogue(source) {
+    if (!Array.isArray(source?.subjects)) throw new Error('章节任务库的格式不正确。');
+    if (!preparedCatalogues.has(source)) {
+      const subjects = SUBJECT_NAMES.map(name => source.subjects.find(subject => subject.name === name))
+        .filter(Boolean).map(subject => window.StudyModels.createSubject(subject));
+      if (subjects.length !== SUBJECT_NAMES.length) throw new Error('章节任务库缺少科目，请重新载入任务库。');
+      const retired = new Map((source.metadata?.retired_tasks || []).map(task => [task.id, task]));
+      preparedCatalogues.set(source, { subjects, retired });
+    }
+    const prepared = preparedCatalogues.get(source);
+    planCatalogue = source;
+    library = prepared.subjects;
+    retiredTasks = prepared.retired;
   }
 
   class StateIndex {
@@ -715,15 +731,15 @@
     return `<div class="subject-stage-summary" ${open ? 'hidden' : ''}>${stageProgressMarkup(subject, progress)}<span class="subject-daily-time">今日${escape(actualSummaryText(tasks))}</span></div>`;
   }
 
-  function subjectGroupsMarkup(assignments, { history = false, stageProgress = null } = {}) {
+  function subjectGroupsMarkup(assignments, { history = false, stageProgress = null, exporting = false } = {}) {
     const CardView = history ? HistoryTaskCardView : DailyTaskCardView;
     return library.map((subject) => {
       const tasks = subjectAssignments(subject.id, assignments);
       const allDone = tasks.length && tasks.every(task => task.done);
-      const open = !history && expandedSubjects.has(subject.id);
+      const open = exporting ? tasks.length > 0 : !history && expandedSubjects.has(subject.id);
       // One subject fold contains all cards, without another completed-card frame.
       const taskContent = open ? taskCardsMarkup(tasks, CardView) : '';
-      const summary = tasks.length ? progressSummary(subject, tasks, subjectProgress(subject, stageProgress?.[subject.id]), open) : '';
+      const summary = tasks.length ? progressSummary(subject, tasks, subjectProgress(subject, stageProgress?.[subject.id]), open && !exporting) : '';
       return `<section role="listitem" aria-labelledby="subject-name-${escape(subject.id)}" data-subject-row="${escape(subject.id)}" data-record-version="${state.revision}:${changeVersion}" class="subject-group ${tasks.length ? 'has-tasks' : 'is-empty'} ${allDone ? 'is-complete' : ''}">
         <div class="subject-heading"><h3><button type="button" class="subject-button" data-action="choose" aria-haspopup="dialog" aria-controls="library-dialog" data-subject="${escape(subject.id)}" aria-label="选择${escape(subjectName(subject))}的章节任务"><strong class="subject-name" id="subject-name-${escape(subject.id)}">${escape(subjectName(subject))}</strong></button></h3><button type="button" class="subject-toggle" data-action="toggle-subject" data-subject="${escape(subject.id)}" aria-controls="subject-body-${escape(subject.id)}" aria-expanded="${open}" aria-label="${open ? '收起' : '展开'}${escape(subjectName(subject))}任务">${icon('chevron', 'subject-chevron')}</button></div>
         <div class="subject-transition">${summary}<div class="subject-body" id="subject-body-${escape(subject.id)}" data-loaded="${open}" ${open ? '' : 'hidden'}>${taskContent}</div></div>
@@ -747,6 +763,10 @@
     const sheet = $('task-sheet');
     const page = sheet.closest?.('.journal-page');
     if (!page) return;
+    if (!sheet.querySelector('.card-title, .subject-stage-line')) {
+      page.style.removeProperty('--journal-width');
+      return;
+    }
     const range = document.createRange();
     const widths = [];
     const singleLine = element => {
@@ -834,9 +854,11 @@
       find('actual-time').textContent = !duration.actualKnown && duration.actualUnknown ? '待补记' : formattedTime(duration.actualMinutes || 0);
       find('sheet-title').textContent = '当天的任务';
       find('task-total').textContent = `${record.assignments.length} 项`;
-      find('daily-tbody').innerHTML = subjectGroupsMarkup(record.assignments, { history: true, stageProgress: record.subject_stage_progress });
       renderDayProgress(find, record.assignments);
     }
+    find('daily-tbody').innerHTML = subjectGroupsMarkup(record.assignments, {
+      history: !isCurrent, stageProgress: record.subject_stage_progress, exporting: true,
+    });
     return surface;
   }
 
@@ -851,9 +873,10 @@
   }
 
   async function recoverConflict() {
-    const fresh = normaliseState(await api('/api/state'));
+    const { library: freshLibrary, state: freshState } = await api('/api/day');
+    const fresh = normaliseState(freshState);
+    applyCatalogue(freshLibrary);
     state = fresh;
-    planCatalogue = await api('/api/library');
     dirty = false;
     changeVersion += 1;
     closeDialog('library-dialog');
@@ -1107,7 +1130,8 @@
     if (!isCurrent) $('export-history-button').innerHTML = '<span class="loading-spinner" aria-hidden="true"></span>正在导出';
     try {
       await flushAutosave();
-      const record = isCurrent ? { date: state.date, assignments: cloneAssignments() } : await api(`/api/history/${encodeURIComponent(date)}`);
+      const record = isCurrent ? { date: state.date, assignments: cloneAssignments() } :
+        { ...(historyRecord?.date === date ? historyRecord : await api(`/api/history/${encodeURIComponent(date)}`)) };
       record.assignments = record.assignments.map((task) => new (isCurrent ? DailyTaskCardView : HistoryTaskCardView)(task).exportSnapshot());
       record.surface = imageSurface(record, isCurrent);
       const result = await window.StudyImage.exportDaily(record);
@@ -1130,18 +1154,32 @@
     }
   }
 
+  function planIndex() {
+    if (!planIndexes.has(planCatalogue)) {
+      const byId = new Map();
+      const bySubject = new Map();
+      for (const entry of window.StudyStore.plan.entries(planCatalogue)) {
+        byId.set(entry.task_id, entry);
+        if (!bySubject.has(entry.subject_id)) bySubject.set(entry.subject_id, []);
+        bySubject.get(entry.subject_id).push(entry);
+      }
+      planIndexes.set(planCatalogue, { byId, bySubject });
+    }
+    return planIndexes.get(planCatalogue);
+  }
+
   function renderPlans() {
     const query = $('plan-search').value.trim().toLowerCase();
     const subjectId = $('plan-filter').value;
-    const entries = window.StudyStore.plan.entries(planCatalogue);
+    const { bySubject } = planIndex();
     const subjects = planCatalogue.subjects.filter(subject => !subjectId || subject.id === subjectId);
     const planned = new Set(state.assignments.map(task => task.task_id));
     const editing = !$('plan-editor-panel').hidden;
     let visibleCount = 0;
     $('plan-list').innerHTML = subjects.map(subject => {
       const chapterId = planChapterFilters.get(subject.id) || '';
-      const tasks = entries.filter(task => task.subject_id === subject.id && (!chapterId || task.chapter_id === chapterId) &&
-        `${task.title} ${task.detail} ${task.chapter_title}`.toLowerCase().includes(query));
+      const tasks = (bySubject.get(subject.id) || []).filter(task => (!chapterId || task.chapter_id === chapterId) &&
+        (!query || `${task.title} ${task.detail} ${task.chapter_title}`.toLowerCase().includes(query)));
       visibleCount += tasks.length;
       const pageCount = Math.max(1, Math.ceil(tasks.length / PLAN_PAGE_SIZE));
       const page = Math.max(0, Math.min(planPages.get(subject.id) || 0, pageCount - 1));
@@ -1218,8 +1256,6 @@
       dirty = false;
       changeVersion += 1;
       closeDialog('library-dialog');
-      planCatalogue = await api('/api/library');
-      renderPlans();
     } catch (error) {
       if (error.status === 409) await recoverConflict().catch(() => {});
       throw error;
@@ -1238,7 +1274,10 @@
   }
 
   function downloadBackup(value, filename = `学习记录备份_${state.date}_${Date.now()}.json`) {
-    const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' });
+    downloadFile(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' }), filename);
+  }
+
+  function downloadFile(blob, filename) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -1289,14 +1328,9 @@
       if (cloudAccount?.user) await cloudAccount.migrateLocal();
       const { library: libraryResult, state: stateResult } = await api('/api/day');
       if (!canApply()) return;
-      if (!Array.isArray(libraryResult.subjects)) throw new Error('章节任务库的格式不正确。');
-      if (!preparedCatalogues.has(libraryResult)) preparedCatalogues.set(libraryResult, { subjects: SUBJECT_NAMES.map((name) => libraryResult.subjects.find((subject) => subject.name === name)).filter(Boolean).map((subject) => window.StudyModels.createSubject(subject)), retired: new Map((libraryResult.metadata?.retired_tasks || []).map((task) => [task.id, task])) });
-      const prepared = preparedCatalogues.get(libraryResult);
-      const freshLibrary = prepared.subjects;
-      const freshRetired = prepared.retired;
-      if (freshLibrary.length !== SUBJECT_NAMES.length) throw new Error('章节任务库缺少科目，请重新载入任务库。');
       const fresh = normaliseState(stateResult);
       if (state && fresh.revision < state.revision) return;
+      applyCatalogue(libraryResult);
       const externalUpdate = state && fresh.revision !== state.revision;
       if (externalUpdate) {
         const choosing = $('library-dialog').open;
@@ -1308,9 +1342,6 @@
         if (choosing) showToast('另一页面更新了学习记录，请按最新进度重新选择任务。', null, 6500);
         else if (recordingCompletion) showToast('另一页面更新了学习记录，请按最新清单重新打卡。', null, 6500);
       }
-      planCatalogue = libraryResult;
-      library = freshLibrary;
-      retiredTasks = freshRetired;
       state = fresh;
       dirty = false;
       renderDay();
@@ -1539,7 +1570,7 @@
       estimated_minutes: $('plan-estimated').value === '' ? null : $('plan-estimated').valueAsNumber,
     };
     try {
-      const original = window.StudyStore.plan.entries(planCatalogue).find(item => item.task_id === planEditing);
+      const original = planIndex().byId.get(planEditing);
       if (planEditing && !original) throw new Error('该任务已删除，请取消编辑。');
       if (original && planTaskFingerprint(original) !== planEditBaseline) throw new Error('该任务已在其他页面更新，请取消编辑后重新打开。');
       if (task.estimated_minutes !== null && (!Number.isFinite(task.estimated_minutes) || task.estimated_minutes < 0 || task.estimated_minutes > 525600)) throw new Error('请填写有效的计划分钟数。');
@@ -1564,7 +1595,7 @@
     }
     const button = event.target.closest('[data-plan-action]');
     if (!button) return;
-    const task = window.StudyStore.plan.entries(planCatalogue).find(item => item.task_id === button.closest('[data-plan-task]')?.dataset.planTask);
+    const task = planIndex().byId.get(button.closest('[data-plan-task]')?.dataset.planTask);
     if (!task) return;
     $('plan-message').textContent = '';
     const action = button.dataset.planAction;
@@ -1619,13 +1650,25 @@
     if (!column || !planDraggedTask || actionBusy) return;
     event.preventDefault();
     column.classList.remove('is-drop-target');
-    const task = window.StudyStore.plan.entries(planCatalogue).find(item => item.task_id === planDraggedTask);
+    const task = planIndex().byId.get(planDraggedTask);
     planDraggedTask = null;
     if (!task) return;
     const subjectId = column.dataset.boardSubject;
     const chapterId = planChapterFilters.get(subjectId) || '';
     if (task.subject_id === subjectId && (!chapterId || chapterId === task.chapter_id)) return;
     savePlan(window.StudyStore.plan.update(planCatalogue, { ...task, subject_id: subjectId, chapter_id: chapterId }), '任务已移动。').catch(planError);
+  });
+  $('download-default-plan').addEventListener('click', async event => {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const { href, download } = event.currentTarget;
+    try {
+      const response = await fetch(href);
+      if (!response.ok) throw new Error('默认计划暂时无法下载，请稍后重试。');
+      downloadFile(await response.blob(), download);
+    } catch {
+      planError(new Error('默认计划暂时无法下载，请稍后重试。'));
+    }
   });
   $('download-plan').addEventListener('click', () => {
     if (!state) return;
@@ -1772,7 +1815,11 @@
     event.preventDefault();
     event.returnValue = '';
   });
-  window.addEventListener('resize', fitJournalWidth);
+  let resizeFrame;
+  window.addEventListener('resize', () => {
+    window.cancelAnimationFrame(resizeFrame);
+    resizeFrame = window.requestAnimationFrame(fitJournalWidth);
+  });
   document.fonts?.ready.then(fitJournalWidth);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && dirty) flushAutosave().catch(() => {});

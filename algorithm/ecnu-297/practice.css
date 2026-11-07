@@ -1,0 +1,29 @@
+.practice { max-width: 1000px; padding-block: 20px 64px; }
+.practice h1 { font-size: clamp(26px, 5vw, 40px); line-height: 1.25; }
+.practice h2 { font-size: 18px; margin-block: 0 10px; }
+.practice h3 { font-size: 15px; margin-block: 10px; }
+.practice-intro, #practice-status, .problem-meta { color: #b6c1ca; margin-block: 12px 20px; }
+.practice .resource { align-items: center; padding-block: 13px; }
+.practice .resource[hidden] { display: none; }
+.practice .resource-description { margin-top: 4px; }
+.filters, .problem-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.filters { margin-bottom: 16px; }
+.filters label { display: grid; gap: 4px; color: #b6c1ca; }
+.filters input, .filters select, .problem-actions button, .problem-actions a {
+  font: inherit;
+  color: inherit;
+  background: #192b36;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.filters input, .filters select { color-scheme: dark; }
+.problem-panel { padding: 16px; margin-block: 16px; border: 1px solid var(--line); border-radius: 8px; background: #14212b; }
+.problem-panel p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.problem-panel pre { overflow: auto; background: #0c1720; padding: 12px; border-radius: 5px; tab-size: 4; }
+.sample-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.problem-actions { align-items: center; margin-block: 12px; }
+.problem-actions button, .problem-panel summary { cursor: pointer; }
+.problem-panel summary { font-weight: 700; }
+.problem-panel details[open] > summary { margin-bottom: 12px; }
+@media (max-width: 560px) { .sample-pair { grid-template-columns: minmax(0, 1fr); gap: 0; } }

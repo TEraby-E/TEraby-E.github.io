@@ -11,6 +11,7 @@
   const SUBJECT_ORDER = Object.keys(SUBJECTS);
   const BACKUP_FORMAT = 'sjtu-study-checkin-backup';
   const PLAN_FORMAT = 'study-journal-plan';
+  const DEFAULT_PLAN_VERSION = 2;
   const MAX_PLAN_TASKS = 500;
   const MAX_TASKS = 100;
   const MAX_ARCHIVES = 36525;
@@ -292,12 +293,21 @@
 
   function migratePlan(base, record) {
     if (record.plan_library) return record;
-    let catalogue = copy(base);
     const snapshots = [...(record.archives || []), record.current].filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
     const custom = snapshots.flatMap(day => day.assignments.filter(task => task.task_id.startsWith('custom-')));
     const legacy = new Map([...custom, ...(record.plan_tasks || [])].map(task => [task.task_id, task]));
+    if (!legacy.size) return { ...record, plan_library: base, revision: record.revision + 1 };
+    const catalogue = copy(base);
     for (const task of legacy.values()) putPlanTask(catalogue, task);
-    if (legacy.size) catalogue = validateCatalogue(catalogue);
+    return { ...record, plan_library: validateCatalogue(catalogue), revision: record.revision + 1 };
+  }
+
+  function refreshDefaultPlan(base, record) {
+    const previous = record.plan_library;
+    const known = id => base.index.has(id) || base.index.retired.has(id);
+    const hasExtraTasks = previous.subjects.some(subject => subject.chapters.some(chapter => chapter.tasks.some(task => !known(task.id))));
+    const hasExtraRetiredIds = previous.metadata?.retired_tasks?.some(task => !known(task.id));
+    const catalogue = hasExtraTasks || hasExtraRetiredIds ? mergeCatalogues(base.library, previous) : base.library;
     return { ...record, plan_library: catalogue, revision: record.revision + 1 };
   }
 
@@ -321,7 +331,7 @@
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > SUBJECT_ORDER.length) throw new StoreError('学科学习阶段设置不正确。');
     const result = {};
     for (const [id, savedPhase] of Object.entries(value)) {
-      const phase = index.subjectPhases.get(id)?.has(savedPhase) ? savedPhase : index.phaseAliases[id]?.[savedPhase] || savedPhase;
+      const phase = index.subjectPhases.get(id)?.has(savedPhase) ? savedPhase : index.phaseAliases[id]?.[savedPhase] ?? savedPhase;
       if (!SUBJECT_ORDER.includes(id) || typeof phase !== 'string' || (phase !== '' && !index.subjectPhases.get(id)?.has(phase))) throw new StoreError('学科学习阶段不存在，请重新选择。');
       result[id] = phase;
     }
@@ -330,61 +340,65 @@
 
   function hydrateRecordEstimates(record, index) {
     if (record.plan_customized) return record;
-    const next = { ...record, current: copy(record.current), archives: copy(record.archives) };
-    let changed = false;
-    if (record.subject_phases) {
-      const phases = normaliseSubjectPhases(record.subject_phases, index);
-      if (Object.entries(phases).some(([id, phase]) => record.subject_phases[id] !== phase)) {
-        next.subject_phases = phases;
-        changed = true;
-      }
-    }
-    for (const day of [next.current, ...next.archives]) for (const task of day.assignments) {
-      const entry = index.get(task.task_id);
-      if (entry?.section && !Object.hasOwn(task, 'section_name')) { copyLearningInfo(task, entry.task, entry.section); changed = true; }
-      if (/〔原图/.test(task.remarks || '') && entry?.task.remarks && !/〔原图/.test(entry.task.remarks)) { task.remarks = entry.task.remarks; changed = true; }
-      if (['ds', 'co', 'os', 'cn'].includes(task.subject_id)) {
-        const cleaned = models().splitRemark(task.remarks);
-        if (cleaned.text !== (task.remarks || '')) {
-          const info = models().learningInfo(task, entry?.section);
-          task.difficulty = info.difficulty;
-          task.exam_frequency = info.exam_frequency;
-          task.remarks = cleaned.text;
-          changed = true;
+    const phases = record.subject_phases && normaliseSubjectPhases(record.subject_phases, index);
+    const phaseChanged = phases && Object.entries(phases).some(([id, phase]) => record.subject_phases[id] !== phase);
+    const hydrateDay = (day) => {
+      let assignments;
+      day.assignments.forEach((task, position) => {
+        const entry = index.get(task.task_id);
+        const changes = {};
+        if (entry?.section && !Object.hasOwn(task, 'section_name')) copyLearningInfo(changes, entry.task, entry.section);
+        if (/〔原图/.test(task.remarks || '') && entry?.task.remarks && !/〔原图/.test(entry.task.remarks)) changes.remarks = entry.task.remarks;
+        const remarks = changes.remarks ?? task.remarks;
+        if (remarks && ['ds', 'co', 'os', 'cn'].includes(task.subject_id)) {
+          const cleaned = models().splitRemark(remarks);
+          if (cleaned.text !== remarks) {
+            const info = models().learningInfo({ ...task, ...changes }, entry?.section);
+            changes.difficulty = info.difficulty;
+            changes.exam_frequency = info.exam_frequency;
+            changes.remarks = cleaned.text;
+          }
         }
-      }
-      if (!Object.hasOwn(task, 'task_mode')) { task.task_mode = next.task_modes?.[task.task_id] || index.get(task.task_id)?.task.task_mode || 'single-day'; changed = true; }
-      if (!Object.hasOwn(task, 'actual_minutes')) { task.actual_minutes = null; changed = true; }
-      if (Object.hasOwn(task, 'estimated_minutes')) continue;
-      const original = index.get(task.task_id)?.task || index.retired?.get(task.task_id);
-      task.estimated_minutes = original?.estimated_minutes ?? null;
-      task.estimated_source = original?.estimated_source || '原资料未提供预计用时';
-      task.estimate_group = original?.estimate_group || null;
-      if (typeof original?.source_video_minutes === 'number') task.source_video_minutes = original.source_video_minutes;
-      changed = true;
-    }
-    if (!changed) return record;
-    next.revision = record.revision + 1;
-    return next;
-  }
-
-  function progressOf(record) {
-    const result = {};
-    for (const day of [record.current, ...record.archives]) for (const task of day.assignments) {
-      if (!task.done) continue;
-      const progress = result[task.task_id] || { checkins: 0, actual_minutes: 0, segments: 0 };
-      progress.checkins += 1;
-      progress.segments += models().segmentsOf(task).length;
-      if (typeof task.actual_minutes === 'number') progress.actual_minutes += task.actual_minutes;
-      result[task.task_id] = progress;
-    }
-    return result;
+        if (!Object.hasOwn(task, 'task_mode')) changes.task_mode = record.task_modes?.[task.task_id] || entry?.task.task_mode || 'single-day';
+        if (!Object.hasOwn(task, 'actual_minutes')) changes.actual_minutes = null;
+        if (!Object.hasOwn(task, 'estimated_minutes')) {
+          const original = entry?.task || index.retired?.get(task.task_id);
+          changes.estimated_minutes = original?.estimated_minutes ?? null;
+          changes.estimated_source = original?.estimated_source || '原资料未提供预计用时';
+          changes.estimate_group = original?.estimate_group || null;
+          if (typeof original?.source_video_minutes === 'number') changes.source_video_minutes = original.source_video_minutes;
+        }
+        if (!Object.keys(changes).length) return;
+        assignments ||= [...day.assignments];
+        assignments[position] = { ...task, ...changes };
+      });
+      return assignments ? { ...day, assignments } : day;
+    };
+    const current = hydrateDay(record.current);
+    const archives = record.archives.map(hydrateDay);
+    if (!phaseChanged && current === record.current && archives.every((day, index) => day === record.archives[index])) return record;
+    return { ...record, ...(phaseChanged ? { subject_phases: phases } : {}), current, archives, revision: record.revision + 1 };
   }
 
   function stateOf(record) {
     const completed = new Set();
-    for (const day of [record.current, ...record.archives]) for (const task of day.assignments) if (task.done && (record.task_modes?.[task.task_id] || task.task_mode) !== 'multi-day') completed.add(task.task_id);
-    return copy({ date: record.current.date, revision: record.revision, assignments: record.current.assignments, history: record.archives.filter((day) => day.date < record.current.date && day.assignments.some(task => task.done)).map((day) => ({ date: day.date, total: day.assignments.length, completed: day.assignments.filter((task) => task.done).length })).sort((a, b) => b.date.localeCompare(a.date)), completed_ids: [...completed].sort(), library_completed_ids: Array.isArray(record.library_completed_ids) ? record.library_completed_ids : [], library_reopened_ids: Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : [], task_modes: record.task_modes || {}, subject_phases: record.subject_phases || {}, plan_tasks: record.plan_tasks || [], task_progress: progressOf(record) });
+    const history = [];
+    const task_progress = Object.create(null);
+    for (const day of [record.current, ...record.archives]) {
+      let count = 0;
+      for (const task of day.assignments) {
+        if (!task.done) continue;
+        count += 1;
+        if ((record.task_modes?.[task.task_id] || task.task_mode) !== 'multi-day') completed.add(task.task_id);
+        const progress = task_progress[task.task_id] ||= { checkins: 0, actual_minutes: 0, segments: 0 };
+        progress.checkins += 1;
+        progress.segments += Array.isArray(task.checkin_segments) ? task.checkin_segments.length : Number(Number.isFinite(task.actual_minutes));
+        if (typeof task.actual_minutes === 'number') progress.actual_minutes += task.actual_minutes;
+      }
+      if (count && day.date < record.current.date) history.push({ date: day.date, total: day.assignments.length, completed: count });
+    }
+    history.sort((a, b) => b.date.localeCompare(a.date));
+    return copy({ date: record.current.date, revision: record.revision, assignments: record.current.assignments, history, completed_ids: [...completed].sort(), library_completed_ids: Array.isArray(record.library_completed_ids) ? record.library_completed_ids : [], library_reopened_ids: Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : [], task_modes: record.task_modes || {}, subject_phases: record.subject_phases || {}, plan_tasks: record.plan_tasks || [], task_progress });
   }
 
   function checkRevision(record, payload) {
@@ -436,7 +450,7 @@
     if (Object.hasOwn(payload, 'task_modes')) markers.task_modes = normaliseTaskModes(payload.task_modes, index);
     if (Object.hasOwn(payload, 'subject_phases')) markers.subject_phases = normaliseSubjectPhases(payload.subject_phases, index);
     if (Object.hasOwn(payload, 'plan_tasks')) markers.plan_tasks = normalisePlan(payload.plan_tasks);
-    return { ...copy(record), ...markers, revision: record.revision + 1, current: { date: record.current.date, assignments } };
+    return { ...record, ...markers, revision: record.revision + 1, current: { date: record.current.date, assignments } };
   }
 
   function archivedDay(record, index) {
@@ -588,7 +602,7 @@
     }
 
     function recordLibrary(record, fallback) {
-      if (!record.plan_library) return fallback;
+      if (!record.plan_library || record.plan_library === fallback?.library) return fallback;
       const source = JSON.stringify(record.plan_library);
       if (source !== catalogueSource) {
         const library = freezeLibrary(copy(record.plan_library));
@@ -656,12 +670,26 @@
       });
     }
 
+    async function withLibraryFallback(operation, readOnly = false) {
+      const result = await transact(operation, readOnly);
+      if (result !== null) return result;
+      const base = await loadLibrary().catch(error => ({ error }));
+      return transact(record => operation(record, base), readOnly);
+    }
+
     async function request(path, options = {}) {
       const method = (options.method || 'GET').toUpperCase();
       if (method === 'GET' && ['/api/library', '/api/state', '/api/day'].includes(path)) {
         const read = (record, base) => {
-          if (!record.plan_library && !base) return { result: null };
-          const migrated = record.plan_library ? record : migratePlan(base.library, record);
+          const refresh = !record.plan_customized && record.plan_library?.version < DEFAULT_PLAN_VERSION && env.navigator?.onLine !== false;
+          if (!base && (!record.plan_library || refresh)) return { result: null };
+          if (!record.plan_library && base.error) throw base.error;
+          let migrated = record;
+          if (!record.plan_library) migrated = migratePlan(base.library, record);
+          else if (refresh && base?.library?.version > record.plan_library.version) {
+            const aligned = path === '/api/library' || record.current.date === today() ? record : alignDate(record, today(), recordLibrary(record).index);
+            migrated = { ...refreshDefaultPlan(base, aligned), revision: record.revision + 1 };
+          }
           const { library, index } = recordLibrary(migrated, base);
           if (path === '/api/library') return { ...(migrated === record ? {} : { record: migrated }), result: library };
           const hydrated = hydrateRecordEstimates(migrated, index);
@@ -670,18 +698,19 @@
           const state = stateOf(next);
           return { ...(next === record ? {} : { record: next }), result: path === '/api/day' ? { library, state } : state };
         };
-        const saved = await transact(record => read(record));
-        if (saved !== null) return saved;
-        const base = await loadLibrary();
-        return transact(record => read(record, base));
+        return withLibraryFallback(read);
       }
       let payload;
       if (options.body !== undefined) {
         try { payload = JSON.parse(options.body); } catch { throw new StoreError('保存的内容格式不正确。'); }
       }
       if (path === '/api/state' && method === 'PUT') {
-        const base = await loadLibrary();
-        return transact((record) => { const next = saveRecord(record, payload, recordLibrary(record, base).index); return { record: next, result: stateOf(next) }; });
+        return withLibraryFallback((record, base) => {
+          if (!record.plan_library && !base) return { result: null };
+          if (!record.plan_library && base.error) throw base.error;
+          const next = saveRecord(record, payload, recordLibrary(record, base).index);
+          return { record: next, result: stateOf(next) };
+        });
       }
       if (path === '/api/plan' && method === 'PUT') {
         const catalogue = validateCatalogue(payload?.catalogue);
@@ -710,8 +739,15 @@
         let date;
         try { date = decodeURIComponent(path.slice('/api/history/'.length)); } catch { throw new StoreError('历史日期不正确。'); }
         validateDate(date);
-        const base = await loadLibrary();
-        return transact((record) => { const day = record.archives.find((item) => item.date === date); if (!day) throw new StoreError('没有找到这一天的打卡记录。', 404); return { result: copy({ ...day, subject_stage_progress: day.subject_stage_progress || subjectStageProgress(record, recordLibrary(record, base).index, day) }) }; }, true);
+        return withLibraryFallback((record, base) => {
+          const day = record.archives.find(item => item.date === date);
+          if (!day) throw new StoreError('没有找到这一天的打卡记录。', 404);
+          if (day.subject_stage_progress) return { result: copy(day) };
+          if (!record.plan_library && !base) return { result: null };
+          if (!record.plan_library && base.error) throw base.error;
+          const subject_stage_progress = subjectStageProgress(record, recordLibrary(record, base).index, day);
+          return { result: copy({ ...day, subject_stage_progress }) };
+        }, true);
       }
       throw new StoreError('操作不存在。', 404);
     }

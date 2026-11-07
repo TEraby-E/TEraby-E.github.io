@@ -113,3 +113,23 @@ test('deployment publishes an explicit homepage/study payload with the existing 
   assert.match(workflow, /steps\.deployment\.outputs\.page_url/);
   assert.match(workflow, /run:\s*npm test/);
 });
+
+test('the algorithm practice catalogue has all 68 solutions in difficulty and chapter order', () => {
+  const practice = path.join(root, 'algorithm', 'ecnu-297');
+  const { problems, difficulties, chapters } = JSON.parse(fs.readFileSync(path.join(practice, 'problems.json'), 'utf8'));
+  assert.deepEqual(difficulties.map(item => item.id), ['Naive', 'Easy', 'Medium', 'Hard', 'Super']);
+  assert.deepEqual(chapters.map(item => item.id), ['linked-list', 'stack-queue', 'stl', 'tree-graph', 'sorting', 'dp']);
+  assert.deepEqual(problems.map(problem => problem.id).sort((a, b) => a - b), Array.from({ length: 68 }, (_, i) => 1001 + i));
+  const difficultyRank = new Map(difficulties.map((item, i) => [item.id, i]));
+  const chapterRank = new Map(chapters.map((item, i) => [item.id, i]));
+  const files = fs.readdirSync(path.join(practice, 'solutions')).sort();
+  assert.deepEqual(files, problems.map(problem => `${problem.id}.cpp`).sort());
+  for (const problem of problems) {
+    assert(difficultyRank.has(problem.difficulty), problem.id);
+    assert(chapterRank.has(problem.chapter), problem.id);
+  }
+  assert.deepEqual(problems, [...problems].sort((a, b) =>
+    difficultyRank.get(a.difficulty) - difficultyRank.get(b.difficulty) ||
+    chapterRank.get(a.chapter) - chapterRank.get(b.chapter) ||
+    a.id - b.id));
+});

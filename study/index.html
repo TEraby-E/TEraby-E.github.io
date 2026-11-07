@@ -6,18 +6,18 @@
   <meta name="theme-color" content="#18485d">
   <meta name="description" content="安排章节任务，记录每天的学习进展。">
   <title>学习手账 · 每日任务</title>
-  <link rel="stylesheet" href="./styles.css?v=20261108-compact-heading">
-  <link rel="stylesheet" href="./cards.css?v=20261108-compact-heading">
-  <link rel="icon" type="image/svg+xml" href="./assets/terabyte-flow.svg?v=20261108-compact-heading">
+  <link rel="stylesheet" href="./styles.css?v=20261108-journal-refinement">
+  <link rel="stylesheet" href="./cards.css?v=20261108-journal-refinement">
+  <link rel="icon" type="image/svg+xml" href="./assets/terabyte-flow.svg?v=20261108-journal-refinement">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/terabyte-touch-icon.png">
-  <script src="./learning-model.js?v=20261108-compact-heading" defer></script>
-  <script src="./study-time.js?v=20261108-compact-heading" defer></script>
-  <script src="./storage.js?v=20261108-compact-heading" defer></script>
-  <script src="./export-image.js?v=20261108-compact-heading" defer></script>
-  <script src="./cloud-config.js?v=20261108-compact-heading" defer></script>
-  <script src="./cloud.js?v=20261108-compact-heading" defer></script>
-  <script src="./app.js?v=20261108-compact-heading" defer></script>
+  <script src="./learning-model.js?v=20261108-journal-refinement" defer></script>
+  <script src="./study-time.js?v=20261108-journal-refinement" defer></script>
+  <script src="./storage.js?v=20261108-journal-refinement" defer></script>
+  <script src="./export-image.js?v=20261108-journal-refinement" defer></script>
+  <script src="./cloud-config.js?v=20261108-journal-refinement" defer></script>
+  <script src="./cloud.js?v=20261108-journal-refinement" defer></script>
+  <script src="./app.js?v=20261108-journal-refinement" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -40,19 +40,19 @@
         <img class="university-emblem" src="./assets/terabyte-flow.svg" alt="Terabyte 标志" width="40" height="40">
         <span class="brand-copy"><strong>学习手账</strong></span>
       </a>
-      <div class="header-actions">
+      <nav class="header-actions" aria-label="手账导航">
       <a class="button button-quiet history-trigger" href="../" aria-label="返回主页" title="返回 Terabyte 主页"><svg class="icon home-arrow" aria-hidden="true"><use href="#i-arrow"/></svg><span>主页</span></a>
       <button class="button button-quiet history-trigger" id="plan-button" type="button" aria-label="学习计划" title="学习计划" disabled><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span>计划</span></button>
-      <button class="button button-quiet history-trigger" id="data-button" type="button" aria-label="记录管理" disabled>
+      <button class="button button-quiet history-trigger" id="data-button" type="button" aria-label="记录管理" title="记录管理" disabled>
         <svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg><span>记录管理</span>
       </button>
-      <button class="button button-quiet history-trigger" id="history-button" type="button" aria-label="历史记录" disabled>
+      <button class="button button-quiet history-trigger" id="history-button" type="button" aria-label="历史记录" title="历史记录" disabled>
         <svg class="icon" aria-hidden="true"><use href="#i-history"/></svg><span>历史记录</span>
       </button>
-      <button class="button button-quiet history-trigger" id="cloud-button" type="button" aria-label="云端同步账号" hidden>
+      <button class="button button-quiet history-trigger" id="cloud-button" type="button" aria-label="云端同步账号" title="云端同步" hidden>
         <svg class="icon" aria-hidden="true"><use href="#i-cloud"/></svg><span id="cloud-button-text">登录同步</span>
       </button>
-      </div>
+      </nav>
     </div>
   </header>
 
@@ -70,8 +70,9 @@
     <div class="notice notice-error" id="error-banner" role="alert" hidden><span id="error-text"></span><button type="button" id="retry-button" class="text-button">重试</button></div>
 
     <section class="task-sheet" aria-labelledby="sheet-title" aria-busy="true" id="task-sheet">
-      <div hidden>
-        <h2 id="sheet-title">学习任务</h2><span id="task-total"></span>
+      <span class="sheet-circuit-edge sheet-circuit-top" aria-hidden="true"></span>
+      <div class="sheet-heading">
+        <h2 id="sheet-title">今日清单</h2><span id="task-total" hidden></span>
         <div class="save-status" id="save-status" role="status" aria-live="polite"><span class="status-dot"></span><span id="save-status-text">正在载入</span></div>
       </div>
       <div class="subject-groups" id="daily-tbody" role="list" aria-label="各学科学习任务"><div class="initial-loading"><span class="loading-spinner" aria-hidden="true"></span>正在载入你的学习清单</div></div>
@@ -80,13 +81,13 @@
           <div class="completion-caption"><strong>不要把梦想埋没</strong><span id="completion-text" hidden></span><span id="completion-rate" aria-hidden="true">0%</span></div>
           <div class="summary-progress" id="summary-progress" role="progressbar" aria-label="今日任务完成进度" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0"><span id="summary-progress-fill"></span></div>
         </div>
-        <img class="journal-circuit sheet-circuit" src="./assets/journal-circuit.svg" width="600" height="120" alt="" aria-hidden="true" loading="lazy" decoding="async">
       </div>
+      <span class="sheet-circuit-edge sheet-circuit-bottom" aria-hidden="true"></span>
     </section>
 
     <div class="day-actions">
       <div class="action-buttons">
-        <button class="button button-primary" id="manage-plan-button" type="button" aria-haspopup="dialog" aria-controls="plan-dialog" disabled><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>选择计划</span></button>
+        <button class="button button-primary" id="manage-plan-button" type="button" aria-haspopup="dialog" aria-controls="plan-dialog" disabled><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span>管理计划</span></button>
         <button class="button button-secondary" id="export-button" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg><span>导出今日图片</span></button>
       </div>
     </div>
@@ -125,35 +126,38 @@
       </aside>
     </div>
     <p id="plan-message" class="journal-form-message plan-feedback" role="alert"></p>
-    <div class="modal-footer"><a class="text-button" href="./plans/default-plan.json" download="原始八科学习计划.json">原始八科计划</a><button type="button" class="button button-secondary" id="download-plan">下载计划</button><label><span class="visually-hidden">导入方式</span><select id="plan-import-mode"><option value="merge">合并新任务</option><option value="replace">替换当前计划</option></select></label><button type="button" class="button button-secondary" id="upload-plan">上传计划</button><input type="file" id="plan-file" accept=".json,application/json" hidden></div>
+    <div class="modal-footer">
+      <div class="plan-downloads"><a class="text-button" id="download-default-plan" href="./plans/default-plan.json?v=20261108-journal-refinement" download="八科学习计划.json">下载默认计划</a><button type="button" class="button button-secondary" id="download-plan">下载当前计划</button></div>
+      <div class="plan-import"><label><span class="visually-hidden">导入方式</span><select id="plan-import-mode"><option value="merge">合并新任务</option><option value="replace">替换当前计划</option></select></label><button type="button" class="button button-secondary" id="upload-plan">上传计划</button><input type="file" id="plan-file" accept=".json,application/json" hidden></div>
+    </div>
   </dialog>
 
 
 
   <dialog class="modal history-modal" id="history-dialog" aria-labelledby="history-title">
-    <div class="modal-heading"><div><p class="eyebrow">STUDY ARCHIVE</p><h2 id="history-title">学习记录</h2><p class="modal-description">保存过的每一天，都在这里。</p></div><button type="button" class="icon-button close-button" data-close="history-dialog" aria-label="关闭历史记录"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="modal-heading"><h2 id="history-title">学习记录</h2><button type="button" class="icon-button close-button" data-close="history-dialog" aria-label="关闭历史记录"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="history-layout"><nav class="history-list" id="history-list" aria-label="选择历史日期"></nav><section id="history-content" class="history-content" aria-live="polite"></section></div>
     <div class="modal-footer"><span id="history-summary" class="muted"></span><button class="button button-secondary" id="export-history-button" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>导出这天图片</button></div>
   </dialog>
 
 
 
-<dialog class="modal completion-modal" id="completion-dialog" aria-labelledby="completion-title">
-    <div class="modal-heading"><div><h2 id="completion-title">完成任务，记下实际用时</h2><p class="modal-description" id="completion-description">填写这项任务实际花费的时间，保存后完成打卡。</p></div><button type="button" class="icon-button close-button" data-close="completion-dialog" aria-label="关闭实际用时记录"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+  <dialog class="modal completion-modal" id="completion-dialog" aria-labelledby="completion-title">
+    <div class="modal-heading"><div><h2 id="completion-title">记录实际用时</h2><p class="modal-description" id="completion-description"></p></div><button type="button" class="icon-button close-button" data-close="completion-dialog" aria-label="关闭实际用时记录"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <form id="completion-form" novalidate>
-      <div class="completion-content"><div id="completion-fields" class="completion-fields"></div><p class="completion-help" id="completion-help">按分钟填写，支持小数。多日任务填写本次学习时长，分段累加；共享原任务只记录一次。</p><p class="completion-error" id="completion-error" role="alert" hidden></p></div>
-      <div class="modal-footer"><span class="muted">取消不会改变任务完成状态</span><div class="modal-footer-buttons"><button type="button" class="button button-secondary" data-close="completion-dialog">取消</button><button type="submit" class="button button-primary" id="save-completion">保存并打卡</button></div></div>
+      <div class="completion-content"><div id="completion-fields" class="completion-fields"></div><p class="completion-help" id="completion-help">单位为分钟，支持小数。共享任务的用时只记录一次。</p><p class="completion-error" id="completion-error" role="alert" hidden></p></div>
+      <div class="modal-footer"><div class="modal-footer-buttons"><button type="button" class="button button-secondary" data-close="completion-dialog">取消</button><button type="submit" class="button button-primary" id="save-completion">保存并打卡</button></div></div>
     </form>
   </dialog>
 
   <dialog class="modal data-modal" id="data-dialog" aria-labelledby="data-title">
-    <div class="modal-heading"><div><p class="eyebrow">YOUR STUDY, KEPT SAFE</p><h2 id="data-title">记录管理</h2><p class="modal-description">导出备份或调整图片保存位置。</p></div><button type="button" class="icon-button close-button" data-close="data-dialog" aria-label="关闭记录管理"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="modal-heading"><h2 id="data-title">记录管理</h2><button type="button" class="icon-button close-button" data-close="data-dialog" aria-label="关闭记录管理"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="data-sections">
-      <section class="data-section"><h3>学习记录备份</h3><p>导出当前使用的学习记录。登录后，可导入此前保存的本机备份。</p><div class="data-section-actions"><button class="button button-secondary" id="backup-button" type="button">导出全部记录</button><button class="button button-secondary" id="import-button" type="button">导入记录备份</button></div><p class="data-hint">导入会合并记录，保留已有的任务和打卡进度。</p><input id="backup-file" type="file" accept=".json,application/json" hidden></section>
-      <section class="data-section"><h3>打卡图片保存位置</h3><p id="directory-status">图片将按浏览器的下载设置保存。</p><div class="data-section-actions"><button class="button button-secondary" id="directory-button" type="button">选择桌面或其他文件夹</button><button class="text-button" id="clear-directory-button" type="button" hidden>恢复普通下载</button></div><p class="data-hint" id="directory-hint">选择一次文件夹，之后导出图片会优先保存到这里。</p></section>
+      <section class="data-section"><h3>学习记录备份</h3><p>备份包含今日清单和历史记录。导入时会合并已有记录。</p><div class="data-section-actions"><button class="button button-secondary" id="backup-button" type="button">导出全部记录</button><button class="button button-secondary" id="import-button" type="button">导入记录备份</button></div><input id="backup-file" type="file" accept=".json,application/json" hidden></section>
+      <section class="data-section"><h3>打卡图片保存位置</h3><p id="directory-status">图片将按浏览器的下载设置保存。</p><div class="data-section-actions"><button class="button button-secondary" id="directory-button" type="button">选择文件夹</button><button class="text-button" id="clear-directory-button" type="button" hidden>恢复普通下载</button></div><p class="data-hint" id="directory-hint">之后导出的图片会优先保存到所选文件夹。</p></section>
       <section class="data-section"><h3>随时打开</h3><p id="offline-status">把这个网址收藏起来，之后直接打开就能继续打卡。</p><button class="button button-primary" id="install-button" type="button" hidden>安装到桌面</button></section>
     </div>
-    <div class="modal-footer"><span class="muted">备份包含当前清单与全部历史</span><button class="button button-secondary" type="button" data-close="data-dialog">完成</button></div>
+    <div class="modal-footer"><button class="button button-secondary" type="button" data-close="data-dialog">完成</button></div>
   </dialog>
 
   <dialog class="modal data-modal" id="cloud-dialog" aria-labelledby="cloud-title">

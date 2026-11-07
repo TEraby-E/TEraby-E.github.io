@@ -45,7 +45,7 @@
     const cache = local.createStore(root, null, scope);
     let syncing;
 
-    function sync() {
+    function sync(notifiedRevision) {
       if (!syncing) {
         const run = async () => {
           if (!root.navigator.onLine) throw new local.StoreError('当前离线。', 503);
@@ -59,7 +59,8 @@
             cloud = saved ? snapshot : await remote.read();
             if (!saved && (!snapshot.sync_commit || cloud.sync_commit !== snapshot.sync_commit)) throw new local.StoreError('云端有更新，本机修改已保留。', 409);
           } else {
-            cloud = base != null && await remote.revision() === base ? snapshot : await remote.read();
+            const knownUpdate = Number.isSafeInteger(notifiedRevision) && notifiedRevision > base;
+            cloud = base != null && !knownUpdate && await remote.revision() === base ? snapshot : await remote.read();
           }
           const result = await cache.transact(record => {
             if (record.cloud_base !== base) return { result: { pending: record.revision > record.cloud_base, revision: record.revision } };
@@ -193,7 +194,7 @@
         });
       },
       watch(callback) {
-        const refresh = () => account.sync().then(({ revision }) => { if (revision) callback(revision); }).catch(() => {});
+        const refresh = (event) => account.sync(event?.new?.revision).then(({ revision }) => { if (revision) callback(revision); }).catch(() => {});
         const channel = client.channel(`study-journal:${user.id}`);
         for (const event of ['INSERT', 'UPDATE']) {
           channel.on('postgres_changes', { event, schema: 'public', table: TABLE, filter: `user_id=eq.${user.id}` }, refresh);

@@ -38,6 +38,9 @@ jobs:
           mkdir -p _site
           cp index.html style.css CNAME .nojekyll _site/
           cp -R Assets study algorithm _site/
+          rm -- _site/Assets/Images/bg.png _site/Assets/Fonts/ark-pixel-10px-monospaced-zh_cn.ttf
+          rm -- _site/Assets/Icons/wechat.ico _site/Assets/Icons/terabyte.ico
+          rm -- _site/study/assets/app-icon-192.png _site/study/assets/app-icon-512.png _site/study/assets/sjtu-emblem-round.svg _site/study/assets/source.txt
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
       - name: Upload public website

@@ -89,7 +89,9 @@ test('daily and exported subject layouts omit the completed frame and hide summa
     globalThis.main = subjectGroupsMarkup(state.assignments);
     expandedSubjects.add('ds');
     globalThis.opened = subjectGroupsMarkup(state.assignments);
-    globalThis.image = subjectGroupsMarkup(state.assignments,{history:true,stageProgress:{ds:{phase:'旧阶段',percent:25,unknown:0,totalMinutes:100,completedMinutes:25}}});
+    globalThis.image = subjectGroupsMarkup(state.assignments,{history:true,exporting:true,stageProgress:{ds:{phase:'旧阶段',percent:25,unknown:0,totalMinutes:100,completedMinutes:25}}});
+    expandedSubjects.clear();
+    globalThis.todayImage = subjectGroupsMarkup(state.assignments,{exporting:true});
   })();`,context);
   assert(!context.main.includes('completed-group'));
   assert(!context.main.includes('group-progress'));
@@ -101,6 +103,8 @@ test('daily and exported subject layouts omit the completed frame and hide summa
   assert(context.image.includes('旧阶段'));
   assert(context.image.includes('subject-stage-value">25%</strong>'));
   assert(!context.image.includes('completed-group'));
+  assert(context.image.includes('data-card-key="history:short"'));
+  assert(context.todayImage.includes('data-card-key="daily:short"'));
 });
 
 test('task picker shows shared stage progress without daily tasks and keeps phase caches separate from search and selection', () => {

@@ -120,3 +120,23 @@ test('a worker bypasses its own cache for a request from another release',async(
   assert.equal(fetched,1);
   assert.equal(opened,0);
 });
+
+test('the worker builds an offline default-plan download from the cached catalogue', async () => {
+  const handlers = {};
+  const scope = 'https://example.test/project/study/';
+  const context = vm.createContext({
+    URL, Request, Response,
+    self: { registration: { scope }, location: { origin: new URL(scope).origin }, addEventListener(name, fn) { handlers[name] = fn; } },
+    caches: { async open() {
+      return { async match(key) {
+        assert.equal(key, new URL('data/library.json', scope).href);
+        return new Response(JSON.stringify(raw));
+      } };
+    } },
+    async fetch() { throw new Error('offline'); },
+  });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../study/sw.js'), 'utf8'), context);
+  let response;
+  handlers.fetch({ request: new Request(new URL('plans/default-plan.json', scope)), respondWith(value) { response = value; } });
+  assert.deepEqual(await (await response).json(), store.plan.pack(raw));
+});

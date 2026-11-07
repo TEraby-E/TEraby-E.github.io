@@ -14,10 +14,11 @@ test('every active DS source row matches the complete reference table and round-
   const subject = library.subjects.find(subject => subject.id === 'ds');
   const tasks = subject.chapters.flatMap(chapter => chapter.tasks);
   const source = tasks.filter(task => task.source_sheet === '数据结构');
-  assert.equal(source.length, reference.tasks.length);
-  assert.equal(source.length + reference.excluded_book_rows.length, reference.source_task_rows);
+  const retained = reference.tasks.filter(task => !/^【习题】.*大题/.test(task.title));
+  assert.equal(source.length, retained.length);
+  assert.equal(reference.tasks.length + reference.excluded_book_rows.length, reference.source_task_rows);
   const byRow = new Map(source.map(task => [task.source_row, task]));
-  for (const expected of reference.tasks) {
+  for (const expected of retained) {
     const task = byRow.get(expected.source_row);
     assert(task, `missing row ${expected.source_row}`);
     for (const key of ['title', 'kind', 'quantity', 'remarks', 'section_name']) assert.equal(task[key], expected[key], `row ${expected.source_row}: ${key}`);
@@ -116,8 +117,8 @@ test('complete DS table keeps IDs while assigning exact subsection and topic dif
   assert.equal(model.sectionFor(byRow(218)).difficulty, '☆☆☆☆');
   assert.equal(model.sectionFor(byRow(225)).difficulty, '☆☆☆☆☆');
   assert.equal(model.sectionFor(byRow(237)).difficulty, '☆☆☆☆');
-  assert.equal(byRow(28).title, '【习题】大题：10~15');
-  assert.equal(byRow(28).id, 'ds-976bb6e8422879c29a13');
+  assert.equal(byRow(28), undefined);
+  assert(library.metadata.retired_tasks.some(task => task.id === 'ds-976bb6e8422879c29a13'));
   for (const task of tasks.filter(task => task.source_sheet === '数据结构')) {
     assert(model.sectionFor(task).difficulty);
     assert(!task.title.includes('【点击跳转】'));

@@ -1,0 +1,1401 @@
+{
+  "difficulties": [
+    {
+      "id": "Naive",
+      "label": "入门 · Naive"
+    },
+    {
+      "id": "Easy",
+      "label": "简单 · Easy"
+    },
+    {
+      "id": "Medium",
+      "label": "中等 · Medium"
+    },
+    {
+      "id": "Hard",
+      "label": "困难 · Hard"
+    },
+    {
+      "id": "Super",
+      "label": "挑战 · Super"
+    }
+  ],
+  "chapters": [
+    {
+      "id": "linked-list",
+      "label": "链表"
+    },
+    {
+      "id": "stack-queue",
+      "label": "栈和队列"
+    },
+    {
+      "id": "stl",
+      "label": "STL"
+    },
+    {
+      "id": "tree-graph",
+      "label": "树和图"
+    },
+    {
+      "id": "sorting",
+      "label": "排序"
+    },
+    {
+      "id": "dp",
+      "label": "DP"
+    }
+  ],
+  "problems": [
+    {
+      "id": 1010,
+      "title": "约瑟夫环问题",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "8 3",
+          "output": "3 6 1 5 2 8 4 7"
+        }
+      ],
+      "chapter": "linked-list",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "把 1 到 n 编号的人员围成一圈，每数到 m 就让对应人员退出，求完整的出圈次序。",
+      "input": "输入 n 和 m，从编号 1 开始报数。",
+      "output": "按退出次序输出全部 n 个编号。",
+      "constraints": "n×m≤10⁷。要求使用循环双链表。",
+      "method": "用数组保存循环双链表的前驱和后继。每次向前走 (m−1) mod 剩余人数 步，删除当前位置并从其后继继续。",
+      "complexity": "O(nm) 时间上界，O(n) 空间。"
+    },
+    {
+      "id": 1011,
+      "title": "链表去重",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "5\n3 2 2 1 1",
+          "output": "1 2 3"
+        }
+      ],
+      "chapter": "linked-list",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "在无序单链表中保留每个值的一次出现，返回去重后的首结点。",
+      "input": "在线评测传入 Node* head。离线驱动读取 n 和 n 个整数。",
+      "output": "函数返回去重链表的首结点；在线驱动将结果排序后输出，离线驱动采用同样约定。",
+      "constraints": "核心函数不得使用 STL 或额外数组。在线仅提交 uniqueLinklist 函数，平台提供结点结构和 main。",
+      "method": "从每个保留结点向后扫描。遇到值相同的后继，就把前驱指针跨过该结点，并继续检查新的后继。",
+      "complexity": "O(n²) 时间，O(1) 额外空间，不计演示驱动。"
+    },
+    {
+      "id": 1001,
+      "title": "栈的实现",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "11\npop\npush 1\npush 2\ntop\nsize\npop\ntop\nempty\nclear\nsize\nempty",
+          "output": "ERROR\n2\n2\n1\nNO\n0\nYES"
+        }
+      ],
+      "chapter": "stack-queue",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "实现一个可查询、清空的整数栈。执行命令时，非法操作不改变当前栈。",
+      "input": "先读操作数 Q。随后是 push x、pop、top、size、clear 或 empty 命令。",
+      "output": "按命令顺序输出栈顶值、元素数或 YES/NO；非法操作输出 ERROR。",
+      "constraints": "栈空时执行 pop 或 top 属于非法操作。",
+      "method": "用数组存储栈，用 size 记录有效元素个数。插入写在 size 处，栈顶在 size−1 处，清空只需把 size 设为 0。",
+      "complexity": "每次操作 O(1) 时间，O(Q) 空间。"
+    },
+    {
+      "id": 1002,
+      "title": "铁路调度",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "4\n4 4 3 2 1\n4 1 2 3 4\n3 3 1 2\n3 2 1 3",
+          "output": "yes\nyes\nno\nyes"
+        }
+      ],
+      "chapter": "stack-queue",
+      "limits": "单点时限: 0.5 sec · 内存限制: 512 MB",
+      "summary": "火车按 1 到 n 的顺序进入一个栈式站台。判断指定的离开次序能否出现。",
+      "input": "先读组数 k。每组给出 n 和 n 项离站序列。",
+      "output": "每组输出一行 yes 或 no。",
+      "constraints": "所有组的 n 之和不超过 10⁷。",
+      "method": "按目标离站序列处理。为取到当前目标，依次让尚未进站的火车入栈，随后检查站台栈顶是不是目标。",
+      "complexity": "每组 O(n) 时间，O(n) 空间。"
+    },
+    {
+      "id": 1004,
+      "title": "队列的实现",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "22\npop a\npush a 1\npush a 2\npush b 3\nfront a\noperator= a\nfront a\nfront b\npush a 4\nfront a\npop a\nfront a\nfront b\npop a\nfront a\nswap\nfront a\nfront b\npop b\npop b\nempty b\nempty a",
+          "output": "ERROR\n1\n1\n1\n1\n2\n1\n4\n1\n4\nERROR\nYES\nNO"
+        }
+      ],
+      "chapter": "stack-queue",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "用链式结点维护两个队列 a、b，支持入队、出队、查询、清空、复制和交换。复制后两个队列独立。",
+      "input": "先读 Q，之后每行一个命令。swap 无参数；push 额外给出队列名和整数；其余命令给出队列名。operator= a 的方向是从 a 复制到 b。",
+      "output": "front、size、empty 输出查询值；空队列出队或取队首等非法命令输出 ERROR。empty 的输出为 YES 或 NO。",
+      "constraints": "必须自行定义链表结点。除复制、清空外，所有操作必须为常数时间。",
+      "method": "维护头指针、尾指针及元素数。交换只交换这三项；复制时清空目标队列，再按来源顺序为每个值创建新结点。",
+      "complexity": "通常操作 O(1)；清空 O(队列长度)，复制 O(两队列总长度)；O(当前结点数) 空间。"
+    },
+    {
+      "id": 1005,
+      "title": "座位分配",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "3\n7 3 7",
+          "output": "#1\n1 4 7 10 13 16 19 22 25 28\n31 34 37 40 43 46 49 52 55 58\n61 64 67 70 73 76 79 82 85 88\n91 93 95 97 99 101 103 105 107 109\n111 113 115 117 119 121 123 125 127 129\n131 133 135 137 139 141 143 145 147 149\n151 153 155 157 159 161 163 165 167 169\n#2\n2 5 8 11 14 17 20 23 26 29\n32 35 38 41 44 47 50 53 56 59\n62 65 68 71 74 77 80 83 86 89\n#3\n3 6 9 12 15 18 21 24 27 30\n33 36 39 42 45 48 51 54 57 60\n63 66 69 72 75 78 81 84 87 90\n92 94 96 98 100 102 104 106 108 110\n112 114 116 118 120 122 124 126 128 130\n132 134 136 138 140 142 144 146 148 150\n152 154 156 158 160 162 164 166 168 170"
+        }
+      ],
+      "chapter": "stack-queue",
+      "limits": "单点时限: 0.5 sec · 内存限制: 512 MB",
+      "summary": "各校选手按学校轮流入座；同校的连续两名选手必须隔一个座位。求所有人的座位编号。",
+      "input": "给出学校数 N，以及每所学校的队伍数。每支队伍有 10 人。",
+      "output": "按学校编号、队伍顺序输出。每校先输出 #编号，随后每支队伍一行 10 个座号。",
+      "constraints": "1≤N≤100，每校队伍数为 1 至 10。",
+      "method": "把还有选手的学校放入轮转队列。为队首学校安排一人后，若还有选手就把该校放回队尾；若本次与上次学校相同，座位号额外跳过一格。",
+      "complexity": "设 S 为总人数，O(S) 时间，O(S) 空间。"
+    },
+    {
+      "id": 1006,
+      "title": "车厢调度",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "5\n1 3 4 2 5",
+          "output": "YES"
+        }
+      ],
+      "chapter": "stack-queue",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "车厢可以直行或经一条先进先出的辅助轨道。判断能否把给定车厢顺序变为 1 到 N。",
+      "input": "先读车厢数 N，再读初始顺序。",
+      "output": "可行输出 YES，否则输出 NO。",
+      "constraints": "车厢编号为 1 至 N。",
+      "method": "维护下一辆应该离开的车厢编号。当前车厢能直出就直出，否则入辅助队列；每次直出或出队后继续检查队首。",
+      "complexity": "O(N) 时间，O(N) 空间。"
+    },
+    {
+      "id": 1028,
+      "title": "数的变换",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "4 2\n1 1 1 1",
+          "output": "4"
+        }
+      ],
+      "chapter": "stl",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "恰好执行 m 次加一操作，每次选择一个数组元素加一，求可能达到的最大元素乘积。",
+      "input": "第一行给出 n、m，第二行给出 n 个非负整数。",
+      "output": "输出最大乘积对 10⁹+7 取模的结果。",
+      "constraints": "1 ≤ n,m ≤ 10⁶，0 ≤ aᵢ ≤ 10⁶。",
+      "method": "若一个较大的数被加一，将这次操作移给较小的数不会使乘积变小。排序后成批抬高最小的若干项，剩余操作均摊给这一组。",
+      "complexity": "时间 O(n log n)，空间 O(n)。"
+    },
+    {
+      "id": 1051,
+      "title": "付款问题",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "2\n16\n200",
+          "output": "0 0 0 1 1 0 1\n2 0 0 0 0 0 0"
+        }
+      ],
+      "chapter": "stl",
+      "limits": "单点时限: 1.0 sec · 内存限制: 256 MB",
+      "summary": "从给定的七种无限供应的面额中选取钱币，凑出指定金额，并使张数最少。",
+      "input": "先读测试组数 n，再逐组读待找金额 m。",
+      "output": "每组按 100、50、20、10、5、2、1 的顺序输出各面额的张数，用空格分隔。",
+      "constraints": "1 ≤ n ≤ 10000，0 < m < 2 × 10⁹。",
+      "method": "当前面额尽量多用，再处理余数。这七种特定面额中，同额的一组小面额能换成更少的大面额，因此可按面值降序贪心。",
+      "complexity": "每组时间 O(7)，额外空间 O(1)。"
+    },
+    {
+      "id": 1012,
+      "title": "n皇后问题",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "4",
+          "output": "2 4 1 3\n3 1 4 2"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "在 n×n 棋盘上放置 n 个互不攻击的皇后，列出所有摆法。",
+      "input": "输入棋盘边长 n。",
+      "output": "每行给出第 1 至第 n 行的皇后列号，按字典序输出所有摆法；无解时无输出。",
+      "constraints": "n≤12。",
+      "method": "按行递归摆放皇后，用三个布尔数组表示已占列、行列和、行列差。每行按列号从小到大试放。",
+      "complexity": "最坏搜索 O(n·n!) 的宽松上界，实际由列和对角线剪枝；O(n) 空间，另计输出。"
+    },
+    {
+      "id": 1013,
+      "title": "迷宫搜索",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "4 3\ns.#\n...\n.#t\n...",
+          "output": "4"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "在允许上下左右移动的网格中，求唯一入口 s 到唯一出口 t 的最短步数。",
+      "input": "输入 n、m 和 n 行网格。# 为障碍，点号为普通通路。",
+      "output": "输出最短步数，无法到达时输出 −1。",
+      "constraints": "n×m≤10⁵。",
+      "method": "把格子按行压成一维编号。从入口做 BFS，第一次访问格子时确定它的最短距离。",
+      "complexity": "O(nm) 时间，O(nm) 空间。"
+    },
+    {
+      "id": 1019,
+      "title": "层次遍历",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "7\n2 3\n4 5\n-1 6\n-1 -1\n-1 -1\n-1 7\n-1 -1",
+          "output": "1 2 3 4 5 6 7"
+        },
+        {
+          "input": "7\n4 5\n-1 -1\n-1 -1\n2 3\n7 6\n-1 -1\n-1 -1",
+          "output": "1 4 5 2 3 7 6"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 5.0 sec · 内存限制: 512 MB",
+      "summary": "按从上到下、同层从左到右的次序遍历一棵二叉树。",
+      "input": "先读结点数 n，第 i 行结点信息给出编号 i 的左、右孩子。缺孩子记为 −1，根为 1。",
+      "output": "输出 n 个结点编号，顺序为层次遍历结果。",
+      "constraints": "1≤n≤10⁶。",
+      "method": "把根入队。每次出队并输出，随后按左孩子、右孩子的顺序把存在的孩子入队。",
+      "complexity": "O(n) 时间，O(n) 空间。"
+    },
+    {
+      "id": 1027,
+      "title": "旅行商问题",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "4 12\n1 2 1\n1 3 10\n1 4 10\n2 1 10\n2 3 1\n2 4 10\n3 1 10\n3 2 10\n3 4 1\n4 1 1\n4 2 10\n4 3 10",
+          "output": "4"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 3.0 sec · 内存限制: 512 MB",
+      "summary": "在有向图中求经过每个城市恰好一次并回到出发城市的最小费用。",
+      "input": "读入城市数 n、边数 m，再读 m 条边 u、v、c。",
+      "output": "输出最小回路费用，无解输出 -1。",
+      "constraints": "n ≤ 12，m ≤ 1000，费用上界为 10⁵；可出现重边和自环。",
+      "method": "固定城市 1 为起点。用 dp[mask][u] 记录访问集合 mask 后停在 u 的最少费用；扩展到尚未访问的城市，最后补上返程费用。重边仅保留最小费用。",
+      "complexity": "时间 O(n²·2ⁿ+m)，空间 O(n·2ⁿ)。"
+    },
+    {
+      "id": 1031,
+      "title": "传送门（一）",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "1\n4 4 2 1 4\n1 4 1000\n1 2 100\n2 3 100\n3 4 100\n1 2\n2 3",
+          "output": "100"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "给出正权有向图以及可无限次使用的单向免费传送门，求 s 到 t 的最短耗时。",
+      "input": "首行是任务号 1。再读 n、m、p、s、t，接着是 m 条带权弧和 p 条单向传送关系。",
+      "output": "可达时输出最短耗时；不可达时输出 inf。",
+      "constraints": "n ≤ 10⁵，m、p ≤ 2×10⁵，普通边权 ≤ 10⁹。",
+      "method": "把每个传送门当作有向零权边，然后从 s 做堆优化 Dijkstra。距离使用 long long。",
+      "complexity": "时间 O(n+(m+p) log(m+p+1))，空间 O(n+m+p)。"
+    },
+    {
+      "id": 1032,
+      "title": "传送门（三）",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "3\n4 4 2 1 4\n1 4 1000\n1 2 100\n2 3 100\n3 4 100\n1 2\n2 3",
+          "output": "200"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "求 s 到 t 的最短耗时，可以走普通带权边，并至多使用一次单向免费传送。",
+      "input": "首行是任务号 3。再读 n、m、p、s、t，随后为 m 条 u 到 v 的带权边以及 p 个单向传送门。",
+      "output": "可达时输出最短耗时；不可达时输出 inf。",
+      "constraints": "n ≤ 10⁵，m、p ≤ 2×10⁵，普通边权 ≤ 10⁹。",
+      "method": "在正图求 s 到每点的最短距离，在反图求每点到 t 的距离。比较不传送的答案以及每个传送门 x→y 对应的两段距离之和。",
+      "complexity": "时间 O(n + m log(m+1) + p)，空间 O(n+m)。"
+    },
+    {
+      "id": 1061,
+      "title": "放书",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "2\n3\n8",
+          "output": "231\n312\n14833"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "将编号 1 至 n 的书重新排列，每本书都要离开原位置。较小的 n 要列出全部排列，较大的 n 只需求方案数。",
+      "input": "第一项是组数 T，之后每组一个 n。",
+      "output": "n < 8 时逐行输出按字典序排列的所有方案，书号直接拼接；n ≥ 8 时只输出方案数。",
+      "constraints": "0 ≤ T ≤ 10，0 ≤ n ≤ 10。",
+      "method": "小规模按书号递增回溯，遇到原位置或已用书号便跳过。只需计数时用错排递推 D(n)=(n−1)(D(n−1)+D(n−2))。",
+      "complexity": "回溯时间 O(n·n!)，递归空间 O(n)。计数预处理 O(n)，每组查询 O(1)。"
+    },
+    {
+      "id": 1015,
+      "title": "任务调度",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "2\n1 2\n2 3",
+          "output": "1"
+        },
+        {
+          "input": "3\n1 2\n3 4\n5 6",
+          "output": "3"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "从带起止时刻的任务中选择最多项。两项的时间区间有交点时不能同时选择。",
+      "input": "先读 n，再读 n 对开始与结束时刻。",
+      "output": "输出可同时选择的任务数上限。",
+      "constraints": "n≤10⁵；时刻为 1 至 10⁹，起点早于终点，端点重合也算冲突。",
+      "method": "按结束时刻从早到晚排序。每次取开始时间晚于上次结束时间的第一项，为后续任务留下最多时间。",
+      "complexity": "O(n log n) 时间，O(n) 空间存储任务。"
+    },
+    {
+      "id": 1016,
+      "title": "快速排序",
+      "difficulty": "Naive",
+      "samples": [
+        {
+          "input": "6\n4 2 1 3 5 6",
+          "output": "4 2 1 3 5 6\n4 2 1 3 5 6\n2 1 3 4 5 6\n1 2 3 4 5 6\n1 2 3 4 5 6"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "实现快速排序，并记录每次划分后的完整数组。",
+      "input": "读 n 和 n 个整数。",
+      "output": "每完成一次划分就输出一行当前全数组，左区间先于右区间处理。结束后另输出一行排好序的数组。",
+      "constraints": "题面要求遵循课程 PPT 中的划分规则。",
+      "method": "选择区间最右元素作枢轴，向左收集不大于枢轴的元素，最后交换枢轴到分界点。打印当前数组，再递归两个子区间。",
+      "complexity": "排序最坏 O(n²)，每次划分还需 O(n) 输出；总空间 O(n)，含数组与递归栈。"
+    },
+    {
+      "id": 1007,
+      "title": "Max Element",
+      "difficulty": "Easy",
+      "samples": [
+        {
+          "input": "10\n1 97\n2\n1 20\n2\n1 26\n1 20\n2\n3\n1 91\n3",
+          "output": "26\n91"
+        }
+      ],
+      "chapter": "stack-queue",
+      "limits": "单点时限: 1.0 sec · 内存限制: 512 MB",
+      "summary": "维护一个栈，支持进栈、出栈，以及查询整个栈的最大元素。",
+      "input": "读操作数 N。1 x 表示压入 x，2 表示弹栈，3 表示查询最大值。",
+      "output": "每次查询输出一行最大值。",
+      "constraints": "N≤10⁶，1≤x≤10⁹，命令均有效。",
+      "method": "每一层记录从栈底到该层的最大值。压栈时比较新值和旧栈顶的记录；弹出一层后，上一个最大值自然恢复。",
+      "complexity": "每次操作 O(1) 时间，O(N) 空间。"
+    },
+    {
+      "id": 1045,
+      "title": "最大的子串",
+      "difficulty": "Easy",
+      "samples": [
+        {
+          "input": "123456789",
+          "output": "9"
+        },
+        {
+          "input": "321",
+          "output": "321"
+        }
+      ],
+      "chapter": "stl",
+      "limits": "单点时限: 1.0 sec · 内存限制: 256 MB",
+      "summary": "从数字串中找一个连续非空子串，使把它放在小数点后的数值最大。数值相同时优先选更短的子串，再比较字典序。",
+      "input": "读入一个只含数字的字符串。",
+      "output": "输出按要求选出的子串。",
+      "constraints": "字符串长度不超过 20000。",
+      "method": "从同一位置向右延伸不会减小小数值，因此先用双指针找字典序最大的后缀。末尾零不影响值，删去尾零来满足最短要求，至少保留一位。",
+      "complexity": "时间 O(n)，额外空间 O(1)（不含输入和输出）。"
+    },
+    {
+      "id": 1050,
+      "title": "Ants",
+      "difficulty": "Easy",
+      "samples": [
+        {
+          "input": "2\n10 3\n2 6 7\n214 7\n11 12 7 13 176 23 191",
+          "output": "4 8\n38 207"
+        }
+      ],
+      "chapter": "stl",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "杆上的蚂蚁以同一速度移动，相遇便掉头，到端点便落下。给定初始位置，求所有蚂蚁落下所需时间的最小值和最大值。",
+      "input": "先读组数。每组依次读杆长 l、蚂蚁数 n 和 n 个距左端的位置。",
+      "output": "每组输出最短时间和最长时间，以空格分隔。",
+      "constraints": "输入整数均不超过 10⁶，蚂蚁速度为 1。",
+      "method": "两只蚂蚁掉头可等效为交叉通过并交换身份。最早时令每只向较近端点移动，最晚时考虑距较远端点的距离。两种情况都取各蚂蚁耗时的最大值。",
+      "complexity": "每组时间 O(n)，额外空间 O(1)。"
+    },
+    {
+      "id": 1063,
+      "title": "最近点对",
+      "difficulty": "Easy",
+      "samples": [
+        {
+          "input": "2\n0 0\n1 1\n2\n1 1\n1 1\n3\n-1.5 0\n0 0\n0 1.5\n0",
+          "output": "0.71\n0.00\n0.75"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 5.0 sec · 内存限制: 256 MB",
+      "summary": "求平面上任意两点的最小距离，再将它除以 2 作为圆环半径。",
+      "input": "每组读点数 N，再读 N 对实数坐标。N 为 0 时结束。",
+      "output": "每组输出半径，保留两位小数。",
+      "constraints": "2 ≤ N ≤ 100000，坐标在 [−1000,1000]；重合点的答案为 0。",
+      "method": "先按 x 排序再分治。递归求两半最近距离并归并成按 y 排序的点列，跨分界线只检查窄条内 y 接近的点。",
+      "complexity": "每组时间 O(N log N)，额外空间 O(N)。"
+    },
+    {
+      "id": 1052,
+      "title": "数塔",
+      "difficulty": "Easy",
+      "samples": [
+        {
+          "input": "1\n5\n7\n3  8\n8  1  0\n2  7  4  4\n4  5  2  6  5",
+          "output": "17"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "从数塔顶部出发，每步走到下一层紧邻的两个位置之一。求到达塔底的最小路径和。",
+      "input": "先读测试组数。每组读塔高 n，再按行读数塔，第 i 行有 i 个整数。",
+      "output": "每组输出最小路径和。",
+      "constraints": "1 ≤ n ≤ 100，每个数字在 [0,99]。样例里用于说明的文字不是实际输入。",
+      "method": "从倒数第二层向上更新，把每个位置的值加上两个子位置中较小的最优值。更新到塔顶即得答案。",
+      "complexity": "每组时间 O(n²)，空间 O(n²)。"
+    },
+    {
+      "id": 1054,
+      "title": "整数的拆分",
+      "difficulty": "Easy",
+      "samples": [
+        {
+          "input": "1\n3\n5",
+          "output": "1\n3\n7"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "把正整数 n 表示成若干正整数之和。同一组数的不同排列视作同一种拆分，求方案数。",
+      "input": "每组读一个 n，读到文件结束。",
+      "output": "每组输出拆分方案数。",
+      "constraints": "1 ≤ n ≤ 100。",
+      "method": "把每个可选加数视为可以重复使用的物品，外层按加数递增，内层按和递增做完全背包计数。",
+      "complexity": "预处理到上限 M 的时间 O(M²)，空间 O(M)，每组查询 O(1)。"
+    },
+    {
+      "id": 1055,
+      "title": "完全加括号的矩阵连乘积",
+      "difficulty": "Easy",
+      "samples": [
+        {
+          "input": "1\n4\n50 10\n10 40\n40 30\n30 5",
+          "output": "10500"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "给定相邻维度可配对的矩阵链。矩阵顺序固定，选择括号位置，使标量乘法次数最少。",
+      "input": "先读组数。每组读矩阵数 n，再按顺序读入各矩阵的行数和列数。",
+      "output": "每组输出最少的标量乘法次数。",
+      "constraints": "2 ≤ n ≤ 50，最优值在 64 位无符号整数范围内。",
+      "method": "按区间长度递增计算最优值。枚举最后一次乘法的位置 k，将左右子链的最优代价与两块相乘的代价相加。",
+      "complexity": "每组时间 O(n³)，空间 O(n²)。"
+    },
+    {
+      "id": 1056,
+      "title": "装箱问题",
+      "difficulty": "Easy",
+      "samples": [
+        {
+          "input": "24\n6\n8 3 12 7 9 7",
+          "output": "0"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "从给定物品中选若干个装进箱子，使箱子的剩余空间尽量小。",
+      "input": "反复读入箱子容量 V、物品数 n 和 n 个物品的体积，直到文件结束。",
+      "output": "每组输出最小剩余空间。",
+      "constraints": "0 ≤ V ≤ 20000，1 ≤ n ≤ 30。物品体积为正整数。样例中的中文是说明。",
+      "method": "用布尔数组记录能够恰好装出的体积。对每个物品逆序转移，再从容量 V 向下找到第一个可达体积。",
+      "complexity": "每组时间 O(nV)，空间 O(V)。"
+    },
+    {
+      "id": 1060,
+      "title": "0-1背包问题",
+      "difficulty": "Easy",
+      "samples": [
+        {
+          "input": "1\n5 10\n2 6\n2 3\n6 5\n5 4\n4 6",
+          "output": "15"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "选择总重量不超容量的一组物品，求能得到的最大总价值。每件物品只能选一次。",
+      "input": "先读组数。每组读物品数 n、容量 M，再逐件读重量和价值。",
+      "output": "每组输出最大价值。",
+      "constraints": "1 ≤ n ≤ 20，0 < M < 100000，重量和价值均为正整数且小于 10000。",
+      "method": "使用一维背包状态 dp[j]，表示容量 j 下的最大价值。每次处理一件物品时让容量逆序扫描，避免同件物品被多次取用。",
+      "complexity": "每组时间 O(nM)，空间 O(M)。"
+    },
+    {
+      "id": 1008,
+      "title": "最小的n个和",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "5\n1 3 4 2 0\n7 3 5 2 11",
+          "output": "2 3 3 4 4"
+        }
+      ],
+      "chapter": "stl",
+      "limits": "单点时限: 0.5 sec · 内存限制: 512 MB",
+      "summary": "在两个长度均为 n 的数列中各取一个数，求全部 n² 个和中最小的 n 个，重复和分别计入。",
+      "input": "输入 n、数列 A、数列 B。",
+      "output": "按非降序输出 n 个和。",
+      "constraints": "n≤10⁵，所有数在 0 到 10⁹ 之间。",
+      "method": "将 B 排序。固定 A 的某一项，与 B 依次相加就得到一个有序序列；用小根堆进行多路归并，取前 n 项。",
+      "complexity": "O(n log n) 时间，O(n) 空间。"
+    },
+    {
+      "id": 1036,
+      "title": "代码查重",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "1 1 2\n1\n3\n1 2\n2 3",
+          "output": "No"
+        },
+        {
+          "input": "2 2 1\n1 1\n2 2\n1 2",
+          "output": "Yes"
+        }
+      ],
+      "chapter": "stl",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "比较两段程序的逐行哈希值。行数相等，且同一位置的值相等或被直接列为同义，才判为重复。同义关系不传递。",
+      "input": "读入两段长度 n、m 和关系数 k，再读两段的哈希序列和 k 对同义值。",
+      "output": "判为重复输出 Yes，否则输出 No。",
+      "constraints": "n、m、k ≤ 10⁵，哈希值 ≤ 10⁹，同一对关系可能重复出现。",
+      "method": "每对关系将较小值放在前面，统一排序。随后逐行比较，相等时直接通过，否则二分查找对应的同义对。",
+      "complexity": "时间 O(n+m+k log k+min(n,m) log k)，空间 O(n+m+k)。"
+    },
+    {
+      "id": 1047,
+      "title": "判断两个数是否相等",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "1 2\n1 1",
+          "output": "It isn't xiao qiang\nIt's xiao qiang"
+        }
+      ],
+      "chapter": "stl",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "判断两个可能很长的十进制数在数值上是否相等。书写方式可以不同，例如前导零、小数末尾的零和正负零。",
+      "input": "持续读取，每组包含两个十进制数，读到文件结尾。",
+      "output": "相等时输出 It's xiao qiang，否则输出 It isn't xiao qiang，每组一行。",
+      "constraints": "小数可能长到无法用双精度浮点数准确表示。",
+      "method": "按字符串读取。将整数部分的前导零、小数部分的尾随零及零值的符号统一后，直接比较两个标准形式。",
+      "complexity": "每组时间 O(L)，空间 O(L)，L 为两数的字符总数。"
+    },
+    {
+      "id": 1064,
+      "title": "双人旋转赛车",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "3 3\n4 1 2",
+          "output": "1"
+        },
+        {
+          "input": "3 7\n1 2 3",
+          "output": "-1"
+        }
+      ],
+      "chapter": "stl",
+      "limits": "单点时限: 2.0 sec · 内存限制: 1024 MB",
+      "summary": "比赛按固定顺序进行，赢家得到该局分数。对手先有 k 分，问至少赢几局能在某个前缀结束时追平或反超。",
+      "input": "读入局数 n、对手初始分数 k，以及按比赛顺序给出的 n 个分值。",
+      "output": "输出所需最少胜局数，始终无法追上则输出 -1。",
+      "constraints": "1 ≤ n ≤ 10⁶，1 ≤ k,xᵢ ≤ 10⁹。",
+      "method": "在当前前缀里，选取分数最高的若干局作为胜局。小根堆保存候选胜局，判断两倍的胜局分数是否达到前缀总分加 k。若已有更小答案，可永久丢弃更小的候选。",
+      "complexity": "时间 O(n log n)，空间 O(n)。"
+    },
+    {
+      "id": 1021,
+      "title": "数独问题",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "53..7....\n6..195...\n.98....6.\n8...6...3\n4..8.3..1\n7...2...6\n.6....28.\n...419..5\n....8..79",
+          "output": "534678912\n672195348\n198342567\n859761423\n426853791\n713924856\n961537284\n287419635\n345286179"
+        },
+        {
+          "input": "534678...\n6..19534.\n1983..567\n85.761.23\n426853..1\n7..924856\n961..7284\n287419635\n..5286179",
+          "output": "534678912\n672195348\n198342567\n859761423\n426853791\n713924856\n961537284\n287419635\n345286179"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "补全一个 9×9 数独，使每行、每列和每个 3×3 宫均恰好包含数字 1 到 9。",
+      "input": "读 9 行，每行 9 个字符，点号为空白。",
+      "output": "输出补全后的 9 行。多解时按逐行拼接后的字典序取最小解。",
+      "constraints": "部分数据有多解，因此求出任意一个解并不总能通过。",
+      "method": "按行顺序确定每个空位的数字，尝试从小到大。每次试填，用位掩码和优先处理候选最少格子的回溯判断剩余棋盘能否补全。",
+      "complexity": "最坏为指数搜索；递归深度不超过空格数。"
+    },
+    {
+      "id": 1025,
+      "title": "树的直径",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "3\n1 2\n1 3",
+          "output": "2"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "给出一棵无权树，求任意两点之间的最大距离，距离按路径上的边数计。",
+      "input": "第一行是结点数 n，随后 n−1 行，每行给出一条无向边的两个端点。",
+      "output": "输出树的直径。",
+      "constraints": "1 ≤ n ≤ 10⁶，边组成一棵树。",
+      "method": "从任意点广度优先遍历，找出一个最远结点 u。再从 u 广度优先遍历，最远距离就是树的直径。用数组模拟队列，避免长链导致递归栈溢出。",
+      "complexity": "时间 O(n)，空间 O(n)。"
+    },
+    {
+      "id": 1037,
+      "title": "Take a party",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "6 4 2\n1 2\n2 3\n3 4\n6 5\n1 4\n2 6",
+          "output": "1\n0"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 5.0 sec · 内存限制: 256 MB",
+      "summary": "给出学生之间的朋友关系。朋友的朋友也视为朋友，对查询回答两人是否属于同一关系组。",
+      "input": "首行为学生数 S、关系数 M、查询数 N。随后 M 行是关系，之后 N 行是查询，每行给出两个编号。",
+      "output": "每个查询一行，同组输出 1，否则输出 0。",
+      "constraints": "S、M、N ≤ 10⁶。样例中的学生编号可大于 M。",
+      "method": "用并查集合并每对朋友。查询时比较根节点，并使用按大小合并和路径压缩。",
+      "complexity": "时间 O(S+M+(M+N) α(max(S,M)))，空间 O(max(S,M))。"
+    },
+    {
+      "id": 1038,
+      "title": "小强的烦恼",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "1\n6 9\nQ 1 2\nA 1 2\nQ 1 2\nA 3 4\nQ 1 3\nA 5 6\nA 4 5\nQ 3 6\nQ 4 6",
+          "output": "Not sure yet.\nIn different gangs.\nNot sure yet.\nIn different gangs.\nIn the same gang."
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "维护两人敌对的信息，并回答任意两人同组、敌对还是关系未知。",
+      "input": "先读测试组数 T。每组先读人数 n、操作数 m，后读 m 行操作。A x y 增加敌对关系，Q x y 查询。",
+      "output": "依次输出 In the same gang.、In different gangs. 或 Not sure yet. 中的一项。",
+      "constraints": "T ≤ 20，n、m ≤ 10⁵。",
+      "method": "并查集扩展到 2n 个编号，x+n 表示 x 的敌方。登记敌对时交叉合并两次，查询时先判断同组，再判断一人是否在另一人的敌方集合。",
+      "complexity": "每组时间 O(n+m α(n))，空间 O(n)。"
+    },
+    {
+      "id": 1039,
+      "title": "树的双亲存储法",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "10\n-1 0 0 0 1 1 1 3 3 8",
+          "output": "4 5 6 1 2 7 9 8 3 0"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "给出每个结点的双亲下标，输出从左到右的树后序遍历。",
+      "input": "读入 n，再读 n 个双亲编号。结点从 0 编号，根 0 的双亲为 -1。",
+      "output": "在一行输出后序遍历得到的结点编号。",
+      "constraints": "1 ≤ n ≤ 10⁵，输入保证形成一棵树。",
+      "method": "按编号依次把孩子添加到双亲的孩子表。用栈遍历，先压左孩子，使右子树先弹出。把得到的根、右、左序列逆序即是后序遍历。",
+      "complexity": "时间 O(n)，空间 O(n)。"
+    },
+    {
+      "id": 1040,
+      "title": "A Knight's Journey",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "3\n1 1\n2 3\n4 3",
+          "output": "Scenario #1:\nA1\n\nScenario #2:\nimpossible\n\nScenario #3:\nA1B3C1A2B4C2A3B1C3A4B2C4"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "让国际象棋马在给定棋盘上恰好到达每个格子一次，输出按格名比较字典序最小的完整路线。",
+      "input": "先读测试组数，每组读棋盘行数 p 和列数 q。列名从 A 开始，行号从 1 开始。",
+      "output": "每组先输出 Scenario #i:，下一行输出拼接后的格名或 impossible，随后空一行。",
+      "constraints": "1 ≤ p×q ≤ 26。",
+      "method": "为每个格子建立可达位置，并按格名排序。起点也按格名尝试。深度优先搜索中找到的第一条完整路线就是所求。",
+      "complexity": "时间取决于搜索树，最坏为指数级；空间 O(pq)。"
+    },
+    {
+      "id": 1041,
+      "title": "华师大卫星照片",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "10 5\n..*.....**\n.**..*****\n.*...*....\n..****.***\n..****.***",
+          "output": "16"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "找出星号网格中最大的建筑，星号像素仅在上下左右相邻时连通。",
+      "input": "首行读入宽度 W 和高度 H，随后读 H 行，每行 W 个星号或点号。",
+      "output": "输出最大连通块的像素个数。",
+      "constraints": "1 ≤ W ≤ 80，1 ≤ H ≤ 1000。",
+      "method": "每遇到一个未访问的星号，用显式栈做四方向搜索。入栈时就把像素标记掉，遍历结束后更新最大面积。",
+      "complexity": "时间 O(WH)，空间 O(WH)。"
+    },
+    {
+      "id": 1014,
+      "title": "构造字典序最小字符串",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "6\nACDBCB",
+          "output": "ABCBCD"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "每一步从字符串左端或右端取走一个字符追加到结果，求能形成的最小字典序字符串。",
+      "input": "第一行为 n，第二行给出长度为 n 的字符串。",
+      "output": "输出构造的字符串。",
+      "constraints": "n≤2000，字符不限于大写字母。",
+      "method": "用两根指针维护剩余区间。两端不同就取较小者；两端相同时向内比较，等价于比较当前区间和它的反转。",
+      "complexity": "O(n²) 最坏时间，O(n) 空间存储输入。"
+    },
+    {
+      "id": 1017,
+      "title": "逆序对",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "5\n2 3 8 6 1",
+          "output": "5"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "统计序列里满足前项严格大于后项的下标对。相等的数不算逆序。",
+      "input": "读 n 和 n 个整数。",
+      "output": "输出逆序对数。",
+      "constraints": "n≤10⁵，元素可重复，题目要求 O(n log n) 时间。",
+      "method": "归并排序时，若右半区当前元素更小，左半区所有尚未归并的元素都能与它组成逆序对。计数使用 long long。",
+      "complexity": "O(n log n) 时间，O(n) 空间。",
+      "sampleNote": "原题未提供公开样例。以下为自编样例。"
+    },
+    {
+      "id": 1044,
+      "title": "说出来可能不信这是排序题",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "5 8878816342\n33122678 68777711 59877815 85480760 77711737 ",
+          "output": "0"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "计算从 n 个正整数中选出若干项，使总和严格大于 k 的方案数。不同位置视作不同元素。",
+      "input": "首行给出 n、k，随后给出 n 个正整数。",
+      "output": "输出方案数，超过 20000000 时输出 -1。",
+      "constraints": "n ≤ 10⁴，k ≤ 10¹⁰，每项 ≤ 10⁸。",
+      "method": "改为枚举未选元素，其和必须不超过总和减 k 再减一。排序后只递归到仍能装入的元素，若一批元素能全部装入就直接统计它们的全部组合。",
+      "complexity": "时间 O(n log n+min(合法方案数,20000001))，空间 O(n)。"
+    },
+    {
+      "id": 1046,
+      "title": "最小等待时间",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "2\n3\n1\n2\n3\n4\n91\n13\n43\n44",
+          "output": "4\n169"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "为同一个服务窗口安排顾客顺序，使所有人的等待时间之和最小。",
+      "input": "先读测试组数。每组读人数 n，再读 n 个顾客各自需要的服务时间。",
+      "output": "每组输出一行最小总等待时间。",
+      "constraints": "n ≤ 10000，服务时间为 1 至 10000。",
+      "method": "按服务时间从短到长安排。相邻两人若较长的先服务，交换二人会减少等待时间；之后的顾客等待不变。用前缀和累加每个人开始前的时间。",
+      "complexity": "每组时间 O(n log n)，空间 O(n)。"
+    },
+    {
+      "id": 1048,
+      "title": "电话送报",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "5\n6\n1 2 3 4 5",
+          "output": "10"
+        },
+        {
+          "input": "4\n3\n8 3 2 1",
+          "output": "9"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "住户都在邮局同一侧。骑车往返时可给沿途住户送报，也可逐户打电话取报。求送完全部报纸的最短时间。",
+      "input": "依次读入住户数 n、每次电话耗时 b 和 n 个坐标。",
+      "output": "输出最短总时间。",
+      "constraints": "1 ≤ n ≤ 100000，1 ≤ b ≤ 10⁶。坐标互异且在 [1, 10⁹]；车速为 1。",
+      "method": "将坐标升序排列。枚举骑车最远到达的住户，之后的住户全部打电话。初始答案取只打电话的总耗时。",
+      "complexity": "时间 O(n log n)，空间 O(n)。"
+    },
+    {
+      "id": 1049,
+      "title": "简单排序题",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "3\n8626928508 565605673 8384653443",
+          "output": "8061322837"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "允许一次操作将某个数加 1 或减 1。要将原序列变成从第二项开始满足第 i 项比前一项大 i 的序列，求最少操作次数。",
+      "input": "先读 n，再读从第一项开始的 n 个整数。",
+      "output": "输出最少操作次数。",
+      "constraints": "1 ≤ n ≤ 100000，1 ≤ aᵢ ≤ 10¹⁰。",
+      "method": "第 i 项的目标值可以写成 b₁ 加已知偏移。将各原始值减去对应偏移，问题变成选同一个目标值使绝对偏差和最小。取排序后的中位数。",
+      "complexity": "时间 O(n log n)，空间 O(n)。"
+    },
+    {
+      "id": 1062,
+      "title": "经典的猜数游戏",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "2\n-3\n-1\n0",
+          "output": "big\nsmall\nsmall\nequal",
+          "inputLabel": "程序猜测",
+          "outputLabel": "评测器反馈"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 1.0 sec · 内存限制: 256 MB",
+      "summary": "在规定整数范围内猜一个隐藏数。每次根据裁判反馈缩小范围，最多猜 31 次。",
+      "input": "没有预先给出的隐藏数。每次输出猜测后，从裁判读取 big、small 或 equal。",
+      "output": "每次猜测输出一个整数和换行，立即刷新输出。得到 equal 后结束程序。",
+      "constraints": "隐藏数与每次猜测都在 [−10⁹,10⁹]。这是交互题，样例是对话记录。",
+      "method": "在候选区间二分。反馈 big 就去掉当前值及右侧，small 就去掉当前值及左侧。用 endl 立即把本次询问发给裁判。",
+      "complexity": "O(log R) 次询问，R 为候选范围大小；空间 O(1)。",
+      "sampleNote": "以下是一次交互记录。程序先输出猜测，评测器再返回反馈。"
+    },
+    {
+      "id": 1022,
+      "title": "终极背包问题",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "5 0 0 0 10\n2 6\n2 3\n6 5\n5 4\n4 6",
+          "output": "15"
+        },
+        {
+          "input": "0 5 0 0 10\n2 6 1\n2 3 2\n6 5 3\n5 4 2\n4 6 1",
+          "output": "18"
+        },
+        {
+          "input": "0 0 5 0 10\n2 6\n2 3\n6 5\n5 4\n4 6",
+          "output": "30"
+        },
+        {
+          "input": "0 0 0 5 10\n2 6\n2 3\n6 5\n5 4\n4 6",
+          "output": "16.6666666667"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 5.0 sec · 内存限制: 512 MB",
+      "summary": "对一类指定物品求背包最大价值，可能是 0/1、有限件、无限件，或可按比例取用的分数物品。",
+      "input": "先读 a、b、c、d、T。四类物品依次输入重量和价值，有限件额外输入库存。只有一类数量非零。",
+      "output": "输出最大价值；含分数时保留小数点后六位。",
+      "constraints": "T≤1000，物品总种数≤10⁴，价值≤10⁹。",
+      "method": "0/1 背包倒序更新，有限件二进制拆分后倒序更新，无限整件正序更新。分数类按价值密度从大到小取，遇到装不下的取一部分。按官方第 4 个样例，每种分数物品最多取给定重量。",
+      "complexity": "O((a+c+Σ log(cᵢ+1))T+d log d+T) 时间，O(T+d) 空间。"
+    },
+    {
+      "id": 1029,
+      "title": "单峰序列",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "5\n1 2 3 1 1",
+          "output": "4"
+        },
+        {
+          "input": "7\n4 1 1 5 6 1 1",
+          "output": "4"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "在给定序列中选出最长的单峰子序列。峰前严格递增、峰后严格递减，允许峰位于两端。",
+      "input": "读入 n，接着读 n 个整数。",
+      "output": "输出最长单峰子序列的长度。",
+      "constraints": "1 ≤ n ≤ 10⁶，1 ≤ aᵢ ≤ 10⁶，允许重复。",
+      "method": "从左向右求每个位置结尾的严格递增子序列长度，从右向左求从每个位置出发的严格递减长度。用 lower_bound 更新各长度的最小末尾值，两侧长度相加后减去重复的峰。",
+      "complexity": "时间 O(n log n)，空间 O(n)。"
+    },
+    {
+      "id": 1053,
+      "title": "最长连续公共子序列",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "aaa\naba",
+          "output": "1"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "求两个字符串中最长的公共连续片段的长度。",
+      "input": "读入两行，每行一个字符串。",
+      "output": "输出最长公共连续片段的长度。",
+      "constraints": "每串长度不超过 50124，可包含数字与标点。",
+      "method": "为第一串建立后缀自动机。扫描第二串，遇到无法匹配的字符时沿后缀链接缩短当前匹配，继续向前。记录最大连续匹配长度。",
+      "complexity": "设两串长度为 n、m，字母表大小为 σ，时间 O((n+m) log σ)，固定字节字母表下空间 O(n)。"
+    },
+    {
+      "id": 1057,
+      "title": "统计字符串个数",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "3\n4\n10\n20\n-1",
+          "output": "7\n12\n351\n97229"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "统计长度为 n 且不含连续片段 101 的二进制字符串。",
+      "input": "每组读一个长度 n，读到 -1 结束。",
+      "output": "每组输出合法字符串的个数。",
+      "constraints": "1 ≤ n ≤ 20。",
+      "method": "状态记录当前串末尾与 101 的前缀最长重合几位。逐位加 0 或 1，排除补全 101 的转移。",
+      "complexity": "预处理时间 O(N)，空间 O(N)，每组查询 O(1)。"
+    },
+    {
+      "id": 1059,
+      "title": "区间覆盖",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "3\n10 4 6\n7 9 11\n6 9 13\n7 7 7\n3 5 6\n10 7 1\n3 4 15\n8 9 8\n5 6 8\n9 10 6\n1 4 2\n1 4 10\n8 10 13\n10 5 5\n7 9 18\n3 6 12\n1 2 4\n5 7 5\n6 10 30",
+          "output": "case #0:\n17\ncase #1:\n2\ncase #2:\n9"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 5.0 sec · 内存限制: 256 MB",
+      "summary": "每项操作以指定费用覆盖一段整数坐标。选择若干操作，让被覆盖的不同坐标至少有 k 个，并使总费用最小。",
+      "input": "先读组数。每组读点数 n、可选操作数 m 和目标 k，再读每个操作的左端点、右端点与费用。",
+      "output": "每组先输出从 0 起编号的 case #i:，再单独输出最小费用。无法达到目标时输出 -1。",
+      "constraints": "1 ≤ n ≤ 300，1 ≤ m ≤ 100000，1 ≤ k ≤ n，单次费用至多 10⁹，至多 10 组。",
+      "method": "用 dp[r][j] 表示只用右端点不超过 r 的区间覆盖至少 j 点的最小费用。对以 r 结尾的区间，若其左端点不超过 p+1，就能在前 p 点的基础上补足 p+1 至 r。相同右端点下预处理左端点的费用前缀最小值，再枚举分界 p 转移。",
+      "complexity": "每组时间 O(m+n²k)，空间 O(n²+nk)。"
+    },
+    {
+      "id": 1065,
+      "title": "Hanoi Tower II",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "1\n5",
+          "output": "1\n119"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "汉诺塔只能沿 A→B→C→A 的方向移动，求把 n 个盘从 A 移到 B 所需的最少步数。",
+      "input": "反复读入每组的盘数 n，直到文件结束。",
+      "output": "每组输出最少移动次数。",
+      "constraints": "1 ≤ n ≤ 40。每次只能移动最上方一个盘，大盘不能压小盘。",
+      "method": "分别求顺时针移动一柱与两柱的最短步数。以最大盘的一次或两次移动为界，将剩余步骤拆成 n−1 个小盘的同类问题。",
+      "complexity": "预处理时间 O(N)，空间 O(N)，每组查询 O(1)。"
+    },
+    {
+      "id": 1066,
+      "title": "Hanoi Tower III",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "1\n5",
+          "output": "2\n62"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "双汉诺塔中每种尺寸各有两个不可区分的盘。求把整塔搬到另一根柱的最少步数。",
+      "input": "每组读一个 n，读到文件结束。",
+      "output": "每组输出最少移动次数。",
+      "constraints": "1 ≤ n ≤ 60，总盘数为 2n。每次只移一个盘，大盘不能压小盘。",
+      "method": "先移开较小的双塔，再连续移动两个最大盘，最后搬回小塔。递推式为 F(n)=2F(n−1)+2，化简后直接计算。",
+      "complexity": "每组时间 O(1)，空间 O(1)。"
+    },
+    {
+      "id": 1067,
+      "title": "Hanoi Tower IV",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "1\n5",
+          "output": "3\n123"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "双汉诺塔每种尺寸有两个盘。目标柱上同尺寸盘的上下顺序必须与初始顺序相同，求最少步数。",
+      "input": "每组读一个 n，读到文件结束。",
+      "output": "每组输出最少移动次数。",
+      "constraints": "1 ≤ n ≤ 60，总盘数为 2n；大盘不能压小盘。",
+      "method": "两个最大盘可借辅助柱分三次移动，期间较小的双塔在各柱间整塔搬四次。同尺寸盘不可区分的最短搬法只会颠倒当前最大的一对，四次后恢复初始顺序。",
+      "complexity": "每组时间 O(1)，空间 O(1)。"
+    },
+    {
+      "id": 1068,
+      "title": "奇异收缩的剪影",
+      "difficulty": "Medium",
+      "samples": [
+        {
+          "input": "3\n3511 3671 4153",
+          "output": "4"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "从可含重复值的集合选取多重子集，统计元素异或和是素数的选法。同值元素只按取用数量区分。",
+      "input": "第一行读 n，第二行读 n 个元素。",
+      "output": "输出满足要求的选法数，对 10⁹+7 取模。",
+      "constraints": "1 ≤ n ≤ 100000，元素值在 [3500,4500]。",
+      "method": "按值统计频次。对相同值取偶数个时异或和不变，取奇数个时只异或一次该值。用这两类选法更新 13 位异或状态，最后累加素数状态。",
+      "complexity": "设 U 为不同取值数、B=8192，时间 O(n+UB+B log log B)，空间 O(B)。"
+    },
+    {
+      "id": 1020,
+      "title": "医疗队列",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "10 5\n2 1\n3\n2 5\n3\n1\n1\n1\n3\n1\n3",
+          "output": "1\n5\n3\n4"
+        }
+      ],
+      "chapter": "linked-list",
+      "limits": "单点时限: 10.0 sec · 内存限制: 512 MB",
+      "summary": "医院排队时，已服务的人回到队尾，紧急患者可从当前位置移到队首。按要求报告下一个就诊者。",
+      "input": "先输入命令数 n 和居民数 p，初始按编号 1 到 p 排队。1 表示服务队首，2 x 表示把 x 提至队首，3 表示查询。",
+      "output": "每次 3 命令输出一行队首居民编号。",
+      "constraints": "n、p 均至多 10⁶。",
+      "method": "把居民编号直接用作静态双链表下标，两端使用虚拟结点。知道编号即可常数时间摘下结点，再插入队首或队尾。",
+      "complexity": "O(n+p) 总时间，O(p) 空间。"
+    },
+    {
+      "id": 1003,
+      "title": "数据生成器",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "4 4",
+          "output": "4 1 2 3 4\n4 4 3 2 1\n4 4 3 1 2\n4 3 4 1 2"
+        }
+      ],
+      "chapter": "stack-queue",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "为铁路调度题生成 n 个不同类型的输入，使可行与不可行的出栈序列都得到覆盖。",
+      "input": "给出组数 n 和每组排列的长度 m。",
+      "output": "每行先写 m，再写由 1 到 m 组成的一个排列，共输出 n 行。",
+      "constraints": "正式数据为 n=80、m=1000。约 40% 至 60% 的输出应是合法出栈序列。此题使用特殊判题，样例只展示一种有效输出。",
+      "method": "将入栈和出栈记为 +1、−1。打乱多含一个 −1 的序列，再从首次取得最小前缀和的位置之后循环读取，舍去最后一步即可得到合法操作。非法部分通过扰动合法排列和构造后缀反例得到，能检验只检查前几项的错误解。",
+      "complexity": "生成每组需 O(m) 时间和 O(m) 空间；全程 O(nm) 时间。",
+      "sampleNote": "特殊评测。输出满足格式和合法序列比例即可。"
+    },
+    {
+      "id": 1034,
+      "title": "表达式",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "3+2-5*0",
+          "output": "5"
+        }
+      ],
+      "chapter": "stack-queue",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "按常规优先级计算合法的整数算式，支持括号、正负号和四则运算。",
+      "input": "读入一条合法的表达式。",
+      "output": "输出计算结果。",
+      "constraints": "整数操作数在 −100 至 100 之间，除法可整除且没有零除数。",
+      "method": "用数值栈和运算符栈。遇到运算符时先处理栈顶优先级不低于它的运算；右括号负责清算括号内的运算。在需要操作数时遇到的正负号按一元运算处理。",
+      "complexity": "时间 O(L)，空间 O(L)。"
+    },
+    {
+      "id": 1033,
+      "title": "一元多项式乘法",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "x+1 x-1\nx^2-3x+1 x^3\nx+2 2",
+          "output": "1 -1\n1 -3 1\n2 4"
+        }
+      ],
+      "chapter": "stl",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "求两个一元多项式的乘积，只需按次数从高到低给出结果中非零项的系数。",
+      "input": "每行是一对用空格隔开的多项式，处理到文件结束。各项使用数字、x 和可选的 ^ 指数表示。",
+      "output": "每组一行，依次输出非零系数，用空格隔开。",
+      "constraints": "每行不超过 100 个字符，指数小于 50。",
+      "method": "解析正负号、系数和指数，用数组下标表示次数。两项相乘时指数相加、系数相乘，并累加到对应次数。",
+      "complexity": "时间 O(L+d₁d₂+d₁+d₂)，空间 O(d₁+d₂)，d₁、d₂ 为次数上限。"
+    },
+    {
+      "id": 1035,
+      "title": "恢复古诗",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "2 3\nThis is the 3rd line.\nThis is the 4th line.\nThis is the 5th line.\nThis is the 1st line.\nThis is the 2nd line.\nThis is the 3rd line.",
+          "output": "This is the 1st line.\nThis is the 2nd line.\nThis is the 3rd line.\nThis is the 4th line.\nThis is the 5th line."
+        }
+      ],
+      "chapter": "stl",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "恢复由多份定长文本碎片组成的诗。相邻碎片通过相同的尾行和首行衔接，重叠行只输出一次。",
+      "input": "读入照片数 P 和每张照片的行数 L。后续每 L 行是一张照片，空行也需读入。",
+      "output": "按顺序输出恢复的原文。",
+      "constraints": "P ≤ 1000，L ≤ 100，每行最多 80 字符。",
+      "method": "把每个首行和尾行作为图上的顶点，把一张照片作为从首到尾的有向边。按出入度找起点，用 Hierholzer 算法遍历每张照片一次，再拼接各段文字。",
+      "complexity": "读写 O(总字符数)，端点映射 O(P log P) 次字符串比较；空间 O(总字符数)。"
+    },
+    {
+      "id": 1009,
+      "title": "数据整理",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "7\n3 shanghai yangpu apple 4\n3 shanghai huangpu apple 5\n3 shanghai yangpu banana 3\n2 shanghai orange 4\n3 hubei wuhan apple 7\n3 hubei wuhan banana 6\n2 anhui apple 3",
+          "output": "anhui\n|___apple(3)\nhubei\n|___wuhan\n####|___apple(7)\n####|___banana(6)\nshanghai\n|___huangpu\n####|___apple(5)\n|___orange(4)\n|___yangpu\n####|___apple(4)\n####|___banana(3)"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "把带有多级位置索引的商品记录整理成一棵目录树，逐层按字典序展示。",
+      "input": "先读记录数 n。每条记录的 k 之后是 k−1 个索引名、商品名和非负价格。",
+      "output": "按同层名字顺序输出整棵树。根层无前缀，第二层用竖线和三个下划线，往后每层再多四个 #；商品名后带括号价格。",
+      "constraints": "索引层数至多 1000，输入规模小于 10⁶。商品名可带数字；同名商品可能价格不同。",
+      "method": "用 map 表示每个目录的子项，按名称与价格组织键。逐条插入完整路径后先序遍历，访问有序容器时自然得到同层顺序。",
+      "complexity": "设 K 为输入项数、B 为最大分支数，插入 O(K log B)，遍历另加输出成本；O(K) 空间。"
+    },
+    {
+      "id": 1030,
+      "title": "高级并查集",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "2 4\n1 1 2\n2 1 2\n4 2\n3 1",
+          "output": "1\n1"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 4.0 sec · 内存限制: 512 MB",
+      "summary": "初始有 n 个单元素集合。支持合并两组、判断两元素是否同组、统计元素所在组大小，以及将一个元素拆成单独集合。",
+      "input": "第一行给出 n、m。随后 m 行为操作，1 x y 合并，2 x y 判断，3 x 查询大小，4 x 拆出。",
+      "output": "每次类型 2 输出 0 或 1，每次类型 3 输出集合大小。",
+      "constraints": "1 ≤ n,m ≤ 10⁶。",
+      "method": "逻辑元素通过 id 指向并查集节点。拆出 x 时只把原根的实际人数减一，并让 x 改指向一个全新的节点，避免修改原树的连接。合并时按物理节点数选根，另存实际人数。",
+      "complexity": "时间 O((n+m) α(n+m))，空间 O(n+m)。"
+    },
+    {
+      "id": 1042,
+      "title": "Can you do DFS?",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "19 45",
+          "output": "5 6 18"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "把真分数 a/b 写成互不相同的单位分数之和。优先让项数最少，再让最大分母最小。",
+      "input": "每行一组 a、b，读到文件结束。",
+      "output": "每组输出一行从小到大排列的单位分数分母。",
+      "constraints": "0 < a < b < 1000。",
+      "method": "按项数做迭代加深搜索。分母严格递增，用剩余和与当前最优最大分母剪枝。还剩两项时，可从恒等式 (ax−b)(ay−b)=b² 求分母 x 和 y，候选多时枚举 b² 的因子。",
+      "complexity": "时间取决于搜索树与因子枚举，递归空间随项数与质因子种数增长，另用筛表预处理小质数。"
+    },
+    {
+      "id": 1023,
+      "title": "终极混合背包问题",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "1 0 1 1 11\n2 4\n2 2\n10 8",
+          "output": "12.8"
+        },
+        {
+          "input": "1 1 1 1 11\n2 4\n2 3 2\n2 2\n2 1",
+          "output": "14.5"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 1.0 sec · 内存限制: 512 MB",
+      "summary": "同一只背包可以同时选 0/1、有限件、无限件和可分割的物品，求最大总价值。",
+      "input": "先读四类物品数量 a、b、c、d 和容量 T，随后逐类输入重量、价值，有限件另给库存。",
+      "output": "输出最大价值，含分数时保留小数点后六位。",
+      "constraints": "T≤1000，物品总种数≤10⁴，价值≤10⁹。",
+      "method": "先对整件物品做混合背包。用二进制拆分处理有限件，完全背包正序扫描。将分数物品按价值密度排序，枚举留给分数部分的容量并按序填满。按 1022 的第 4 个官方样例，每种分数物品最多取给定重量。",
+      "complexity": "O((a+c+Σ log(cᵢ+1))T+d log d+T) 时间，O(T+d) 空间。"
+    },
+    {
+      "id": 1024,
+      "title": "分割回文串",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "aab",
+          "output": "1"
+        },
+        {
+          "input": "aaaa",
+          "output": "0"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 0.5 sec · 内存限制: 512 MB",
+      "summary": "将字符串切成若干回文段，求切刀最少要落下几次。",
+      "input": "读入一个字符串 s。",
+      "output": "输出最少切分次数。",
+      "constraints": "1 ≤ |s| < 5000。",
+      "method": "按顺序枚举奇数和偶数回文的中心，向两边扩展。每找到一个回文 s[l..r]，就用前缀 s[0..l-1] 的最少段数更新 s[0..r]。最终段数减一即为切分次数。",
+      "complexity": "时间 O(n²)，空间 O(n)。"
+    },
+    {
+      "id": 1043,
+      "title": "斐波那契数列和",
+      "difficulty": "Hard",
+      "samples": [
+        {
+          "input": "3\n13\n16\n484775665757",
+          "output": "case #0:\n3\ncase #1:\n4\ncase #2:\n117120"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "计算正整数 n 由若干不同的斐波那契数相加得到的方案数，数列从 1、2 开始。",
+      "input": "首行为问题数 T，随后 T 行每行一个 n。",
+      "output": "每组先输出 case #i:，编号从 0 开始，下一行输出方案数。",
+      "constraints": "1 ≤ n ≤ 10¹⁸。",
+      "method": "设 Fᵢ 是不超过 n 的最大斐波那契数。选择它时递归求 n−Fᵢ 的方案；不选择时，在更小的项中对选集取补集，递归求 Fᵢ₊₁−2−n。相同目标值通过记忆化复用。",
+      "complexity": "若访问 S 个状态、数列有 F 项，时间 O(S(log F+log S))，空间 O(F+S)。"
+    },
+    {
+      "id": 1026,
+      "title": "路径差",
+      "difficulty": "Super",
+      "samples": [
+        {
+          "input": "4 4\n1 2 2\n2 3 4\n1 4 1\n3 4 2\n1 3",
+          "output": "1"
+        }
+      ],
+      "chapter": "tree-graph",
+      "limits": "单点时限: 2.0 sec · 内存限制: 512 MB",
+      "summary": "在无向带权图上，从 s 走到 t，使所经边的最大权值与最小权值之差最小。",
+      "input": "读入 n、m，再读 m 组边的两端点与权值，最后读入 s、t。",
+      "output": "输出最小权值差。若两点不连通，输出 -1。",
+      "constraints": "n、m ≤ 5000，边权在 1 至 2×10⁹ 之间。",
+      "method": "边按权值排序。固定允许的最小边权，重建并查集，从此处向后加边直到 s、t 连通。比较每次连通时得到的区间宽度。",
+      "complexity": "时间 O(m log m + mn + m² α(n))，空间 O(n+m)。"
+    },
+    {
+      "id": 1018,
+      "title": "最大最小问题",
+      "difficulty": "Super",
+      "samples": [
+        {
+          "input": "5\n3 2 1 2 3",
+          "output": "5"
+        }
+      ],
+      "chapter": "sorting",
+      "limits": "单点时限: 2.0 sec · 内存限制: 1024 MB",
+      "summary": "在所有连续非空区间中，求区间长度乘以其中最小元素的最大值。",
+      "input": "输入 n 和 n 个整数。",
+      "output": "输出最大乘积。",
+      "constraints": "1≤n≤10⁶，元素小于 10⁹。",
+      "method": "分治分别计算左右半区。对跨中点的区间，每次扩展时取两端更大的邻项，让区间最小值尽量晚下降。负数区间的乘积不会优于取单个最大元素。",
+      "complexity": "O(n log n) 时间；O(n) 输入空间，递归栈 O(log n)。"
+    },
+    {
+      "id": 1058,
+      "title": "子集和问题",
+      "difficulty": "Super",
+      "samples": [
+        {
+          "input": "1\n4 9\n1\n2\n6\n8",
+          "output": "2"
+        }
+      ],
+      "chapter": "dp",
+      "limits": "单点时限: 2.0 sec · 内存限制: 256 MB",
+      "summary": "从一组互不相同的正整数中选择子集，统计其元素和恰好等于 X 的选法数。",
+      "input": "先读组数。每组读 n 和 X，再读 n 个元素。",
+      "output": "输出每组的精确方案数，不取模。",
+      "constraints": "1 ≤ n ≤ 100，1 ≤ X ≤ 10000，元素值在 [1,1000]。",
+      "method": "用 0-1 背包对元素和计数。方案总数至多 2¹⁰⁰，每个计数用四个十进制九位分段保存，逐段带进位相加。",
+      "complexity": "设 D 为分段数，每组时间 O(nXD)，空间 O(XD)。本题 D=4。"
+    }
+  ]
+}
