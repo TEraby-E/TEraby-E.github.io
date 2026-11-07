@@ -872,7 +872,7 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 }
 .library-modal .phase-filter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--card-body-ink)}
 @media(max-width:650px){.library-modal .phase-filter{gap:2px;font-size:12px;flex-direction:column;align-items:flex-start}}
-.card-checkin-button{display:inline-flex;flex:0 0 auto;min-width:max-content;white-space:nowrap;word-break:normal;overflow-wrap:normal;line-height:1.4;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:8px 15px;border:1px solid #d8c4a6;border-radius:8px;background:#f4e9d6;color:#684a2f;font:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s ease,border-color .15s ease}
+.card-checkin-button{display:inline-flex;flex:0 0 auto;min-width:max-content;white-space:nowrap;word-break:normal;overflow-wrap:normal;line-height:1.4;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:8px 15px;border:1px solid #d8c4a6;border-radius:8px;background:#f4e9d6;color:var(--button-ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s ease,border-color .15s ease}
 .card-checkin-button:hover{background:#ecdec7;border-color:#b89a73}
 .card-checkin-button .icon{width:15px;height:15px;flex:0 0 15px}
 .card-checkin-label{display:block;flex:0 0 auto;min-width:max-content;white-space:nowrap;word-break:normal;overflow-wrap:normal}
@@ -1030,7 +1030,7 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 .plan-column-heading{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .plan-column-heading h3{margin:0;font-size:17px;color:var(--surface-ink)}
 .plan-column-heading>span{padding:1px 7px;border-radius:12px;background:#eee0c8;color:var(--accent-dark);font-size:12px}
-.plan-column-new{display:grid;place-items:center;width:30px;height:30px;margin-left:auto;padding:0;border:0;border-radius:6px;background:#efe2cd;color:var(--accent-dark);font-size:22px}
+.plan-column-new{display:grid;place-items:center;width:30px;height:30px;margin-left:auto;padding:0;border:0;border-radius:6px;background:#efe2cd;color:var(--button-ink);font-size:22px}
 .plan-column-new:hover{background:#e9d8bd}
 .plan-column-chapter{width:100%;font-size:13px;margin-bottom:12px}
 .plan-column-cards{display:grid;align-content:start;gap:10px;flex:1;min-height:0;overflow-y:auto;padding:2px 3px 6px;scrollbar-gutter:stable;overscroll-behavior:contain}
@@ -1040,7 +1040,7 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 .plan-card.is-dragging{opacity:.45}
 .plan-column.is-drop-target{border-color:var(--surface-focus);background:#eadac0}
 .plan-card-title{display:block;width:100%;border:0;padding:0;background:none;color:var(--surface-ink);text-align:left;font:inherit;font-size:14px;font-weight:700;line-height:1.6;overflow-wrap:anywhere;cursor:pointer}
-.plan-card-title:hover{color:var(--accent-dark)}
+.plan-card-title:hover{color:var(--button-ink)}
 .plan-card-chapter{display:block;margin-top:5px;color:var(--surface-muted);font-size:12px;line-height:1.5}
 .plan-card-detail{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:8px 0 0;color:#5e5143;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
 .plan-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:5px 12px;margin-top:10px;padding-top:8px;border-top:1px solid #eee4d6}
