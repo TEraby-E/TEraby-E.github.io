@@ -108,7 +108,7 @@ test('deployment publishes an explicit homepage/study payload with the existing 
   assert.match(workflow, /id-token:\s*write/);
   assert.match(workflow, /name:\s*github-pages/);
   assert.match(workflow, /cp index\.html style\.css CNAME \.nojekyll _site\//);
-  assert.match(workflow, /cp -R Assets study _site\//);
+  assert.match(workflow, /cp -R Assets study algorithm _site\//);
   assert.match(workflow, /path:\s*_site(?:\s|$)/);
   assert.match(workflow, /steps\.deployment\.outputs\.page_url/);
   assert.match(workflow, /run:\s*npm test/);
