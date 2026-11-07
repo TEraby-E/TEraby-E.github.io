@@ -475,7 +475,6 @@
     heading() { return `<div class="card-heading">${this.title()}</div>`; }
 
     content() {
-      if (this.options.compact) return '';
       const task = this.task;
       const presentation = this.presentation;
       const detailText = presentation.detail;
@@ -700,7 +699,7 @@
   }
 
   function taskCardsMarkup(tasks, CardView = DailyTaskCardView) {
-    return tasks.length ? `<ul class="task-list">${tasks.map(task => new CardView(task, { compact: true }).render()).join('')}</ul>` : '';
+    return tasks.length ? `<ul class="task-list">${tasks.map(task => new CardView(task, { compact: true, chapter: true }).render()).join('')}</ul>` : '';
   }
 
   function stageProgressMarkup(subject, progress) {
@@ -1031,7 +1030,7 @@
       $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(date))}</h3><span>完成 ${completed} / ${assignments.length} 项任务<small class="history-time-line">${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? library.map((subject) => {
         const tasks = subjectAssignments(subject.id, assignments);
         if (!tasks.length) return '';
-        return `<section class="history-subject"><h4 class="subject-name">${escape(subjectName(subject))}</h4>${tasks.map((task) => new HistoryTaskCardView(task, { compact: true }).render()).join('')}</section>`;
+        return `<section class="history-subject"><h4 class="subject-name">${escape(subjectName(subject))}</h4>${tasks.map((task) => new HistoryTaskCardView(task, { compact: true, chapter: true }).render()).join('')}</section>`;
       }).join('') : `<div class="empty-state">${icon('book')}<strong>这一天没有安排任务</strong></div>`}`;
       $('export-history-button').hidden = !assignments.length;
       updateControls();

@@ -138,7 +138,7 @@ test('subsection metadata survives saving and archiving without discarding actua
   assert.equal(restored.archives[0].assignments[0].difficulty, '☆');
 });
 
-test('daily and library cards share learning labels while daily actual-time block becomes a standalone check-in action', () => {
+test('compact daily, library and history cards keep the learning details and notes visible', () => {
   const app = fs.readFileSync(path.join(__dirname, '../study/app.js'), 'utf8');
   const prefix = app.slice(0, app.indexOf("\n  $('daily-tbody').addEventListener"));
   const context = vm.createContext({ raw: library, window: { StudyTime: time, StudyModels: models } });
@@ -147,7 +147,7 @@ test('daily and library cards share learning labels while daily actual-time bloc
     state = normaliseState({date: '2026-10-31', assignments: []});
     const task = library.find(s => s.id === 'co').chapters.flatMap(c => c.tasks).find(t => t.source_row === 4);
     const daily = {...task, task_id: task.id, subject_id: 'co', done: false};
-    globalThis.cards = [new DailyTaskCardView(daily).render(), new LibraryTaskCardView(task).render(), new HistoryTaskCardView({...daily, done:true, actual_minutes:37}).render()];
+    globalThis.cards = [new DailyTaskCardView(daily,{compact:true,chapter:true}).render(), new LibraryTaskCardView(task,{compact:true}).render(), new HistoryTaskCardView({...daily, done:true, actual_minutes:37},{compact:true,chapter:true}).render()];
   })();`, context);
   for (const card of context.cards) {
     assert(card.includes('难度：☆'));
