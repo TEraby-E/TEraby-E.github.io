@@ -700,8 +700,8 @@
   function stageProgressMarkup(subject, progress) {
     const percent = progress.percent;
     const label = percent === null ? '暂无用时数据' : percent > 0 && percent < 0.1 ? '<0.1%' : `${Math.min(percent < 100 ? 99.9 : 100, Math.round(percent * 10) / 10)}%`;
-    const bar = percent === null ? '' : `<div class="subject-stage-track" role="progressbar" aria-label="${escape(subjectName(subject))}阶段进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-valuetext="${escape(label)}"><span style="width:${percent}%"></span></div>`;
-    return `<div class="subject-stage-line"><span class="subject-phase">${escape(progress.phase || '全部阶段')}</span><strong class="subject-stage-value" aria-label="阶段进度${progress.unknown ? '（按已知用时）' : ''}：${escape(label)}">${escape(label)}</strong></div>${bar}`;
+    const bar = percent === null ? '' : `<div class="subject-stage-track" role="progressbar" aria-label="${escape(subjectName(subject))}阶段进度${progress.unknown ? '（按已知用时）' : ''}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-valuetext="${escape(label)}"><span style="width:${percent}%"></span></div>`;
+    return `<div class="subject-stage-line"><span class="subject-phase">${escape(progress.phase || '全部阶段')}</span><strong class="subject-stage-value">${escape(label)}</strong></div>${bar}`;
   }
 
   function progressSummary(subject, tasks, progress, open) {
