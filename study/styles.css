@@ -42,7 +42,7 @@ input[type=search]::-webkit-search-cancel-button{cursor:pointer}
 .history-trigger{font-size:13px;color:#ddeded}
 .history-trigger:not(:disabled):hover{background:#25586b;color:#fff9fb}
 .history-trigger .icon{width:17px;height:17px}
-.page-shell{max-width:1000px;margin:auto;padding:49px 36px 0}
+.page-shell{max-width:880px;margin:auto;padding:49px 36px 0}
 .page-heading{display:flex;justify-content:space-between;align-items:center;gap:36px;margin-bottom:31px}
 .page-heading h1{color:#fff8f7;text-shadow:0 2px 18px #190d1920}
 .page-heading .eyebrow{color:#b4e0dd}

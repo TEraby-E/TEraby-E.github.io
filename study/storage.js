@@ -100,7 +100,7 @@
     return index;
   }
 
-  function normaliseAssignments(assignments, index) {
+  function normaliseAssignments(assignments, index, preserveSnapshots = false) {
     if (!Array.isArray(assignments) || assignments.length > MAX_TASKS) throw new StoreError('每天最多选择 100 项任务。');
     const seen = new Set();
     const result = assignments.map((item) => {
@@ -128,6 +128,14 @@
         if (typeof item.title !== 'string' || !item.title.trim() || item.title.length > 400 || (item.detail !== undefined && typeof item.detail !== 'string') || (item.detail || '').length > 10000) throw new StoreError('请填写有效的任务名称。');
         row = { task_id: item.task_id, subject_id: item.subject_id, subject_name: SUBJECTS[item.subject_id], chapter_id: 'custom', chapter_title: '自定义任务', title: item.title.trim(), detail: (item.detail || '').trim(), kind: '自定义', reference: '', quantity: '', remarks: '' };
       } else throw new StoreError('任务库中未找到这项任务，请重新选择。');
+      if (preserveSnapshots && canonical && typeof item.title === 'string') {
+        for (const key of ['title', 'detail', 'kind', 'reference', 'quantity', 'remarks', 'chapter_id', 'chapter_title']) {
+          const value = item[key] ?? row[key];
+          if (typeof value !== 'string' || value.length > (['title', 'chapter_title'].includes(key) ? 400 : key === 'chapter_id' ? 200 : 10000) || (key === 'title' && !value.trim())) throw new StoreError('已保存任务的内容格式不正确。');
+          row[key] = value;
+        }
+        if (SUBJECTS[item.subject_id]) { row.subject_id = item.subject_id; row.subject_name = SUBJECTS[item.subject_id]; }
+      }
       const estimate = Object.hasOwn(item, 'estimated_minutes') ? item : definition;
       if (Object.hasOwn(estimate, 'estimated_minutes') && estimate.estimated_minutes !== null &&
           (typeof estimate.estimated_minutes !== 'number' || !Number.isFinite(estimate.estimated_minutes) || estimate.estimated_minutes < 0 || estimate.estimated_minutes > 525600)) throw new StoreError('预计用时必须是有效的分钟数，未填写时请留空。');
@@ -156,7 +164,8 @@
         if (row.done && (actual === null || Math.abs(total - actual) > 1e-7)) throw new StoreError('学习片段合计与当天实际用时不一致。');
         row.checkin_segments = row.done ? [...item.checkin_segments] : [];
       }
-      copyLearningInfo(row, canonical ? canonical.task : item, canonical?.section);
+      const hasSnapshotInfo = preserveSnapshots && ['section_name', 'difficulty', 'exam_frequency'].some(key => Object.hasOwn(item, key));
+      copyLearningInfo(row, hasSnapshotInfo ? item : canonical ? canonical.task : item, hasSnapshotInfo ? null : canonical?.section);
       if (['ds', 'co', 'os', 'cn'].includes(row.subject_id)) row.remarks = models().splitRemark(row.remarks).text;
       return row;
     });
@@ -183,6 +192,113 @@
 
   function mergePlans(existing, incoming) {
     return normalisePlan([...new Map([...incoming, ...existing].map(task => [task.task_id, task])).values()]);
+  }
+
+  function validateCatalogue(value) {
+    const catalogue = copy(value);
+    if (!catalogue || !Array.isArray(catalogue.subjects) || catalogue.subjects.length !== SUBJECT_ORDER.length) throw new StoreError('计划需要包含完整的八个学科。');
+    let total = 0;
+    const chapterIds = new Set();
+    for (const subject of catalogue.subjects) {
+      if (!Array.isArray(subject.chapters) || subject.chapters.length > 1000) throw new StoreError('计划章节格式不正确。');
+      for (const chapter of subject.chapters) {
+        if (typeof chapter.id !== 'string' || !/^[\w-]{1,200}$/.test(chapter.id) || chapterIds.has(chapter.id) ||
+            typeof chapter.title !== 'string' || chapter.title.length > 400 ||
+            (chapter.phase != null && (typeof chapter.phase !== 'string' || chapter.phase.length > 200)) || !Array.isArray(chapter.tasks)) throw new StoreError('计划章节格式不正确。');
+        chapterIds.add(chapter.id);
+        for (const task of chapter.tasks) {
+          if (++total > 10000 || typeof task?.id !== 'string' || !/^[\w-]{1,200}$/.test(task.id) ||
+              typeof task.title !== 'string' || !task.title.trim() || task.title.length > 400) throw new StoreError('计划任务格式不正确，最多支持 10000 项。');
+          for (const key of ['detail', 'kind', 'reference', 'quantity', 'remarks']) {
+            if (task[key] != null && (typeof task[key] !== 'string' || task[key].length > 10000)) throw new StoreError('计划内容格式不正确。');
+          }
+        }
+      }
+    }
+    const index = libraryIndex(catalogue);
+    for (const { subject, task } of index.values()) normaliseAssignments([{ task_id: task.id, subject_id: subject.id }], index);
+    return catalogue;
+  }
+
+  function planEntries(catalogue) {
+    return catalogue.subjects.flatMap(subject => subject.chapters.flatMap(chapter => chapter.tasks.map(task => ({
+      ...task, task_id: task.id, subject_id: subject.id, chapter_id: chapter.id, chapter_title: chapter.title, phase: chapter.phase || '',
+    }))));
+  }
+
+  function putPlanTask(next, entry) {
+    const subject = next.subjects.find(item => item.id === entry.subject_id);
+    if (!subject) throw new StoreError('请选择有效的学科。');
+    let definition;
+    let originalChapter;
+    let originalPosition;
+    for (const item of next.subjects) for (const chapter of item.chapters) {
+      const previous = chapter.tasks.find(task => task.id === entry.task_id);
+      if (previous) { definition = previous; originalChapter = chapter; originalPosition = chapter.tasks.indexOf(previous); }
+      chapter.tasks = chapter.tasks.filter(task => task.id !== entry.task_id);
+    }
+    let chapter = subject.chapters.find(item => item.id === entry.chapter_id);
+    if (!chapter && entry.chapter_id === undefined && originalChapter && subject.chapters.includes(originalChapter)) chapter = originalChapter;
+    if (!chapter) {
+      chapter = subject.chapters.find(item => item.id === `personal-${subject.id}`);
+      if (!chapter) { chapter = { id: `personal-${subject.id}`, title: '我的任务', phase: '', tasks: [] }; subject.chapters.push(chapter); }
+    }
+    const task = { ...definition, id: entry.task_id, title: entry.title.trim(), detail: entry.detail || '', task_mode: entry.task_mode || definition?.task_mode || 'single-day' };
+    if (Object.hasOwn(entry, 'estimated_minutes')) {
+      task.estimated_minutes = entry.estimated_minutes;
+      if (entry.estimated_minutes !== definition?.estimated_minutes) task.estimated_source = entry.estimated_minutes === null ? '' : '用户计划';
+    }
+    if (chapter === originalChapter) chapter.tasks.splice(originalPosition, 0, task);
+    else chapter.tasks.push(task);
+    return next;
+  }
+
+  function updatePlan(catalogue, entry) {
+    return validateCatalogue(putPlanTask(copy(catalogue), entry));
+  }
+
+  function removePlanTask(catalogue, id) {
+    const next = copy(catalogue);
+    next.metadata ||= {};
+    next.metadata.retired_tasks ||= [];
+    for (const subject of next.subjects) for (const chapter of subject.chapters) {
+      const task = chapter.tasks.find(item => item.id === id);
+      if (task && !next.metadata.retired_tasks.some(item => item.id === id)) next.metadata.retired_tasks.push({ ...task, subject_id: subject.id });
+      chapter.tasks = chapter.tasks.filter(item => item.id !== id);
+    }
+    return validateCatalogue(next);
+  }
+
+  function mergeCatalogues(existing, incoming) {
+    const next = copy(existing);
+    const ids = new Set(planEntries(next).map(task => task.task_id));
+    const retired = new Set(next.metadata?.retired_tasks?.map(task => task.id) || []);
+    for (const subject of incoming.subjects) {
+      const target = next.subjects.find(item => item.id === subject.id);
+      for (const chapter of subject.chapters) {
+        const tasks = chapter.tasks.filter(task => !ids.has(task.id) && !retired.has(task.id));
+        tasks.forEach(task => ids.add(task.id));
+        if (!tasks.length) continue;
+        let destination = target.chapters.find(item => item.id === chapter.id);
+        if (!destination) { destination = { ...copy(chapter), tasks: [] }; target.chapters.push(destination); }
+        destination.tasks.push(...copy(tasks));
+      }
+      if (subject.sections) target.sections = { ...copy(subject.sections), ...(target.sections || {}) };
+    }
+    next.metadata ||= {};
+    next.metadata.retired_tasks = [...new Map([...(existing.metadata?.retired_tasks || []), ...(incoming.metadata?.retired_tasks || [])].filter(task => !ids.has(task.id)).map(task => [task.id, task])).values()];
+    return validateCatalogue(next);
+  }
+
+  function migratePlan(base, record) {
+    if (record.plan_library) return record;
+    let catalogue = copy(base);
+    const snapshots = [...(record.archives || []), record.current].filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
+    const custom = snapshots.flatMap(day => day.assignments.filter(task => task.task_id.startsWith('custom-')));
+    const legacy = new Map([...custom, ...(record.plan_tasks || [])].map(task => [task.task_id, task]));
+    for (const task of legacy.values()) putPlanTask(catalogue, task);
+    if (legacy.size) catalogue = validateCatalogue(catalogue);
+    return { ...record, plan_library: catalogue, revision: record.revision + 1 };
   }
 
   function normaliseLibraryCompletedIds(value, index) {
@@ -213,6 +329,7 @@
   }
 
   function hydrateRecordEstimates(record, index) {
+    if (record.plan_customized) return record;
     const next = copy(record);
     let changed = false;
     if (record.subject_phases) {
@@ -313,7 +430,7 @@
 
   function saveRecord(record, payload, index) {
     checkRevision(record, payload);
-    const assignments = normaliseAssignments(payload.assignments, index);
+    const assignments = normaliseAssignments(payload.assignments, index, true);
     const markers = {};
     for (const key of ['library_completed_ids', 'library_reopened_ids']) if (Object.hasOwn(payload, key)) markers[key] = normaliseLibraryCompletedIds(payload[key], index);
     if (Object.hasOwn(payload, 'task_modes')) markers.task_modes = normaliseTaskModes(payload.task_modes, index);
@@ -357,9 +474,11 @@
 
   function validateBackup(value, index) {
     if (!value || value.format !== BACKUP_FORMAT || value.version !== 1 || !value.current || !Array.isArray(value.archives) || value.archives.length > MAX_ARCHIVES) throw new StoreError('请选择学习手账导出的完整 JSON 备份。');
+    const plan_library = value.plan_library ? validateCatalogue(value.plan_library) : null;
+    if (plan_library) index = libraryIndex(plan_library);
     const day = (entry) => {
       if (!entry || typeof entry !== 'object') throw new StoreError('备份中的日期记录不正确。');
-      return { date: validateDate(entry.date), assignments: normaliseAssignments(entry.assignments, index), ...(entry.subject_stage_progress ? { subject_stage_progress: normaliseStageProgress(entry.subject_stage_progress) } : {}) };
+      return { date: validateDate(entry.date), assignments: normaliseAssignments(entry.assignments, index, true), ...(entry.subject_stage_progress ? { subject_stage_progress: normaliseStageProgress(entry.subject_stage_progress) } : {}) };
     };
     const current = day(value.current);
     const dates = new Set();
@@ -374,7 +493,7 @@
     const task_modes = Object.hasOwn(value, 'task_modes') ? normaliseTaskModes(value.task_modes, index) : {};
     const subject_phases = Object.hasOwn(value, 'subject_phases') ? normaliseSubjectPhases(value.subject_phases, index) : {};
     const plan_tasks = Object.hasOwn(value, 'plan_tasks') ? normalisePlan(value.plan_tasks) : [];
-    return { current, archives, library_completed_ids, library_reopened_ids, task_modes, subject_phases, plan_tasks };
+    return { current, archives, library_completed_ids, library_reopened_ids, task_modes, subject_phases, plan_tasks, ...(plan_library ? { plan_library, plan_customized: Boolean(value.plan_customized) } : {}) };
   }
 
   function mergeTasks(existing, incoming) {
@@ -398,7 +517,7 @@
   }
 
   function hasStudyContent(record) {
-    return Boolean(record.current.assignments.length || record.archives.length || record.plan_tasks?.length || record.library_completed_ids?.length ||
+    return Boolean(record.current.assignments.length || record.archives.length || record.plan_customized || record.plan_tasks?.length || record.library_completed_ids?.length ||
       record.library_reopened_ids?.length || Object.keys(record.task_modes || {}).length || Object.keys(record.subject_phases || {}).length);
   }
 
@@ -420,7 +539,14 @@
         merged.set(day.date, { date: day.date, assignments: previous ? mergeTasks(previous.assignments, day.assignments) : copy(day.assignments), ...(progress ? { subject_stage_progress: copy(progress) } : {}) });
       }
     }
-    return { ...copy(record), plan_tasks: mergePlans(record.plan_tasks || [], incoming.plan_tasks || []), subject_phases: { ...(incoming.subject_phases || {}), ...(record.subject_phases || {}) }, task_modes: { ...(incoming.task_modes || {}), ...(record.task_modes || {}) }, revision: record.revision + 1, current, archives: [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)), library_completed_ids: [...new Set([...existingMarkers, ...incomingMarkers.filter((id) => !existingReopened.includes(id))])].sort(), library_reopened_ids: [...new Set([...existingReopened, ...incomingReopened.filter((id) => !existingMarkers.includes(id))])].sort() };
+    let catalogue = record.plan_library;
+    if (incoming.plan_library) catalogue = catalogue ? mergeCatalogues(catalogue, incoming.plan_library) : incoming.plan_library;
+    if (catalogue) {
+      const ids = new Set(planEntries(catalogue).map(task => task.task_id));
+      catalogue = copy(catalogue);
+      for (const task of incoming.plan_tasks || []) if (!ids.has(task.task_id)) putPlanTask(catalogue, task);
+    }
+    return { ...copy(record), ...(catalogue ? { plan_library: catalogue } : {}), plan_tasks: mergePlans(record.plan_tasks || [], incoming.plan_tasks || []), subject_phases: { ...(incoming.subject_phases || {}), ...(record.subject_phases || {}) }, task_modes: { ...(incoming.task_modes || {}), ...(record.task_modes || {}) }, revision: record.revision + 1, current, archives: [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)), library_completed_ids: [...new Set([...existingMarkers, ...incomingMarkers.filter((id) => !existingReopened.includes(id))])].sort(), library_reopened_ids: [...new Set([...existingReopened, ...incomingReopened.filter((id) => !existingMarkers.includes(id))])].sort() };
   }
 
   function storageError(error) {
@@ -439,6 +565,8 @@
     let dbPromise;
     let channel;
     const subscribers = new Set();
+    let catalogueSource;
+    let catalogueCache;
     const today = () => studyDate(env.now ? env.now() : new Date());
 
     function loadLibrary() {
@@ -457,6 +585,17 @@
         }
       })();
       return libraryPromise;
+    }
+
+    function recordLibrary(record, fallback) {
+      if (!record.plan_library) return fallback;
+      const source = JSON.stringify(record.plan_library);
+      if (source !== catalogueSource) {
+        const library = freezeLibrary(copy(record.plan_library));
+        catalogueCache = { library, index: libraryIndex(library) };
+        catalogueSource = source;
+      }
+      return catalogueCache;
     }
 
     function openDb() {
@@ -519,54 +658,89 @@
 
     async function request(path, options = {}) {
       const method = (options.method || 'GET').toUpperCase();
-      if (path === '/api/library' && method === 'GET') return (await loadLibrary()).library;
+      if (path === '/api/library' && method === 'GET') {
+        const base = await loadLibrary();
+        return transact(record => {
+          const next = migratePlan(base.library, record);
+          return { ...(next === record ? {} : { record: next }), result: recordLibrary(next, base).library };
+        });
+      }
       let payload;
       if (options.body !== undefined) {
         try { payload = JSON.parse(options.body); } catch { throw new StoreError('保存的内容格式不正确。'); }
       }
       if (path === '/api/state' && method === 'GET') {
-        const { index } = await loadLibrary();
+        const base = await loadLibrary();
         return transact((record) => {
-          const hydrated = hydrateRecordEstimates(record, index);
+          const migrated = migratePlan(base.library, record);
+          const { index } = recordLibrary(migrated, base);
+          const hydrated = hydrateRecordEstimates(migrated, index);
           const aligned = alignDate(hydrated, today(), index);
           const next = aligned === record ? record : { ...aligned, revision: record.revision + 1 };
           return { ...(next === record ? {} : { record: next }), result: stateOf(next) };
         });
       }
       if (path === '/api/state' && method === 'PUT') {
-        const { index } = await loadLibrary();
-        return transact((record) => { const next = saveRecord(record, payload, index); return { record: next, result: stateOf(next) }; });
+        const base = await loadLibrary();
+        return transact((record) => { const next = saveRecord(record, payload, recordLibrary(record, base).index); return { record: next, result: stateOf(next) }; });
+      }
+      if (path === '/api/plan' && method === 'PUT') {
+        const catalogue = validateCatalogue(payload?.catalogue);
+        return transact(record => {
+          checkRevision(record, payload);
+          const previous = record.plan_library;
+          // Removed tasks remain registered so old check-ins and completion markers retain their IDs.
+          if (previous) {
+            const index = libraryIndex(catalogue);
+            catalogue.metadata ||= {};
+            catalogue.metadata.retired_tasks ||= [];
+            for (const task of planEntries(previous)) if (!index.has(task.task_id) && !index.retired.has(task.task_id)) {
+              catalogue.metadata.retired_tasks.push({ ...task, id: task.task_id });
+            }
+            const retired = new Map(catalogue.metadata.retired_tasks.map(task => [task.id, task]));
+            for (const task of previous.metadata?.retired_tasks || []) if (!index.has(task.id) && !retired.has(task.id)) retired.set(task.id, task);
+            catalogue.metadata.retired_tasks = [...retired.values()];
+          }
+          const index = libraryIndex(catalogue);
+          const phases = Object.fromEntries(Object.entries(record.subject_phases || {}).map(([id, phase]) => [id, index.subjectPhases.get(id)?.has(phase) ? phase : '']));
+          const next = { ...record, plan_library: catalogue, plan_customized: true, plan_tasks: [], subject_phases: phases, revision: record.revision + 1 };
+          return { record: next, result: stateOf(next) };
+        });
       }
       if (path.startsWith('/api/history/') && method === 'GET') {
         let date;
         try { date = decodeURIComponent(path.slice('/api/history/'.length)); } catch { throw new StoreError('历史日期不正确。'); }
         validateDate(date);
-        const { index } = await loadLibrary();
-        return transact((record) => { const day = record.archives.find((item) => item.date === date); if (!day) throw new StoreError('没有找到这一天的打卡记录。', 404); return { result: copy({ ...day, subject_stage_progress: day.subject_stage_progress || subjectStageProgress(record, index, day) }) }; }, true);
+        const base = await loadLibrary();
+        return transact((record) => { const day = record.archives.find((item) => item.date === date); if (!day) throw new StoreError('没有找到这一天的打卡记录。', 404); return { result: copy({ ...day, subject_stage_progress: day.subject_stage_progress || subjectStageProgress(record, recordLibrary(record, base).index, day) }) }; }, true);
       }
       throw new StoreError('操作不存在。', 404);
     }
 
     async function exportBackup() {
-      return transact((record) => ({ result: { format: BACKUP_FORMAT, version: 1, exported_at: new Date().toISOString(), current: copy(record.current), archives: copy(record.archives), library_completed_ids: copy(Array.isArray(record.library_completed_ids) ? record.library_completed_ids : []), library_reopened_ids: copy(Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : []), task_modes: copy(record.task_modes || {}), subject_phases: copy(record.subject_phases || {}), plan_tasks: copy(record.plan_tasks || []) } }), true);
+      return transact((record) => ({ result: { format: BACKUP_FORMAT, version: 1, exported_at: new Date().toISOString(), current: copy(record.current), archives: copy(record.archives), library_completed_ids: copy(Array.isArray(record.library_completed_ids) ? record.library_completed_ids : []), library_reopened_ids: copy(Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : []), task_modes: copy(record.task_modes || {}), subject_phases: copy(record.subject_phases || {}), plan_tasks: copy(record.plan_tasks || []), ...(record.plan_library ? { plan_library: copy(record.plan_library), plan_customized: Boolean(record.plan_customized) } : {}) } }), true);
     }
 
     async function importBackup(value, options = {}) {
-      const { index } = await loadLibrary();
+      const base = await loadLibrary();
+      const { index } = base;
       const incoming = validateBackup(value, index);
+      if (!incoming.plan_library) incoming.plan_library = migratePlan(base.library, { ...incoming, revision: 1 }).plan_library;
       return transact((record) => {
         const imported = importRecord(record, incoming, options);
-        const next = { ...alignDate(imported, today(), index), revision: imported.revision };
+        const next = { ...alignDate(imported, today(), recordLibrary(imported, base).index), revision: imported.revision };
         return { record: next, result: stateOf(next) };
       });
     }
 
     async function importLocalOnce(backup) {
       if (!hasStudyContent(backup)) return;
-      const { index } = await loadLibrary();
+      const base = await loadLibrary();
+      const { index } = base;
       return transact((record) => {
         if (record.local_imported) return {};
         const incoming = validateBackup(backup, index);
+        if (!incoming.plan_library) incoming.plan_library = migratePlan(base.library, { ...incoming, revision: 1 }).plan_library;
         const next = importRecord(record, incoming, { revision: record.revision });
         return { record: { ...next, local_imported: true } };
       });
@@ -580,12 +754,21 @@
   api.StoreError = StoreError;
   api.MAX_TASKS = MAX_TASKS;
   api.plan = Object.freeze({
-    normalise: normalisePlan,
-    merge: mergePlans,
-    pack: tasks => ({ format: PLAN_FORMAT, version: 1, tasks: normalisePlan(tasks) }),
-    unpack(value) {
-      if (value?.format !== PLAN_FORMAT || value.version !== 1) throw new StoreError('请选择从学习计划导出的 JSON 文件。');
-      return normalisePlan(value.tasks);
+    entries: planEntries,
+    update: updatePlan,
+    remove: removePlanTask,
+    merge: mergeCatalogues,
+    pack: catalogue => ({ format: PLAN_FORMAT, version: 2, catalogue: validateCatalogue(catalogue) }),
+    unpack(value, base) {
+      if (Array.isArray(value?.subjects)) return validateCatalogue(value);
+      if (value?.format !== PLAN_FORMAT) throw new StoreError('请选择从学习计划导出的 JSON 文件。');
+      if (value.version === 2) return validateCatalogue(value.catalogue);
+      if (value.version === 1 && base) {
+        let catalogue = copy(base);
+        for (const task of normalisePlan(value.tasks)) putPlanTask(catalogue, task);
+        return validateCatalogue(catalogue);
+      }
+      throw new StoreError('不支持这个计划文件的版本。');
     },
   });
   api.studyDate = studyDate;

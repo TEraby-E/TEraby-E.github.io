@@ -1,11 +1,11 @@
 'use strict';
 
 const PREFIX = `sjtu-checkin-${new URL(self.registration.scope).pathname}-`;
-const CACHE = `${PREFIX}v43`;
-const RELEASE = '20261107-plan-progress';
+const CACHE = `${PREFIX}v45`;
+const RELEASE = '20261107-plan-board';
 const FILES = [
   './', './index.html', './styles.css', './cards.css', './app.js', './study-time.js', './learning-model.js', './storage.js', './export-image.js',
-  './cloud-config.js', './cloud.js', './vendor/supabase.js', './vendor/html-to-image.js', './manifest.webmanifest', './data/library.json', './assets/terabyte-flow.svg', './assets/terabyte-touch-icon.png',
+  './cloud-config.js', './cloud.js', './vendor/supabase.js', './vendor/html-to-image.js', './manifest.webmanifest', './data/library.json', './plans/default-plan.json', './assets/terabyte-flow.svg', './assets/terabyte-touch-icon.png',
   './assets/journal-circuit.svg', './assets/study-backdrop.svg', './assets/paper-texture.svg'
 ];
 const allowed = new Set(FILES.map((path) => new URL(path, self.registration.scope).href));

@@ -6,18 +6,18 @@
   <meta name="theme-color" content="#18485d">
   <meta name="description" content="安排章节任务，记录每天的学习进展。">
   <title>学习手账 · 每日任务</title>
-  <link rel="stylesheet" href="./styles.css?v=20261107-plan-progress">
-  <link rel="stylesheet" href="./cards.css?v=20261107-plan-progress">
-  <link rel="icon" type="image/svg+xml" href="./assets/terabyte-flow.svg?v=20261107-plan-progress">
+  <link rel="stylesheet" href="./styles.css?v=20261107-plan-board">
+  <link rel="stylesheet" href="./cards.css?v=20261107-plan-board">
+  <link rel="icon" type="image/svg+xml" href="./assets/terabyte-flow.svg?v=20261107-plan-board">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/terabyte-touch-icon.png">
-  <script src="./learning-model.js?v=20261107-plan-progress" defer></script>
-  <script src="./study-time.js?v=20261107-plan-progress" defer></script>
-  <script src="./storage.js?v=20261107-plan-progress" defer></script>
-  <script src="./export-image.js?v=20261107-plan-progress" defer></script>
-  <script src="./cloud-config.js?v=20261107-plan-progress" defer></script>
-  <script src="./cloud.js?v=20261107-plan-progress" defer></script>
-  <script src="./app.js?v=20261107-plan-progress" defer></script>
+  <script src="./learning-model.js?v=20261107-plan-board" defer></script>
+  <script src="./study-time.js?v=20261107-plan-board" defer></script>
+  <script src="./storage.js?v=20261107-plan-board" defer></script>
+  <script src="./export-image.js?v=20261107-plan-board" defer></script>
+  <script src="./cloud-config.js?v=20261107-plan-board" defer></script>
+  <script src="./cloud.js?v=20261107-plan-board" defer></script>
+  <script src="./app.js?v=20261107-plan-board" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -86,7 +86,7 @@
 
     <div class="day-actions">
       <div class="action-buttons">
-        <button class="button button-primary" id="custom-button" type="button" aria-haspopup="dialog" aria-controls="custom-dialog" disabled><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>自定义打卡</span></button>
+        <button class="button button-primary" id="manage-plan-button" type="button" aria-haspopup="dialog" aria-controls="plan-dialog" disabled><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>选择计划</span></button>
         <button class="button button-secondary" id="export-button" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg><span>导出今日图片</span></button>
       </div>
     </div>
@@ -98,44 +98,37 @@
     <div class="library-search-wrap"><label class="search-field"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="library-search" type="search" autocomplete="off" placeholder="搜索章节或任务" aria-label="搜索当前科目的章节或任务"></label><label class="phase-filter"><select id="library-phase" aria-label="切换当前学科的学习阶段"><option value="">全部阶段</option></select></label></div>
     <section class="library-stage-summary" id="library-stage-summary" aria-label="当前学科阶段进度" aria-live="polite"></section>
     <div class="library-layout"><nav class="chapter-list" id="chapter-list" aria-label="选择章节"></nav><section class="chapter-content" id="chapter-content" aria-live="polite"></section></div>
-    <div class="modal-footer"><span class="selection-summary" id="selection-summary">已选 0 项</span><div class="modal-footer-buttons"><button type="button" class="button button-secondary" id="copy-to-plan">存入计划</button><button type="button" class="button button-primary" id="apply-library">加入今日清单</button></div></div>
+    <div class="modal-footer"><span class="selection-summary" id="selection-summary">已选 0 项</span><div class="modal-footer-buttons"><button type="button" class="button button-primary" id="apply-library">加入今日清单</button></div></div>
   </dialog>
 
   <dialog class="modal data-modal plan-modal" id="plan-dialog" aria-labelledby="plan-title">
-    <div class="modal-heading"><h2 id="plan-title">学习计划</h2><button type="button" class="icon-button close-button" data-close="plan-dialog" aria-label="关闭学习计划"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <div class="data-sections">
-      <section class="data-section">
-        <form class="journal-form" id="plan-form">
-          <label>任务名称<input id="plan-task-title" maxlength="400" required></label>
-          <label>学科<select id="plan-subject" required></select></label>
-          <label>内容（选填）<textarea id="plan-detail" rows="2" maxlength="10000"></textarea></label>
-          <div class="data-section-actions"><button type="submit" class="button button-primary" id="save-plan-task">保存任务</button><button type="button" class="text-button" id="cancel-plan-edit" hidden>取消编辑</button></div>
-        </form>
-      </section>
-      <section class="data-section">
-        <label class="search-field"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input type="search" id="plan-search" aria-label="搜索计划任务" placeholder="搜索计划任务"></label>
-        <ul id="plan-list" class="plan-list"></ul>
-        <p id="plan-message" class="journal-form-message" role="alert"></p>
-      </section>
+    <div class="modal-heading"><h2 id="plan-title">计划看板</h2><div class="plan-heading-actions"><button type="button" class="button button-primary" id="new-plan-task">新建任务</button><button type="button" class="icon-button close-button" data-close="plan-dialog" aria-label="关闭计划看板"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div></div>
+    <div class="plan-toolbar">
+      <label><span class="visually-hidden">筛选学科</span><select id="plan-filter"><option value="">全部学科</option></select></label>
+      <label class="search-field"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input type="search" id="plan-search" aria-label="搜索计划任务" placeholder="搜索任务或章节"></label>
+      <span id="plan-page-label" role="status"></span>
     </div>
-    <div class="modal-footer"><button type="button" class="button button-secondary" id="download-plan">下载计划</button><button type="button" class="button button-secondary" id="upload-plan">上传计划</button><input type="file" id="plan-file" accept=".json,application/json" hidden></div>
+    <div class="plan-workspace">
+      <div id="plan-list" class="plan-board" aria-label="按学科分栏的计划看板"></div>
+      <aside class="plan-editor" id="plan-editor-panel" aria-labelledby="plan-editor-title" hidden>
+        <h3 id="plan-editor-title">新建任务</h3>
+        <form class="journal-form" id="plan-form">
+          <fieldset id="plan-fields">
+            <label>任务名称<input id="plan-task-title" maxlength="400" required></label>
+            <label>学科<select id="plan-subject" required></select></label>
+            <label>章节<select id="plan-chapter"></select></label>
+            <label>任务内容<textarea id="plan-detail" rows="5" maxlength="10000"></textarea></label>
+            <label>计划用时（分钟，可留空）<input id="plan-estimated" type="number" min="0" max="525600" step="any" inputmode="decimal"></label>
+            <div class="data-section-actions"><button type="submit" class="button button-primary" id="save-plan-task">保存任务</button><button type="button" class="button button-secondary" id="cancel-plan-edit">取消</button></div>
+          </fieldset>
+        </form>
+      </aside>
+    </div>
+    <p id="plan-message" class="journal-form-message plan-feedback" role="alert"></p>
+    <div class="modal-footer"><a class="text-button" href="./plans/default-plan.json" download="原始八科学习计划.json">原始八科计划</a><button type="button" class="button button-secondary" id="download-plan">下载计划</button><label><span class="visually-hidden">导入方式</span><select id="plan-import-mode"><option value="merge">合并新任务</option><option value="replace">替换当前计划</option></select></label><button type="button" class="button button-secondary" id="upload-plan">上传计划</button><input type="file" id="plan-file" accept=".json,application/json" hidden></div>
   </dialog>
 
-  <dialog class="modal data-modal" id="custom-dialog" aria-labelledby="custom-title">
-    <div class="modal-heading"><div><h2 id="custom-title">自定义打卡</h2><p class="modal-description" id="custom-description"></p></div><button type="button" class="icon-button close-button" data-close="custom-dialog" aria-label="关闭自定义打卡"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
-    <div class="data-sections">
-      <section class="data-section">
-        <form class="journal-form" id="custom-form">
-          <label>学习内容<input id="custom-title-input" type="text" maxlength="400" required autofocus></label>
-          <label>所属学科<select id="custom-subject" required></select></label>
-          <label>备注（选填）<textarea id="custom-detail" rows="3" maxlength="10000"></textarea></label>
-          <label>实际用时（分钟）<input id="custom-minutes" type="number" min="0" max="525600" step="any" inputmode="decimal" required></label>
-          <p id="custom-error" class="journal-form-message" role="alert"></p>
-          <div class="data-section-actions"><button type="submit" class="button button-primary" id="save-custom">保存并打卡</button></div>
-        </form>
-      </section>
-    </div>
-  </dialog>
+
 
   <dialog class="modal history-modal" id="history-dialog" aria-labelledby="history-title">
     <div class="modal-heading"><div><p class="eyebrow">STUDY ARCHIVE</p><h2 id="history-title">学习记录</h2><p class="modal-description">保存过的每一天，都在这里。</p></div><button type="button" class="icon-button close-button" data-close="history-dialog" aria-label="关闭历史记录"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
