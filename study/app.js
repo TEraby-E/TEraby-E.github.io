@@ -515,12 +515,12 @@
 
     heading() {
       const task = this.task;
-      return `<div class="card-heading"><label class="card-selection"><input id="daily-task-${escape(this.id)}" type="checkbox" data-task="${escape(this.id)}" ${task.done ? 'checked' : ''} aria-label="${escape(task.title)}，${task.done ? '今日已打卡' : '今日未打卡'}">${this.title()}</label><button type="button" class="card-remove" data-action="remove" data-task="${escape(this.id)}" aria-label="从今日清单移除：${escape(task.title)}" title="移除今日任务">${icon('close')}</button></div>`;
+      return `<div class="card-heading"><label class="card-selection"><input id="daily-task-${escape(this.id)}" type="checkbox" data-task="${escape(this.id)}" ${task.done ? 'checked' : ''} aria-label="${escape(task.title)}，${task.done ? '今日已打卡' : '今日未打卡'}">${this.title()}</label></div>`;
     }
 
     controls() {
       const label = this.mode === 'multi-day' ? this.completed ? '查看打卡' : this.task.done ? '继续打卡' : '打卡' : this.task.done ? '已打卡' : '打卡';
-      return `<div class="card-controls"><button type="button" class="card-checkin-button" data-action="record-actual" data-task="${escape(this.id)}" aria-label="${escape(label)}：${escape(this.task.title)}">${icon('check')}<span class="card-checkin-label">${label}</span></button>${canonicalTask(this.task) ? taskModeControl(this.task) : ''}</div>`;
+      return `<div class="card-controls"><button type="button" class="card-checkin-button" data-action="record-actual" data-task="${escape(this.id)}" aria-label="${escape(label)}：${escape(this.task.title)}">${icon('check')}<span class="card-checkin-label">${label}</span></button>${canonicalTask(this.task) ? taskModeControl(this.task) : ''}<button type="button" class="card-remove" data-action="remove" data-task="${escape(this.id)}" aria-label="从今日清单移除：${escape(this.task.title)}" title="移除今日任务">${icon('close')}</button></div>`;
     }
   }
 
@@ -651,7 +651,7 @@
       for (const group of CardMotion.activeSubjects || []) CardMotion.finishSubject(group);
     }
 
-    static switchSubject(group, open, materialize) {
+    static switchSubject(group, open, materialize, fitWidth) {
       const wrapper = group.querySelector('.subject-transition');
       const body = group.querySelector('.subject-body');
       const summary = group.querySelector('.subject-stage-summary');
@@ -665,6 +665,7 @@
       }
       body.hidden = !open;
       if (summary) summary.hidden = open;
+      fitWidth?.();
       const incoming = open ? body : summary;
       if (reduced || !wrapper.animate || !incoming?.animate || !group.isConnected) return;
       const end = wrapper.getBoundingClientRect().height;
@@ -737,9 +738,46 @@
     if (!group) return;
     const open = expandedSubjects.has(subjectId);
     const button = group.querySelector('.subject-toggle');
-    CardMotion.switchSubject(group, open, body => { body.innerHTML = taskCardsMarkup(subjectAssignments(subjectId)); });
+    CardMotion.switchSubject(group, open, body => { body.innerHTML = taskCardsMarkup(subjectAssignments(subjectId)); }, fitJournalWidth);
     button.setAttribute('aria-expanded', String(open));
     button.setAttribute('aria-label', `${open ? '收起' : '展开'}${subjectName(library.find(subject => subject.id === subjectId))}任务`);
+  }
+
+  function fitJournalWidth() {
+    const sheet = $('task-sheet');
+    const page = sheet.closest?.('.journal-page');
+    if (!page) return;
+    const range = document.createRange();
+    const widths = [];
+    const singleLine = element => {
+      range.selectNodeContents(element);
+      const fragments = [...range.getClientRects()].filter(rect => rect.width > 0);
+      if (!fragments.length || Math.max(...fragments.map(rect => rect.top)) >= Math.min(...fragments.map(rect => rect.bottom))) return 0;
+      return Math.max(...fragments.map(rect => rect.right)) - Math.min(...fragments.map(rect => rect.left));
+    };
+
+    // Compare visible content with the previous full-width layout before choosing the narrowest fit.
+    page.classList.add('fitting-journal', 'measuring-journal');
+    const originalWidth = sheet.getBoundingClientRect().width;
+    const visible = selector => [...sheet.querySelectorAll(selector)].filter(element => !element.closest('[hidden]'));
+    for (const element of visible('.card-title, .card-eyebrow, .card-detail')) {
+      const width = singleLine(element);
+      if (width) widths.push({ element, width });
+    }
+    for (const element of visible('.card-metadata, .card-status-row, .subject-stage-line')) {
+      const items = [...element.children].filter(child => singleLine(child)).map(child => child.getBoundingClientRect());
+      if (!items.length) continue;
+      const oneRow = items.length === element.children.length && Math.max(...items.map(rect => rect.top)) < Math.min(...items.map(rect => rect.bottom));
+      const gap = parseFloat(getComputedStyle(element).columnGap) || 0;
+      const width = oneRow ? items.reduce((sum, rect) => sum + rect.width, 0) + gap * (items.length - 1) : Math.max(...items.map(rect => rect.width));
+      widths.push({ element, width });
+    }
+    page.classList.remove('measuring-journal');
+    page.style.removeProperty('--journal-width');
+    const compactWidth = sheet.getBoundingClientRect().width;
+    const extra = Math.max(0, ...widths.map(({ element, width }) => width - element.getBoundingClientRect().width));
+    page.style.setProperty('--journal-width', `${Math.min(originalWidth, Math.ceil(compactWidth + extra))}px`);
+    page.classList.remove('fitting-journal');
   }
 
   function renderDay() {
@@ -755,6 +793,7 @@
     $('actual-time').textContent = !duration.actualKnown && duration.actualUnknown ? '待补记' : formattedTime(duration.actualMinutes || 0);
     CardMotion.update($('daily-tbody'), subjectGroupsMarkup(state.assignments));
     renderDayProgress($, state.assignments);
+    fitJournalWidth();
     updateControls();
   }
 
@@ -1248,7 +1287,7 @@
     setStatus('saving', '正在载入');
     try {
       if (cloudAccount?.user) await cloudAccount.migrateLocal();
-      const [libraryResult, stateResult] = await Promise.all([api('/api/library'), api('/api/state')]);
+      const { library: libraryResult, state: stateResult } = await api('/api/day');
       if (!canApply()) return;
       if (!Array.isArray(libraryResult.subjects)) throw new Error('章节任务库的格式不正确。');
       if (!preparedCatalogues.has(libraryResult)) preparedCatalogues.set(libraryResult, { subjects: SUBJECT_NAMES.map((name) => libraryResult.subjects.find((subject) => subject.name === name)).filter(Boolean).map((subject) => window.StudyModels.createSubject(subject)), retired: new Map((libraryResult.metadata?.retired_tasks || []).map((task) => [task.id, task])) });
@@ -1308,6 +1347,10 @@
   function queueCloudRefresh(revision) {
     cloudRefreshRevision = Math.max(cloudRefreshRevision, Number.isSafeInteger(revision) ? revision : Infinity);
     refreshCloudIfIdle();
+  }
+
+  function syncCloud() {
+    cloudAccount?.sync?.().then(({ revision }) => { if (revision) queueCloudRefresh(revision); }).catch(() => {});
   }
 
   function reloadAccount() {
@@ -1373,7 +1416,7 @@
     });
     await load();
     if (user && !accountReloading) {
-      cloudAccount.sync().then(() => queueCloudRefresh()).catch(() => {});
+      syncCloud();
       cloudAccount.watch(queueCloudRefresh);
     }
   }
@@ -1729,17 +1772,19 @@
     event.preventDefault();
     event.returnValue = '';
   });
+  window.addEventListener('resize', fitJournalWidth);
+  document.fonts?.ready.then(fitJournalWidth);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && dirty) flushAutosave().catch(() => {});
     if (document.visibilityState === 'visible') {
       if (state && state.date !== window.StudyStore.studyDate()) queueCloudRefresh();
-      cloudAccount?.sync?.().then(() => queueCloudRefresh()).catch(() => {});
+      syncCloud();
     }
   });
   window.addEventListener('online', () => {
     if (!cloudAccount?.user) return;
     if (dirty) flushAutosave().catch(() => {});
-    cloudAccount.sync().then(() => queueCloudRefresh()).catch(() => {});
+    syncCloud();
   });
   window.addEventListener('study-cloud-status', event => {
     $('cloud-status').textContent = event.detail;

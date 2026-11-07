@@ -330,7 +330,7 @@
 
   function hydrateRecordEstimates(record, index) {
     if (record.plan_customized) return record;
-    const next = copy(record);
+    const next = { ...record, current: copy(record.current), archives: copy(record.archives) };
     let changed = false;
     if (record.subject_phases) {
       const phases = normaliseSubjectPhases(record.subject_phases, index);
@@ -658,27 +658,26 @@
 
     async function request(path, options = {}) {
       const method = (options.method || 'GET').toUpperCase();
-      if (path === '/api/library' && method === 'GET') {
+      if (method === 'GET' && ['/api/library', '/api/state', '/api/day'].includes(path)) {
+        const read = (record, base) => {
+          if (!record.plan_library && !base) return { result: null };
+          const migrated = record.plan_library ? record : migratePlan(base.library, record);
+          const { library, index } = recordLibrary(migrated, base);
+          if (path === '/api/library') return { ...(migrated === record ? {} : { record: migrated }), result: library };
+          const hydrated = hydrateRecordEstimates(migrated, index);
+          const aligned = alignDate(hydrated, today(), index);
+          const next = aligned === record ? record : { ...aligned, revision: record.revision + 1 };
+          const state = stateOf(next);
+          return { ...(next === record ? {} : { record: next }), result: path === '/api/day' ? { library, state } : state };
+        };
+        const saved = await transact(record => read(record));
+        if (saved !== null) return saved;
         const base = await loadLibrary();
-        return transact(record => {
-          const next = migratePlan(base.library, record);
-          return { ...(next === record ? {} : { record: next }), result: recordLibrary(next, base).library };
-        });
+        return transact(record => read(record, base));
       }
       let payload;
       if (options.body !== undefined) {
         try { payload = JSON.parse(options.body); } catch { throw new StoreError('保存的内容格式不正确。'); }
-      }
-      if (path === '/api/state' && method === 'GET') {
-        const base = await loadLibrary();
-        return transact((record) => {
-          const migrated = migratePlan(base.library, record);
-          const { index } = recordLibrary(migrated, base);
-          const hydrated = hydrateRecordEstimates(migrated, index);
-          const aligned = alignDate(hydrated, today(), index);
-          const next = aligned === record ? record : { ...aligned, revision: record.revision + 1 };
-          return { ...(next === record ? {} : { record: next }), result: stateOf(next) };
-        });
       }
       if (path === '/api/state' && method === 'PUT') {
         const base = await loadLibrary();

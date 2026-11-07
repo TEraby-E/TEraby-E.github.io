@@ -37,6 +37,28 @@ test('the downloadable default plan preserves every original task and its metada
   assert.deepEqual(storage.plan.unpack(storage.plan.pack(catalogue)), library);
 });
 
+test('opening an existing day uses its saved catalogue and check-ins in one read', async () => {
+  const initial = storage.helpers.initialRecord('2026-11-07');
+  const index = storage.helpers.libraryIndex(library);
+  const record = storage.helpers.saveRecord(initial, {
+    date: initial.current.date, revision: initial.revision,
+    assignments: [{ task_id: originalTask.id, done: true, actual_minutes: 17 }],
+  }, index);
+  record.plan_library = library;
+  let transactions = 0;
+  const store = storage.createStore({
+    now: () => new Date('2026-11-07T04:00:00Z'),
+    fetch: async () => { throw new Error('An existing plan should not fetch the default catalogue.'); },
+  }, async operation => {
+    transactions += 1;
+    return operation(structuredClone(record)).result;
+  });
+  const day = await store.request('/api/day');
+  assert.equal(transactions, 1);
+  assert.equal(day.state.assignments[0].actual_minutes, 17);
+  assert.equal(day.library.subjects[0].chapters[0].tasks[0].id, originalTask.id);
+});
+
 test('legacy custom check-ins and saved plans migrate once alongside all original subjects', async () => {
   const custom = { task_id: 'custom-old-checkin', subject_id: 'english', title: '旧自定义打卡', detail: '原记录', done: true, actual_minutes: 15 };
   const initial = { ...storage.helpers.initialRecord('2026-11-07'), plan_tasks: [{ task_id: 'custom-old-plan', subject_id: 'ds', title: '旧计划任务', detail: '保留内容' }] };

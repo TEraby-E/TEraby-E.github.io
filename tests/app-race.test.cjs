@@ -79,10 +79,8 @@ function createApp(initial = day(1, [task('existing', '已经安排的任务')])
 }
 
 function settleLoad(requests, offset, snapshot) {
-  assert.equal(requests[offset].url, '/api/library');
-  assert.equal(requests[offset + 1].url, '/api/state');
-  requests[offset].resolve(fixtureLibrary);
-  requests[offset + 1].resolve(snapshot);
+  assert.equal(requests[offset].url, '/api/day');
+  requests[offset].resolve({ library: fixtureLibrary, state: snapshot });
 }
 
 test('a delayed successful refresh cannot discard a task selected while it was loading', async () => {
@@ -120,8 +118,7 @@ test('a delayed failed refresh cannot replace newly edited tasks with an error e
   const pending = fixture.app.startLoad();
   fixture.app.addTask(task('newly-selected', '刚选入的新任务'));
 
-  fixture.requests[0].resolve(fixtureLibrary);
-  fixture.requests[1].reject(new Error('模拟延迟读取失败'));
+  fixture.requests[0].reject(new Error('模拟延迟读取失败'));
   await pending;
 
   assert.equal(fixture.snapshot().assignments.length, 2);
@@ -135,7 +132,7 @@ test('an older overlapping refresh cannot overwrite the newer refresh result', a
   const older = fixture.app.startLoad();
   const newer = fixture.app.startLoad();
 
-  settleLoad(fixture.requests, 2, day(3, [task('latest', '最新窗口保存的任务')]));
+  settleLoad(fixture.requests, 1, day(3, [task('latest', '最新窗口保存的任务')]));
   await newer;
   settleLoad(fixture.requests, 0, day(2, [task('stale', '过期读取的任务')]));
   await older;

@@ -6,33 +6,39 @@
   const OWNER_USERNAME = 'terabyte';
   const OWNER_EMAIL = `${OWNER_USERNAME}@study.terabyte.top`;
 
-  function createTransaction(client, userId, initialRecord, StoreError) {
+  function createJournal(client, userId, initialRecord, StoreError) {
     const journals = () => client.from(TABLE);
     const unavailable = () => new StoreError('云端记录暂时无法读写，请检查网络和 Supabase 配置后重试。', 503);
-    const conflict = () => new StoreError('另一个窗口或设备已更新学习记录。', 409);
-    const read = () => journals().select(FIELDS).eq('user_id', userId).maybeSingle();
+    const select = fields => journals().select(fields).eq('user_id', userId).maybeSingle();
 
-    return async (operation) => {
-      let { data, error } = await read();
+    async function read() {
+      let { data, error } = await select(FIELDS);
       if (error) throw unavailable();
       if (!data) {
         const { revision, ...snapshot } = initialRecord();
         ({ data, error } = await journals().insert({ user_id: userId, revision, snapshot }).select(FIELDS).single());
-        if (error?.code === '23505') ({ data, error } = await read());
+        if (error?.code === '23505') ({ data, error } = await select(FIELDS));
         if (error || !data) throw unavailable();
       }
 
-      const previous = { ...data.snapshot, revision: data.revision };
-      const outcome = operation(previous);
-      if (outcome.record) {
-        const { revision, ...snapshot } = outcome.record;
-        const write = await journals().update({ revision, snapshot }).eq('user_id', userId)
-          .eq('revision', previous.revision).select('revision').maybeSingle();
-        if (write.error) throw unavailable();
-        if (!write.data) throw conflict();
-      }
-      return outcome.result;
-    };
+      return { ...data.snapshot, revision: data.revision };
+    }
+
+    async function revision() {
+      const { data, error } = await select('revision');
+      if (error) throw unavailable();
+      return data?.revision;
+    }
+
+    async function update(record, previousRevision) {
+      const { revision, ...snapshot } = record;
+      const { data, error } = await journals().update({ revision, snapshot }).eq('user_id', userId)
+        .eq('revision', previousRevision).select('revision').maybeSingle();
+      if (error) throw unavailable();
+      return Boolean(data);
+    }
+
+    return { read, revision, update };
   }
 
   function cachedAccount(local, remote, scope, report) {
@@ -46,22 +52,25 @@
           const cached = await cache.transact(record => ({ result: record }), true);
           const { cloud_base: base, ...snapshot } = cached;
           const pending = base != null && cached.revision > base;
-          const cloud = await remote(record => {
-            if (!pending) return { result: record };
-            if (record.sync_commit && record.sync_commit === snapshot.sync_commit) return { result: record };
-            if (record.revision !== base) throw new local.StoreError('云端有更新，本机修改已保留。', 409);
-            return { record: snapshot, result: snapshot };
-          });
-          const stillPending = await cache.transact(record => {
-            if (record.cloud_base !== base) return { result: record.revision > record.cloud_base };
+          let cloud;
+          if (pending) {
+            // The revision filter is the write guard. Read the full record only to recover a lost response or report a conflict.
+            const saved = await remote.update(snapshot, base);
+            cloud = saved ? snapshot : await remote.read();
+            if (!saved && (!snapshot.sync_commit || cloud.sync_commit !== snapshot.sync_commit)) throw new local.StoreError('云端有更新，本机修改已保留。', 409);
+          } else {
+            cloud = base != null && await remote.revision() === base ? snapshot : await remote.read();
+          }
+          const result = await cache.transact(record => {
+            if (record.cloud_base !== base) return { result: { pending: record.revision > record.cloud_base, revision: record.revision } };
             if (base == null || (!pending && record.revision === base && cloud.revision !== base)) {
-              return { record: { ...cloud, cloud_base: cloud.revision }, result: false };
+              return { record: { ...cloud, cloud_base: cloud.revision }, result: { pending: false, revision: cloud.revision } };
             }
-            if (pending) return { record: { ...record, cloud_base: cloud.revision }, result: record.revision > cloud.revision };
-            return { result: record.revision > record.cloud_base };
+            if (pending) return { record: { ...record, cloud_base: cloud.revision }, result: { pending: record.revision > cloud.revision } };
+            return { result: { pending: record.revision > record.cloud_base } };
           });
-          report(stillPending ? '本机已保存，等待同步' : '云端已同步');
-          return stillPending;
+          report(result.pending ? '本机已保存，等待同步' : '云端已同步');
+          return result;
         };
         const work = root.navigator.locks ? root.navigator.locks.request(cache.databaseName, run) : run();
         syncing = work.catch(error => {
@@ -73,24 +82,30 @@
     }
 
     const transact = async (operation, readOnly) => {
-      const ready = await cache.transact(record => ({ result: record.cloud_base != null }), true);
-      if (!ready) await sync();
-      const result = await cache.transact(record => {
+      const apply = () => cache.transact(record => {
+        if (record.cloud_base == null) return { result: null };
         const outcome = operation(record);
-        if (outcome.record) outcome.record = { ...outcome.record, sync_commit: root.crypto.randomUUID() };
-        return outcome;
+        const result = { value: outcome.result, changed: Boolean(outcome.record) };
+        if (!outcome.record) return { result };
+        return { record: { ...outcome.record, sync_commit: root.crypto.randomUUID() }, result };
       }, readOnly);
-      if (!readOnly) sync().then(pending => { if (pending) sync().catch(() => {}); }).catch(() => {});
-      return result;
+      let outcome = await apply();
+      if (!outcome) {
+        await sync();
+        outcome = await apply();
+      }
+      if (outcome.changed) sync().then(({ pending }) => { if (pending) sync().catch(() => {}); }).catch(() => {});
+      return outcome.value;
     };
     async function useCloud(revision) {
-      const cloud = await remote(record => ({ result: record }));
+      const cloud = await remote.read();
       await cache.transact(record => {
         if (record.revision !== revision) throw new local.StoreError('本机记录已更新，请重新备份。', 409);
         return { record: { ...cloud, cloud_base: cloud.revision } };
       });
     }
-    return { store: local.createStore(root, transact), sync, useCloud };
+    const migrated = () => cache.transact(record => ({ result: Boolean(record.local_imported) }), true);
+    return { store: local.createStore(root, transact), sync, useCloud, migrated };
   }
 
   let sdkPromise;
@@ -138,7 +153,7 @@
     else root.localStorage.removeItem(storageKey);
     const local = root.StudyStore;
     const report = (message) => root.dispatchEvent(new CustomEvent('study-cloud-status', { detail: message }));
-    const account = user ? cachedAccount(local, createTransaction(client, user.id, local.helpers.initialRecord, local.StoreError), `:account:${url.host}:${user.id}`, report) : null;
+    const account = user ? cachedAccount(local, createJournal(client, user.id, local.helpers.initialRecord, local.StoreError), `:account:${url.host}:${user.id}`, report) : null;
     const store = account?.store || local.createStore(root, null, ':guest');
     let migration;
 
@@ -150,7 +165,9 @@
       useCloud: account?.useCloud,
       migrateLocal() {
         if (user?.id !== ownerId) return;
-        if (!migration) migration = local.exportBackup().then(async (backup) => {
+        if (!migration) migration = account.migrated().then(async alreadyMigrated => {
+          if (alreadyMigrated) return;
+          const backup = await local.exportBackup();
           try { await store.importLocalOnce(backup); }
           catch (error) {
             if (error.status !== 409) throw error;
@@ -176,7 +193,7 @@
         });
       },
       watch(callback) {
-        const refresh = () => account.sync().then(() => callback()).catch(() => {});
+        const refresh = () => account.sync().then(({ revision }) => { if (revision) callback(revision); }).catch(() => {});
         const channel = client.channel(`study-journal:${user.id}`);
         for (const event of ['INSERT', 'UPDATE']) {
           channel.on('postgres_changes', { event, schema: 'public', table: TABLE, filter: `user_id=eq.${user.id}` }, refresh);
@@ -186,6 +203,6 @@
     };
   }
 
-  if (typeof module === 'object' && module.exports) module.exports = { createTransaction };
+  if (typeof module === 'object' && module.exports) module.exports = { createJournal };
   else root.StudyCloud = { configured, connect };
 })(globalThis);
