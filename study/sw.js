@@ -1,8 +1,8 @@
 'use strict';
 
 const PREFIX = `sjtu-checkin-${new URL(self.registration.scope).pathname}-`;
-const CACHE = `${PREFIX}v49`;
-const RELEASE = '20261107-fitted-journal';
+const CACHE = `${PREFIX}v50`;
+const RELEASE = '20261108-compact-heading';
 const FILES = [
   './', './index.html', './styles.css', './cards.css', './app.js', './study-time.js', './learning-model.js', './storage.js', './export-image.js',
   './cloud-config.js', './cloud.js', './vendor/supabase.js', './vendor/html-to-image.js', './manifest.webmanifest', './data/library.json', './plans/default-plan.json', './assets/terabyte-flow.svg', './assets/terabyte-touch-icon.png',
