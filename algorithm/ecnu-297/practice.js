@@ -146,7 +146,7 @@ function showProblem({ problems, difficulties, chapters }) {
   document.title = `${title} · 基础算法题库`;
   const article = document.querySelector('#problem-content');
   article.append(element('h1', title), element('p', `${difficulty} · ${chapter} · ${problem.limits}`, 'problem-meta'),
-    link('查看 ECNU 原题 ↗', `https://acm.ecnu.edu.cn/problem/${problem.id}/`, 'nav-github'),
+    link('查看 ECNU 原题 ↗', `https://acm.ecnu.edu.cn/contest/297/problem/${problem.id}/`, 'nav-github'),
     panel('题目', problem.summary), panel('输入', problem.input), panel('输出', problem.output));
   if (problem.constraints) article.append(panel('数据范围与说明', problem.constraints));
   if (problem.samples.length || problem.sampleNote) article.append(examples(problem.samples, problem.sampleNote));

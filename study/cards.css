@@ -891,7 +891,7 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 .segment-list li{background:#eee5d7;border-radius:5px;padding:4px 7px}
 .undo-segment{font-size:12px;min-height:30px}
 
-.task-sheet .sheet-bottom{display:block;padding:13px 16px 18px;border-top-color:var(--surface-border);background:linear-gradient(110deg,#f1e8d9,#f8f1e4)}
+.task-sheet .sheet-bottom{display:block;padding:13px 16px 18px;border-top-color:#dfd1bc;background:linear-gradient(180deg,#efe3d15c,#f1e5d1a6)}
 .sheet-bottom .completion-summary{min-width:0}
 .day-actions{display:flex;justify-content:flex-end;padding-top:18px}
 .day-actions .action-buttons{justify-self:end}
@@ -907,26 +907,12 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 #completion-rate{margin-left:auto;color:var(--accent-dark);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
 .completion-summary .summary-progress{height:6px;max-width:none;margin:0;background:#e2d5bf;border-radius:9px}
 .summary-progress>span{background:var(--accent-gradient)}
-/* Keep circuit artwork in the paper gutters, clear of labels and the progress track. */
-.task-sheet{position:relative}
-.sheet-circuit-edge{
-  position:absolute;
-  inset-inline:8px;
-  height:10px;
-  pointer-events:none;
-  z-index:1;
-  opacity:.75;
-  background:url("./assets/journal-circuit.svg") left center/118px auto no-repeat,
-    url("./assets/journal-circuit.svg") right center/118px auto no-repeat;
-}
-.sheet-circuit-top{top:3px}
-.sheet-circuit-bottom{bottom:3px}
 .page-footer{border-top-style:dashed;border-top-color:#cfbda7}
-@media(max-width:650px){#completion-text{font-size:11px}.sheet-circuit-edge{background-size:92px auto}}
+@media(max-width:650px){#completion-text{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.summary-progress>span{transition:none}}
 
 /* Full-width subject sections replace the old three-column table. */
-.task-sheet .sheet-heading{padding:15px 16px 9px;gap:12px;border-bottom:1px solid var(--surface-border);background:#f1e8d97d}
+.task-sheet .sheet-heading{padding:15px 16px 9px;gap:12px;border-bottom:1px solid #e9dec9;background:linear-gradient(180deg,#ede0cc72,#fff9ee52)}
 .sheet-heading h2{font-size:17px;color:var(--surface-ink);white-space:nowrap}
 .sheet-heading .save-status{color:var(--surface-muted)}
 .sheet-heading .save-status[data-status=error]{color:#8b3733}
