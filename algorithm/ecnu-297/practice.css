@@ -2,7 +2,7 @@
 .practice h1 { font-size: clamp(26px, 5vw, 40px); line-height: 1.25; }
 .practice h2 { font-size: 18px; margin-block: 0 10px; }
 .practice h3 { font-size: 15px; margin-block: 10px; }
-.practice-intro, #practice-status, .problem-meta { color: #b6c1ca; margin-block: 12px 20px; }
+#practice-status, .problem-meta { color: #b6c1ca; margin-block: 12px 20px; }
 .practice .resource { align-items: center; padding-block: 13px; }
 .practice .resource[hidden] { display: none; }
 .practice .resource-description { margin-top: 4px; }

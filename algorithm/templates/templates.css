@@ -1,0 +1,35 @@
+.template-page { max-width: 1000px; padding-bottom: 48px; }
+.template-page h1 { font-size: clamp(26px, 5vw, 40px); letter-spacing: 0; }
+.template-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-block: 16px; }
+.template-panel h2 { font-size: 18px; margin-bottom: 8px; }
+#check-in { display: grid; gap: 8px; }
+#check-in label { font-weight: 600; }
+#check-in input, #check-in textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 10px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+}
+#check-in textarea, .template-record pre { font: 13px/1.6 Consolas, monospace; tab-size: 4; }
+#check-in textarea { resize: vertical; }
+.template-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 4px; color: var(--muted); }
+.template-actions button {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--bg);
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.template-panel :is(input, textarea, button, summary, pre):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#check-in-records { color: var(--muted); }
+.template-record { border-top: 1px solid var(--line); color: var(--text); }
+.template-record summary { cursor: pointer; padding: 8px 0; overflow-wrap: anywhere; }
+.template-record time { color: var(--muted); margin-left: 10px; font-size: 12px; }
+.template-record pre { margin: 0 0 10px; padding: 10px; border-radius: 6px; background: var(--bg); overflow: auto; }

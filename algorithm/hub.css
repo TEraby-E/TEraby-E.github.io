@@ -1,0 +1,15 @@
+.algorithm-hub { max-width: 900px; padding-block: 12px 64px; }
+.algorithm-hub h1 { font-size: clamp(38px, 6vw, 60px); margin-bottom: 28px; }
+.algorithm-hub section { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.algorithm-hub section + section { margin-top: 14px; }
+.hub-entry, .hub-section-title { padding: 14px 18px; }
+.hub-entry { display: flex; align-items: center; gap: 10px; border-radius: 9px; }
+.hub-entry:hover { background: #192b36; }
+.hub-entry:focus-visible { outline-offset: -3px; }
+.hub-count { color: var(--muted); font-size: 12px; font-weight: 400; letter-spacing: 0; }
+.algorithm-hub .resource-list { margin-inline: 18px; }
+.algorithm-hub .resource { align-items: center; gap: 12px; padding-block: 11px; }
+.algorithm-hub .resource:last-child { border-bottom: 0; }
+.algorithm-hub .resource-number { padding-top: 0; }
+.algorithm-hub .resource-title { font-size: 15px; }
+.algorithm-hub .resource-arrow { margin-left: auto; font-size: 17px; line-height: 1; }

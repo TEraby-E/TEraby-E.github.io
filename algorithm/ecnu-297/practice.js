@@ -55,7 +55,7 @@ function showList({ problems, difficulties, chapters }) {
       if (row.hidden !== hidden) row.hidden = hidden;
       if (matches) count += 1;
     }
-    status.textContent = count ? `${count} / ${problems.length} 道题` : '没有符合条件的题目。';
+    status.textContent = count ? `${count} / ${problems.length} 题` : '无匹配题目';
   }
 
   document.querySelector('#problem-filters').addEventListener('submit', event => event.preventDefault());
@@ -98,7 +98,7 @@ function solution(problem) {
   const copy = element('button', '复制代码');
   copy.type = 'button';
   copy.disabled = true;
-  const feedback = element('span', '展开后加载代码。');
+  const feedback = element('span');
   feedback.setAttribute('role', 'status');
   const code = element('code');
   const pre = element('pre');
@@ -106,28 +106,28 @@ function solution(problem) {
   copy.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(code.textContent);
-      feedback.textContent = '已复制代码。';
+      feedback.textContent = '已复制';
     } catch {
-      feedback.textContent = '可选中代码手动复制，或下载 .cpp 文件。';
+      feedback.textContent = '复制失败，可下载 .cpp';
     }
   });
   let pending = false;
   details.addEventListener('toggle', async () => {
     if (!details.open || pending || code.textContent) return;
     pending = true;
-    feedback.textContent = '正在加载代码…';
+    feedback.textContent = '加载中…';
     try {
       code.textContent = await (await load(path)).text();
       feedback.textContent = '';
       copy.disabled = false;
     } catch {
-      feedback.textContent = '代码加载失败。可收起后重试，或下载 .cpp 文件。';
+      feedback.textContent = '加载失败，可下载 .cpp';
     } finally {
       pending = false;
     }
   });
   actions.append(copy, download, feedback);
-  details.append(element('summary', '查看题解与 C++17 代码'), element('p', problem.method),
+  details.append(element('summary', '题解与 C++17'), element('p', problem.method),
     element('p', problem.complexity), actions, pre);
   section.append(details);
   return section;
@@ -137,7 +137,7 @@ function showProblem({ problems, difficulties, chapters }) {
   const id = new URLSearchParams(location.search).get('id');
   const problem = problems.find(item => String(item.id) === id);
   if (!problem) {
-    status.textContent = '找不到这道题。请从题目列表选择。';
+    status.textContent = '未找到题目';
     return;
   }
   const title = `${problem.id} · ${problem.title}`;
@@ -146,7 +146,7 @@ function showProblem({ problems, difficulties, chapters }) {
   document.title = `${title} · 基础算法题库`;
   const article = document.querySelector('#problem-content');
   article.append(element('h1', title), element('p', `${difficulty} · ${chapter} · ${problem.limits}`, 'problem-meta'),
-    link('查看 ECNU 原题 ↗', `https://acm.ecnu.edu.cn/contest/297/problem/${problem.id}/`, 'nav-github'),
+    link('ECNU 原题 ↗', `https://acm.ecnu.edu.cn/contest/297/problem/${problem.id}/`, 'nav-github'),
     panel('题目', problem.summary), panel('输入', problem.input), panel('输出', problem.output));
   if (problem.constraints) article.append(panel('数据范围与说明', problem.constraints));
   if (problem.samples.length || problem.sampleNote) article.append(examples(problem.samples, problem.sampleNote));
@@ -158,4 +158,4 @@ function showProblem({ problems, difficulties, chapters }) {
 load('./problems.json')
   .then(response => response.json())
   .then(document.querySelector('#problem-view') ? showProblem : showList)
-  .catch(() => { status.textContent = '题库加载失败，请刷新后重试。'; });
+  .catch(() => { status.textContent = '加载失败，请刷新'; });
