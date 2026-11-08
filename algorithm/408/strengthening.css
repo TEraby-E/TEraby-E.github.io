@@ -12,5 +12,4 @@
 .paper-question .tag { white-space: nowrap; }
 .paper-question p { margin: 5px 0; color: #c9d4dc; }
 .paper-question a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
-.paper-empty { margin: 1px 0 0; color: var(--muted); }
 @media (max-width: 560px) { .algorithm-hub .paper-year { grid-template-columns: minmax(0, 1fr); gap: 7px; } }
