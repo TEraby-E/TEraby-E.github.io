@@ -2,11 +2,8 @@
 
 const recordPrefix = 'algorithm-template-check-in:';
 const form = document.querySelector('#check-in');
-const titleField = document.querySelector('#problem-title');
-const codeField = document.querySelector('#solution-code');
-const status = document.querySelector('#check-in-status');
 const list = document.querySelector('#check-in-records');
-const dateFormat = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' });
+const dateFormat = list && new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' });
 
 function recordCard(record) {
   const details = document.createElement('details');
@@ -51,30 +48,36 @@ function renderRecords() {
   if (!records.length) list.textContent = '暂无记录';
 }
 
-form.addEventListener('submit', event => {
-  event.preventDefault();
-  const title = titleField.value.trim();
-  const code = codeField.value;
-  if (!title || !code.trim()) {
-    status.textContent = '请填写题目和代码';
-    (title ? codeField : titleField).focus();
-    return;
-  }
-  try {
-    // Each submission has its own key, so tabs do not overwrite a shared list.
-    const key = recordPrefix + crypto.randomUUID();
-    localStorage.setItem(key, JSON.stringify({ title, code, createdAt: Date.now() }));
-  } catch {
-    status.textContent = '保存失败，请检查本机存储';
-    return;
-  }
-  form.reset();
-  status.textContent = '已保存到本机';
+if (form) {
+  const titleField = form.querySelector('#problem-title');
+  const codeField = form.querySelector('#solution-code');
+  const status = form.querySelector('#check-in-status');
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    const title = titleField.value.trim();
+    const code = codeField.value;
+    if (!title || !code.trim()) {
+      status.textContent = '请填写题目和代码';
+      (title ? codeField : titleField).focus();
+      return;
+    }
+    try {
+      // Each submission has its own key, so tabs do not overwrite a shared list.
+      const key = recordPrefix + crypto.randomUUID();
+      localStorage.setItem(key, JSON.stringify({ title, code, createdAt: Date.now() }));
+    } catch {
+      status.textContent = '保存失败，请检查本机存储';
+      return;
+    }
+    form.reset();
+    status.textContent = '已保存到本机';
+    if (list) renderRecords();
+  });
+}
+
+if (list) {
+  window.addEventListener('storage', event => {
+    if (event.key === null || event.key.startsWith(recordPrefix)) renderRecords();
+  });
   renderRecords();
-});
-
-window.addEventListener('storage', event => {
-  if (event.key === null || event.key.startsWith(recordPrefix)) renderRecords();
-});
-
-renderRecords();
+}

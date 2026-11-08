@@ -6,16 +6,42 @@
   <title>数据结构模版 · Terabyte</title>
   <link rel="icon" href="../../Assets/Icons/terabyte-favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../../style.css">
-  <link rel="stylesheet" href="./templates.css">
-  <script src="./templates.js" defer></script>
+  <link rel="stylesheet" href="./templates.css?v=20261108-templates">
+  <script src="./templates.js?v=20261108-templates" defer></script>
+  <script src="./code-preview.js" defer></script>
 </head>
 <body>
   <header class="site-header shell">
     <a class="brand" href="../"><img class="brand-mark" src="../../Assets/Icons/terabyte-flow.svg" alt="" width="38" height="38">algorithm</a>
+    <nav aria-label="打卡"><a class="nav-github" href="#check-in">提交打卡</a><a class="nav-github" href="./records/">打卡记录</a></nav>
   </header>
   <main class="shell template-page">
     <h1>数据结构模版</h1>
+    <section class="template-panel" aria-labelledby="base-templates-title">
+      <h2 id="base-templates-title">基础模版</h2>
+      <details class="template-record snippet">
+        <summary>顺序表</summary>
+        <div class="template-actions"><button type="button" disabled>复制代码</button><a href="./code/sequential-list.cpp" download>下载 .cpp</a><span role="status"></span></div>
+        <pre tabindex="0" aria-label="顺序表代码"><code></code></pre>
+      </details>
+      <details class="template-record snippet">
+        <summary>链表</summary>
+        <div class="template-actions"><button type="button" disabled>复制代码</button><a href="./code/linked-list.cpp" download>下载 .cpp</a><span role="status"></span></div>
+        <pre tabindex="0" aria-label="链表代码"><code></code></pre>
+      </details>
+      <details class="template-record snippet">
+        <summary>树</summary>
+        <div class="template-actions"><button type="button" disabled>复制代码</button><a href="./code/tree.cpp" download>下载 .cpp</a><span role="status"></span></div>
+        <pre tabindex="0" aria-label="树代码"><code></code></pre>
+      </details>
+      <details class="template-record snippet">
+        <summary>图</summary>
+        <div class="template-actions"><button type="button" disabled>复制代码</button><a href="./code/graph.cpp" download>下载 .cpp</a><span role="status"></span></div>
+        <pre tabindex="0" aria-label="图代码"><code></code></pre>
+      </details>
+    </section>
     <form id="check-in" class="template-panel">
+      <h2>提交打卡</h2>
       <label for="problem-title">题目</label>
       <input id="problem-title" type="text" required maxlength="120">
       <label for="solution-code">代码</label>
@@ -25,10 +51,6 @@
         <span id="check-in-status" role="status">本机保存</span>
       </div>
     </form>
-    <section class="template-panel" aria-labelledby="records-title">
-      <h2 id="records-title">打卡记录</h2>
-      <div id="check-in-records">暂无记录</div>
-    </section>
   </main>
 </body>
 </html>
