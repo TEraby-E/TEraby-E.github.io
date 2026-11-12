@@ -1307,12 +1307,14 @@
       : '<option value="">先选学科</option>';
     const planned = new Set(state.assignments.map(task => task.task_id));
     const editing = !$('plan-editor-panel').hidden;
-    $('new-plan-task').disabled = actionBusy || editing || !library.length;
-    $('new-plan-subject').disabled = actionBusy || editing;
+    const lockActions = actionBusy || editing;
+    $('new-plan-task').disabled = lockActions || !library.length;
+    $('new-plan-subject').disabled = lockActions;
     let visibleCount = 0;
     $('plan-list').innerHTML = subjects.map(subject => {
       const chapter = subjectId ? subject.chapters.find(item => item.id === selectedChapterId) : null;
       const chapterId = chapter?.id || '';
+      const title = chapter?.title || subject.name;
       if (subjectId && !chapter) planChapterFilters.delete(subject.id);
       const tasks = (bySubject.get(subject.id) || []).filter(task => (!chapterId || task.chapter_id === chapterId) &&
         (!query || `${task.title} ${task.detail} ${task.chapter_title}`.toLowerCase().includes(query)));
@@ -1324,22 +1326,22 @@
         const added = planned.has(task.task_id);
         return `<article class="plan-card ${planEditing === task.task_id ? 'is-editing' : ''}" data-plan-task="${escape(task.task_id)}" draggable="${!editing && !actionBusy}">
           <button type="button" class="plan-card-title" data-plan-action="edit">${escape(task.title)}</button>
-          <span class="plan-card-chapter">${escape(task.chapter_title)} · ${task.task_mode === 'multi-day' ? '多日任务' : '单日任务'}</span>
+          <span class="plan-card-chapter">${chapter ? '' : `${escape(task.chapter_title)} · `}${task.task_mode === 'multi-day' ? '多日任务' : '单日任务'}</span>
           ${task.detail ? `<p class="plan-card-detail">${escape(task.detail)}</p>` : ''}
           <div class="plan-actions"><button class="text-button" type="button" data-plan-action="add" ${added ? 'disabled' : ''}>${added ? '已在今日清单' : '加入今天'}</button><button class="text-button" type="button" data-plan-action="edit">编辑</button><button class="text-button" type="button" data-plan-action="remove">删除</button></div>
         </article>`;
       }).join('');
-      const customChapter = chapterId.startsWith('custom-chapter-');
+      const disabled = lockActions ? 'disabled' : '';
+      const addChapter = `<button type="button" class="text-button" data-board-action="new-chapter" aria-label="新建${escape(subject.name)}章节" ${disabled}>＋章节</button>`;
+      const chapterActions = chapter ? `${chapterId.startsWith('custom-chapter-') ? `<button type="button" class="text-button" data-board-action="rename-chapter" ${disabled}>重命名</button>` : ''}<button type="button" class="text-button plan-remove-chapter" data-board-action="delete-chapter" ${disabled}>删除章节</button>` : '';
       return `<section class="plan-column" data-board-subject="${escape(subject.id)}" aria-labelledby="plan-column-${escape(subject.id)}">
-        <div class="plan-column-heading"><h3 id="plan-column-${escape(subject.id)}">${escape(subject.name)}</h3><span>${tasks.length}</span><button type="button" class="plan-column-new" data-board-action="new" aria-label="新建${escape(subject.name)}任务" ${editing ? 'disabled' : ''}>＋任务</button></div>
-        <div class="plan-column-chapter-row">
-          ${subjectId ? '' : `<select class="plan-column-chapter" data-board-chapter="${escape(subject.id)}" aria-label="筛选${escape(subject.name)}章节"><option value="">全部章节</option>${chapterOptions(subject, '')}</select>`}
-          <button type="button" class="plan-column-new" data-board-action="new-chapter" aria-label="新建${escape(subject.name)}章节" ${editing ? 'disabled' : ''}>＋章节</button>
-          <button type="button" class="text-button plan-remove-subject" data-board-action="delete-subject" aria-label="删除学科：${escape(subject.name)}" ${editing ? 'disabled' : ''}>删除学科</button>
+        <div class="plan-column-heading">
+          <div class="plan-column-context"><h3 id="plan-column-${escape(subject.id)}" title="${escape(title)}">${escape(title)}</h3><span>${tasks.length} 项</span></div>
+          <div class="plan-column-actions">${subjectId ? addChapter + chapterActions : `<button type="button" class="text-button" data-board-action="new" aria-label="新建${escape(subject.name)}任务" ${disabled}>＋任务</button>`}</div>
         </div>
-        ${customChapter ? `<div class="plan-column-chapter-actions"><button type="button" class="text-button" data-board-action="rename-chapter" aria-label="重命名章节：${escape(chapter.title)}" ${editing ? 'disabled' : ''}>重命名</button><button type="button" class="text-button" data-board-action="delete-chapter" aria-label="删除章节：${escape(chapter.title)}" ${editing ? 'disabled' : ''}>删除</button></div>` : ''}
+        ${subjectId ? '' : `<div class="plan-column-chapter-row"><select class="plan-column-chapter" data-board-chapter="${escape(subject.id)}" aria-label="筛选${escape(subject.name)}章节"><option value="">全部章节</option>${chapterOptions(subject, '')}</select>${addChapter}</div>`}
         <div class="plan-column-cards">${cards || `<p class="plan-board-empty">${chapter && !chapter.tasks.length ? '本章暂无任务' : '暂无匹配任务'}</p>`}</div>
-        <div class="plan-column-pagination"><button type="button" class="text-button" data-board-action="previous" ${page === 0 ? 'disabled' : ''}>上一页</button><span>${page + 1} / ${pageCount}</span><button type="button" class="text-button" data-board-action="next" ${page + 1 === pageCount ? 'disabled' : ''}>下一页</button></div>
+        ${pageCount > 1 ? `<div class="plan-column-pagination"><button type="button" class="text-button" data-board-action="previous" ${page === 0 ? 'disabled' : ''}>上一页</button><span>${page + 1} / ${pageCount}</span><button type="button" class="text-button" data-board-action="next" ${page + 1 === pageCount ? 'disabled' : ''}>下一页</button></div>` : ''}
       </section>`;
     }).join('') || '<div class="empty-state"><strong>暂无学科</strong><p>使用「新建学科」开始添加任务。</p></div>';
     $('plan-page-label').textContent = `${subjects.length} 个学科 · ${visibleCount} 项任务`;
@@ -1450,11 +1452,8 @@
 
   function confirmPlanDelete(payload, title, taskCount) {
     planDeleteDraft = { payload, revision: state.revision };
-    const kind = payload.task_id ? '任务' : payload.chapter_id ? '章节' : '学科';
-    $('plan-delete-target').textContent = `删除${kind}「${title}」${taskCount == null ? '' : `及其中 ${taskCount} 项任务`}`;
-    $('plan-delete-detail').textContent = kind === '学科'
-      ? '该学科的章节、打卡记录、实际用时和完成状态也会删除。'
-      : '相关打卡记录、实际用时和完成状态也会删除。';
+    const kind = payload.chapter_id ? '章节' : '任务';
+    $('plan-delete-target').textContent = `删除${kind}「${title}」${taskCount ? `及其中 ${taskCount} 项任务` : ''}`;
     $('plan-delete-error').textContent = '';
     openDialog('plan-delete-dialog');
   }
@@ -1851,8 +1850,9 @@
       await mutatePlan('DELETE', payload, revision);
       closeDialog('plan-delete-dialog');
       if (payload.task_id && planEditing === payload.task_id) closePlanEditor();
-      ($('plan-filter').disabled ? $('new-plan-subject') : $('plan-filter')).focus({ preventScroll: true });
-      showToast(payload.task_id ? '任务已删除。' : payload.chapter_id ? '章节已删除。' : '学科已删除。');
+      const filter = payload.chapter_id && !$('plan-chapter-filter').disabled ? $('plan-chapter-filter') : $('plan-filter');
+      filter.focus({ preventScroll: true });
+      showToast(payload.chapter_id ? '章节已删除。' : '任务已删除。');
     } catch (error) {
       if ($('plan-delete-dialog').open) $('plan-delete-error').textContent = error.message;
       else planError(error);
@@ -1901,15 +1901,12 @@
       const chapterId = $('plan-filter').value === subjectId ? planChapterFilters.get(subjectId) || '' : '';
       if (action === 'new') editPlanTask(null, subjectId, chapterId);
       else if (action === 'new-chapter') editPlanChapter(catalogue().subjects.get(subjectId));
-      else if (action === 'delete-subject') {
-        const subject = catalogue().subjects.get(subjectId);
-        confirmPlanDelete({ subject_id: subjectId }, subject.name, catalogue().plan.bySubject.get(subjectId)?.length || 0);
-      } else if (action === 'rename-chapter' || action === 'delete-chapter') {
+      else if (action === 'rename-chapter' || action === 'delete-chapter') {
         const subject = catalogue().subjects.get(subjectId);
         const chapter = subject.chapters.find(item => item.id === chapterId);
-        if (!chapter?.id.startsWith('custom-chapter-')) return;
-        if (action === 'rename-chapter') editPlanChapter(subject, chapter);
-        else confirmPlanDelete({ subject_id: subjectId, chapter_id: chapterId }, chapter.title, chapter.tasks.length);
+        if (!chapter) return;
+        if (action === 'delete-chapter') confirmPlanDelete({ subject_id: subjectId, chapter_id: chapterId }, chapter.title, chapter.tasks.length);
+        else if (chapter.id.startsWith('custom-chapter-')) editPlanChapter(subject, chapter);
       } else {
         planPages.set(subjectId, (planPages.get(subjectId) || 0) + (action === 'next' ? 1 : -1));
         renderPlans();

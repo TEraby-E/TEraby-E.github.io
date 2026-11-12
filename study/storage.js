@@ -333,6 +333,9 @@
   }
 
   function updatePlan(catalogue, entry) {
+    if (entry.chapter_id && !planSubject(catalogue, entry.subject_id).chapters.some(chapter => chapter.id === entry.chapter_id)) {
+      throw new StoreError('这个章节已不存在，请重新选择。');
+    }
     return validateCatalogue(putPlanTask(copy(catalogue), entry));
   }
 
@@ -586,11 +589,12 @@
     const days = [record.current, ...record.archives];
     const deletedIds = new Set();
     let deletedSubjectId = null;
+    let deletedChapter = null;
     if (byChapter) {
-      if (!isCustomChapter(payload.chapter_id)) throw new StoreError('请选择自定义章节。');
       const subject = planSubject(catalogue, payload.subject_id);
       const chapter = subject.chapters.find(item => item.id === payload.chapter_id);
       if (!chapter) throw new StoreError('这个章节已不存在。');
+      deletedChapter = { id: chapter.id, subjectId: subject.id };
       for (const task of chapter.tasks) deletedIds.add(task.id);
       subject.chapters = subject.chapters.filter(item => item !== chapter);
     } else if (byTask) {
@@ -605,19 +609,6 @@
       deletedSubjectId = subject.id;
       catalogue.subjects = catalogue.subjects.filter(item => item !== subject);
       for (const chapter of subject.chapters) for (const task of chapter.tasks) deletedIds.add(task.id);
-      for (const task of source.index.retired.values()) if (task.subject_id === subject.id) deletedIds.add(task.id);
-      for (const task of record.plan_tasks || []) {
-        if (task.subject_id === subject.id && !source.index.has(task.task_id) && !source.index.retired.has(task.task_id)) {
-          deletedIds.add(task.task_id);
-        }
-      }
-      for (const day of days) {
-        for (const task of day.assignments) {
-          if (task.subject_id === subject.id && !source.index.has(task.task_id) && !source.index.retired.has(task.task_id)) {
-            deletedIds.add(task.task_id);
-          }
-        }
-      }
       const metadata = catalogue.metadata;
       if (metadata) {
         if (Object.hasOwn(metadata, 'subject_count')) metadata.subject_count = catalogue.subjects.length;
@@ -629,16 +620,26 @@
       }
     }
 
+    const matchesDeletedScope = task => (deletedSubjectId !== null && task.subject_id === deletedSubjectId) ||
+      (deletedChapter !== null && task.subject_id === deletedChapter.subjectId && task.chapter_id === deletedChapter.id);
+    if (deletedSubjectId || deletedChapter) {
+      for (const task of source.index.retired.values()) if (matchesDeletedScope(task)) deletedIds.add(task.id);
+      const addOrphan = task => {
+        if (matchesDeletedScope(task) && !source.index.has(task.task_id) && !source.index.retired.has(task.task_id)) deletedIds.add(task.task_id);
+      };
+      (record.plan_tasks || []).forEach(addOrphan);
+      for (const day of days) day.assignments.forEach(addOrphan);
+    }
+
     const subject_phases = Object.fromEntries(Object.entries(record.subject_phases || {}).flatMap(([id, phase]) => {
       const subject = catalogue.subjects.find(item => item.id === id);
       return subject ? [[id, subject.chapters.some(chapter => chapter.phase === phase) ? phase : '']] : [];
     }));
     const next = { ...record, revision: record.revision + 1, plan_library: catalogue, plan_customized: true, subject_phases };
-    if (!deletedIds.size && !deletedSubjectId) return next;
 
     const affectedSubjects = new Set();
     const affectedTaskIds = new Set(deletedIds);
-    const removesAssignment = task => deletedIds.has(task.task_id) || task.subject_id === deletedSubjectId;
+    const removesAssignment = task => deletedIds.has(task.task_id) || matchesDeletedScope(task);
     if (deletedSubjectId) affectedSubjects.add(deletedSubjectId);
     for (const day of days) {
       for (const task of day.assignments) if (removesAssignment(task)) {
@@ -646,6 +647,7 @@
         affectedTaskIds.add(task.task_id);
       }
     }
+    if (!affectedTaskIds.size && !deletedSubjectId) return next;
     for (const id of affectedTaskIds) {
       const entry = source.index.get(id);
       if (!entry) continue;

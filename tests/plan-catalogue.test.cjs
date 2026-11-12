@@ -310,7 +310,7 @@ test('deleting a plan chapter or task removes its check-ins and time without del
   });
   const selection = { chapter_id: chapter.id, subject_id: chapter.subject_id };
   await assert.rejects(request(selection, saved.revision - 1), error => error.status === 409);
-  await assert.rejects(request({ ...selection, chapter_id: firstSubject.chapters[0].id }), /自定义章节/);
+  await assert.rejects(request({ ...selection, chapter_id: 'missing-chapter' }), /章节已不存在/);
   assert.deepEqual(record(), saved);
 
   const after = await request(selection);
@@ -335,6 +335,58 @@ test('deleting a plan chapter or task removes its check-ins and time without del
   assert.deepEqual(record().archives, []);
   assert(!storage.plan.entries(await store.request('/api/library')).some(entry => entry.task_id === originalTask.id));
   assert(!record().plan_library.metadata.retired_tasks.some(task => task.id === originalTask.id));
+});
+
+test('deleting a built-in chapter removes its check-ins while preserving other chapters and archived time', async () => {
+  const subject = library.subjects.find(item => item.id === 'ds');
+  const [chapter, otherChapter] = subject.chapters;
+  const deletedIds = new Set(chapter.tasks.map(task => task.id));
+  const retired = { id: 'ds-retired-in-deleted-chapter', subject_id: subject.id, chapter_id: chapter.id };
+  const otherRetired = { id: 'ds-retired-in-kept-chapter', subject_id: subject.id, chapter_id: otherChapter.id };
+  const catalogue = structuredClone(library);
+  catalogue.metadata.retired_tasks.push(retired, otherRetired);
+  const initial = storage.helpers.initialRecord('2026-11-07');
+  const saved = storage.helpers.saveRecord(initial, {
+    date: initial.current.date, revision: initial.revision,
+    assignments: [
+      { task_id: chapter.tasks[0].id, done: true, actual_minutes: 14 },
+      { task_id: otherChapter.tasks[0].id, done: true, actual_minutes: 26 },
+      { ...retired, task_id: retired.id, title: '已停用的本章任务', done: true, actual_minutes: 17 },
+      { ...otherRetired, task_id: otherRetired.id, title: '已停用的其他章任务', done: true, actual_minutes: 19 },
+    ],
+    library_completed_ids: [otherChapter.tasks[0].id, retired.id, otherRetired.id],
+    task_modes: { [otherChapter.tasks[0].id]: 'multi-day', [retired.id]: 'multi-day', [otherRetired.id]: 'multi-day' },
+  }, storage.helpers.libraryIndex(catalogue));
+  const [removed, kept, removedRetired, keptRetired] = saved.current.assignments;
+  const beforeMove = { ...kept, chapter_id: chapter.id, chapter_title: chapter.title, actual_minutes: 8 };
+  saved.plan_library = catalogue;
+  saved.archives = [
+    { date: '2026-11-05', assignments: [removed, beforeMove, removedRetired] },
+    { date: '2026-11-06', assignments: [removed, kept, keptRetired] },
+  ];
+  const { store, record } = fixture(saved);
+  const remove = subject_id => store.request('/api/plan', {
+    method: 'DELETE', body: JSON.stringify({ date: saved.current.date, revision: saved.revision, subject_id, chapter_id: chapter.id }),
+  });
+  await assert.rejects(remove(firstSubject.id), /章节已不存在/);
+  assert.deepEqual(record(), saved);
+
+  const result = await remove(subject.id);
+  assert.deepEqual(result.assignments, [kept, keptRetired]);
+  assert.equal(result.task_progress[kept.task_id].actual_minutes, 52);
+  assert.deepEqual(result.library_completed_ids, [kept.task_id, otherRetired.id].sort());
+  assert.deepEqual(result.task_modes, { [kept.task_id]: 'multi-day', [otherRetired.id]: 'multi-day' });
+  assert.deepEqual(record().archives, [{ date: '2026-11-06', assignments: [kept, keptRetired] }]);
+  const { library: updated } = await store.request('/api/day');
+  const updatedSubject = updated.subjects.find(item => item.id === subject.id);
+  assert.deepEqual(updatedSubject.chapters, subject.chapters.slice(1));
+  assert(!Object.values(updatedSubject.sections).some(section => section.learning_tasks.some(id => deletedIds.has(id))));
+  assert(!storage.plan.entries(updated).some(task => deletedIds.has(task.task_id)));
+  assert(!updated.metadata.retired_tasks.some(task => task.id === retired.id));
+  assert(updated.metadata.retired_tasks.some(task => task.id === otherRetired.id));
+  assert.throws(() => storage.plan.update(updated, {
+    task_id: 'custom-stale-chapter-task', subject_id: subject.id, chapter_id: chapter.id, title: '过期章任务',
+  }), /章节已不存在/);
 });
 
 test('advanced history filters real check-in fields and paginates dates without writing records', async () => {

@@ -1085,41 +1085,38 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 
 /* Subject board and task editor share the account's plan catalogue. */
 .plan-modal{width:min(1480px,calc(100vw - 32px));height:min(900px,calc(100dvh - 40px));max-height:calc(100dvh - 40px)}
-.plan-modal .modal-heading{padding:18px 22px;align-items:center}
+.plan-modal .modal-heading{padding:12px 20px;align-items:center}
 .plan-heading-actions{display:flex;align-items:center;gap:12px}
 .plan-heading-actions .button{min-height:36px;padding:7px 13px;font-size:13px}
-.plan-toolbar{display:flex;align-items:center;gap:12px;flex-shrink:0;padding:12px 22px;border-bottom:1px solid var(--surface-border);background:var(--surface-panel)}
-.plan-toolbar .search-field{flex:1;min-width:0;max-width:440px}
-.plan-chapter-filter{flex:0 1 250px;min-width:0}
-.plan-chapter-filter select{width:100%}
+.plan-toolbar{display:grid;grid-template-columns:minmax(110px,145px) minmax(140px,280px) minmax(0,1fr);align-items:center;gap:8px;flex-shrink:0;padding:9px 20px;border-bottom:1px solid var(--surface-border);background:var(--surface-panel)}
+.plan-toolbar label,.plan-toolbar .search-field{min-width:0;max-width:none}
+.plan-toolbar select,.plan-toolbar .search-field{width:100%;min-height:38px}
+.plan-toolbar select:focus-visible,.plan-column-chapter:focus-visible{outline:2px solid var(--button-ink);outline-offset:1px}
 .plan-toolbar select,.plan-column-chapter,.plan-modal .modal-footer select{max-width:100%;padding:8px;border:1px solid #cdb99c;border-radius:6px;background:#fcfaf2;color:var(--surface-ink);font:inherit}
-#plan-page-label{margin-left:auto;color:var(--surface-muted);white-space:nowrap;font-size:13px}
 .plan-workspace{display:flex;flex:1;min-height:0;min-width:0;overflow:hidden;background:var(--surface-inset)}
-.plan-board{display:flex;align-items:stretch;gap:14px;flex:1;min-width:0;min-height:0;padding:18px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-gutter:stable}
-.plan-column{display:flex;flex-direction:column;flex:0 0 290px;min-width:0;min-height:0;padding:12px;border:1px solid var(--surface-border);border-radius:10px;background:var(--surface-panel);transition:border-color .15s,background .15s}
-.plan-column:only-child{flex:1;max-width:580px}
-.plan-column-heading{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.plan-column-heading h3{min-width:0;margin:0;font-size:17px;color:var(--surface-ink);overflow-wrap:anywhere}
-.plan-column-heading>span{padding:1px 7px;border-radius:12px;background:#eee0c8;color:var(--accent-dark);font-size:12px}
-.plan-column-new{display:inline-flex;align-items:center;justify-content:center;min-height:34px;margin-left:auto;padding:3px 9px;border:0;border-radius:6px;background:#efe2cd;color:var(--button-ink);font-size:13px;white-space:nowrap}
-.plan-column-new:hover{background:#e9d8bd}
-.plan-column-chapter-row{display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.plan-board{display:flex;align-items:stretch;gap:12px;flex:1;min-width:0;min-height:0;padding:12px;overflow-x:auto;overscroll-behavior-x:contain}
+.plan-column{display:flex;flex-direction:column;flex:0 0 290px;min-width:0;min-height:0;padding:10px;border:1px solid var(--surface-border);border-radius:10px;background:var(--surface-panel);transition:border-color .15s,background .15s}
+.plan-column:only-child{flex:1;max-width:1120px;margin-inline:auto}
+.plan-column-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.plan-column-context{display:flex;align-items:baseline;gap:8px;min-width:0}
+.plan-column-context h3{min-width:0;margin:0;font-size:16px;color:var(--surface-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plan-column-context span{color:var(--surface-muted);font-size:12px;white-space:nowrap}
+.plan-column-actions,.plan-column-chapter-row{display:flex;align-items:center;gap:8px}
+.plan-column-actions .text-button,.plan-column-chapter-row .text-button{min-height:34px;white-space:nowrap;font-size:12px}
+.plan-column-chapter-row{margin-bottom:8px}
 .plan-column-chapter{flex:1;min-width:0;font-size:13px}
-.plan-column-chapter-actions{display:flex;justify-content:flex-end;gap:14px;margin:-3px 0 8px}
-.plan-column-chapter-actions .text-button{min-height:28px;font-size:12px}
-.plan-column-chapter-actions .text-button:last-child,.plan-actions .text-button:last-child,.plan-remove-subject{color:#8b3733}
-.plan-remove-subject{flex-shrink:0;white-space:nowrap}
-.plan-column-cards{display:grid;align-content:start;gap:10px;flex:1;min-height:0;overflow-y:auto;padding:2px 3px 6px;scrollbar-gutter:stable;overscroll-behavior:contain}
-.plan-card{min-width:0;padding:12px;border:1px solid var(--surface-border);border-radius:8px;background:#fffefa;box-shadow:0 2px 5px #5147380d}
+.plan-column-actions .plan-remove-chapter,.plan-actions .text-button:last-child{color:#8b3733}
+.plan-column-cards{display:grid;align-content:start;gap:8px;flex:1;min-height:0;overflow-y:auto;padding:2px 3px 6px;overscroll-behavior:contain}
+.plan-card{display:flex;flex-direction:column;min-width:0;padding:9px 11px;border:1px solid var(--surface-border);border-radius:8px;background:#fffefa;box-shadow:0 2px 5px #5147380d}
 .plan-card[draggable=true]{cursor:grab}
 .plan-card.is-editing{border-color:var(--surface-focus);box-shadow:0 0 0 2px #a2836126}
 .plan-card.is-dragging{opacity:.45}
 .plan-column.is-drop-target{border-color:var(--surface-focus);background:#eadac0}
 .plan-card-title{display:block;width:100%;border:0;padding:0;background:none;color:var(--surface-ink);text-align:left;font:inherit;font-size:14px;font-weight:700;line-height:1.6;overflow-wrap:anywhere;cursor:pointer}
 .plan-card-title:hover{color:var(--button-ink)}
-.plan-card-chapter{display:block;margin-top:5px;color:var(--surface-muted);font-size:12px;line-height:1.5}
-.plan-card-detail{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:8px 0 0;color:#5e5143;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
-.plan-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:5px 12px;margin-top:10px;padding-top:8px;border-top:1px solid #eee4d6}
+.plan-card-chapter{display:block;margin-top:2px;color:var(--surface-muted);font-size:12px;line-height:1.5}
+.plan-card-detail{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:5px 0 0;color:#5e5143;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.plan-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 12px;margin-top:auto;padding-top:4px}
 .plan-actions .text-button{font-size:12px;min-height:28px}
 .plan-actions .text-button:first-child{margin-right:auto}
 .plan-column-pagination{display:flex;justify-content:space-between;align-items:center;gap:7px;padding-top:10px;color:var(--surface-muted);font-size:12px}
@@ -1158,10 +1155,7 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
  .plan-modal .modal-heading{padding:13px 15px}
  .plan-heading-actions{gap:6px}
  .plan-heading-actions .button{padding-inline:8px;font-size:12px;white-space:nowrap}
- .plan-toolbar{flex-wrap:wrap;gap:8px;padding:10px 15px}
- .plan-chapter-filter{flex:1}
- .plan-toolbar .search-field{flex-basis:100%}
- #plan-page-label{flex-basis:100%;margin:0;font-size:12px}
+ .plan-toolbar{padding:8px 12px}
  .plan-workspace{position:relative}
  .plan-board{padding:12px;gap:10px;scroll-snap-type:x proximity;scroll-padding-inline:12px}
  .plan-column{flex-basis:270px;scroll-snap-align:start}
@@ -1169,6 +1163,15 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
  .plan-modal .modal-footer{padding:10px 15px}
  .plan-modal .modal-footer .button{font-size:11px;padding:7px 10px;min-height:35px}
  .plan-modal .modal-footer select{min-height:35px;font-size:11px}
+}
+@media(min-width:900px){
+ .plan-column:only-child .plan-column-cards{grid-template-columns:repeat(auto-fit,minmax(min(100%,355px),1fr))}
+}
+@media(max-width:600px){
+ .plan-toolbar{grid-template-columns:minmax(90px,1fr) minmax(0,1.6fr)}
+ .plan-toolbar .search-field{grid-column:1 / -1}
+ .plan-column-context{gap:5px}
+ .plan-column-actions{gap:5px}
 }
 @media(max-width:650px){
  .modal .close-button{width:44px;height:44px}
