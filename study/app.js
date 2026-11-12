@@ -1254,14 +1254,21 @@
     const subjectId = $('plan-filter').value;
     const { bySubject } = planIndex();
     const subjects = planCatalogue.subjects.filter(subject => !subjectId || subject.id === subjectId);
+    const chapterFilter = $('plan-chapter-filter');
+    const selectedSubject = subjectId ? subjects[0] : null;
+    const selectedChapterId = planChapterFilters.get(subjectId) || '';
+    chapterFilter.disabled = !selectedSubject?.chapters.length;
+    chapterFilter.innerHTML = selectedSubject
+      ? '<option value="">全部章节</option>' + chapterOptions(selectedSubject, selectedChapterId)
+      : '<option value="">先选学科</option>';
     const planned = new Set(state.assignments.map(task => task.task_id));
     const editing = !$('plan-editor-panel').hidden;
     $('new-plan-task').disabled = actionBusy || editing;
     let visibleCount = 0;
     $('plan-list').innerHTML = subjects.map(subject => {
-      const chapter = subject.chapters.find(item => item.id === planChapterFilters.get(subject.id));
+      const chapter = subjectId ? subject.chapters.find(item => item.id === selectedChapterId) : null;
       const chapterId = chapter?.id || '';
-      if (!chapter) planChapterFilters.delete(subject.id);
+      if (subjectId && !chapter) planChapterFilters.delete(subject.id);
       const tasks = (bySubject.get(subject.id) || []).filter(task => (!chapterId || task.chapter_id === chapterId) &&
         (!query || `${task.title} ${task.detail} ${task.chapter_title}`.toLowerCase().includes(query)));
       visibleCount += tasks.length;
@@ -1272,7 +1279,7 @@
         const added = planned.has(task.task_id);
         return `<article class="plan-card ${planEditing === task.task_id ? 'is-editing' : ''}" data-plan-task="${escape(task.task_id)}" draggable="${!editing && !actionBusy}">
           <button type="button" class="plan-card-title" data-plan-action="edit">${escape(task.title)}</button>
-          <span class="plan-card-chapter">${escape(task.chapter_title)}</span>
+          <span class="plan-card-chapter">${escape(task.chapter_title)} · ${task.task_mode === 'multi-day' ? '多日任务' : '单日任务'}</span>
           ${task.detail ? `<p class="plan-card-detail">${escape(task.detail)}</p>` : ''}
           <div class="plan-actions"><button class="text-button" type="button" data-plan-action="add" ${added ? 'disabled' : ''}>${added ? '已在今日清单' : '加入今天'}</button><button class="text-button" type="button" data-plan-action="edit">编辑</button><button class="text-button" type="button" data-plan-action="remove">删除</button></div>
         </article>`;
@@ -1281,7 +1288,7 @@
       return `<section class="plan-column" data-board-subject="${escape(subject.id)}" aria-labelledby="plan-column-${escape(subject.id)}">
         <div class="plan-column-heading"><h3 id="plan-column-${escape(subject.id)}">${escape(subject.name)}</h3><span>${tasks.length}</span><button type="button" class="plan-column-new" data-board-action="new" aria-label="新建${escape(subject.name)}任务" ${editing ? 'disabled' : ''}>＋任务</button></div>
         <div class="plan-column-chapter-row">
-          <select class="plan-column-chapter" data-board-chapter="${escape(subject.id)}" aria-label="筛选${escape(subject.name)}章节"><option value="">全部章节</option>${chapterOptions(subject, chapterId)}</select>
+          ${subjectId ? '' : `<select class="plan-column-chapter" data-board-chapter="${escape(subject.id)}" aria-label="筛选${escape(subject.name)}章节"><option value="">全部章节</option>${chapterOptions(subject, '')}</select>`}
           <button type="button" class="plan-column-new" data-board-action="new-chapter" aria-label="新建${escape(subject.name)}章节" ${editing ? 'disabled' : ''}>＋章节</button>
         </div>
         ${customChapter ? `<div class="plan-column-chapter-actions"><button type="button" class="text-button" data-board-action="rename-chapter" aria-label="重命名章节：${escape(chapter.title)}" ${editing ? 'disabled' : ''}>重命名</button><button type="button" class="text-button" data-board-action="delete-chapter" aria-label="删除章节：${escape(chapter.title)}" ${editing ? 'disabled' : ''}>删除</button></div>` : ''}
@@ -1309,7 +1316,7 @@
   }
 
   function planTaskFingerprint(task) {
-    return JSON.stringify([task.title, task.detail || '', task.subject_id, task.chapter_id, task.estimated_minutes ?? null]);
+    return JSON.stringify([task.title, task.detail || '', task.subject_id, task.chapter_id, task.estimated_minutes ?? null, task.task_mode || 'single-day']);
   }
 
   function editPlanTask(task = null, subjectId = '', chapterId = '') {
@@ -1319,6 +1326,7 @@
     $('plan-task-title').value = task?.title || '';
     $('plan-detail').value = task?.detail || '';
     $('plan-estimated').value = task?.estimated_minutes ?? '';
+    $('plan-task-mode').value = task?.task_mode || 'single-day';
     $('plan-subject').value = task?.subject_id || subjectId || planCatalogue.subjects[0].id;
     planChapterOptions(task?.chapter_id || chapterId);
     $('plan-editor-title').textContent = task ? '编辑任务' : '新建任务';
@@ -1362,10 +1370,11 @@
 
   function openPlans() {
     if (!state || actionBusy) return;
+    const selectedSubject = $('plan-filter').value;
     $('plan-subject').innerHTML = library.map(subject => `<option value="${escape(subject.id)}">${escape(subjectName(subject))}</option>`).join('');
     $('plan-filter').innerHTML = '<option value="">全部学科</option>' + $('plan-subject').innerHTML;
+    $('plan-filter').value = selectedSubject;
     planPages.clear();
-    planChapterFilters.clear();
     $('plan-search').value = '';
     $('plan-message').textContent = '';
     closePlanEditor();
@@ -1391,8 +1400,8 @@
     }
   }
 
-  async function savePlan(catalogue, message) {
-    await mutatePlan('PUT', { catalogue });
+  async function savePlan(catalogue, message, modeTaskId) {
+    await mutatePlan('PUT', { catalogue, mode_task_id: modeTaskId });
     showToast(message);
   }
 
@@ -1695,6 +1704,12 @@
   $('plan-button').addEventListener('click', openPlans);
   $('plan-search').addEventListener('input', () => { planPages.clear(); renderPlans(); });
   $('plan-filter').addEventListener('change', () => { planPages.clear(); renderPlans(); });
+  $('plan-chapter-filter').addEventListener('change', event => {
+    const subjectId = $('plan-filter').value;
+    planChapterFilters.set(subjectId, event.target.value);
+    planPages.set(subjectId, 0);
+    renderPlans();
+  });
   $('plan-subject').addEventListener('change', () => planChapterOptions());
   $('new-plan-task').addEventListener('click', () => {
     const subjectId = $('plan-filter').value;
@@ -1718,11 +1733,12 @@
         id, subject_id: subjectId, title: $('plan-chapter-title').value, phase: $('plan-chapter-phase').value,
       });
       await savePlan(catalogue, original ? '章节已保存。' : '章节已创建。');
+      $('plan-filter').value = subjectId;
       planChapterFilters.set(subjectId, id);
       planPages.set(subjectId, 0);
       if (!original) $('plan-search').value = '';
       closePlanEditor();
-      $('plan-list').querySelector(`[data-board-chapter="${subjectId}"]`)?.focus({ preventScroll: true });
+      $('plan-chapter-filter').focus({ preventScroll: true });
     } catch (error) { planError(error); }
   });
   $('confirm-plan-delete').addEventListener('click', async () => {
@@ -1749,6 +1765,7 @@
       ...newPlanTask($('plan-subject').value, $('plan-task-title').value, $('plan-detail').value),
       chapter_id: $('plan-chapter').value,
       estimated_minutes: $('plan-estimated').value === '' ? null : $('plan-estimated').valueAsNumber,
+      task_mode: $('plan-task-mode').value,
     };
     try {
       const original = planIndex().byId.get(planEditing);
@@ -1756,7 +1773,8 @@
       if (original && planTaskFingerprint(original) !== planEditBaseline) throw new Error('该任务已在其他页面更新，请取消编辑后重新打开。');
       if (task.estimated_minutes !== null && (!Number.isFinite(task.estimated_minutes) || task.estimated_minutes < 0 || task.estimated_minutes > 525600)) throw new Error('请填写有效的计划分钟数。');
       const entry = { ...task, task_id: planEditing || task.task_id };
-      await savePlan(window.StudyStore.plan.update(planCatalogue, entry), '计划任务已保存。');
+      const modeTaskId = original && (original.task_mode || 'single-day') !== entry.task_mode ? entry.task_id : undefined;
+      await savePlan(window.StudyStore.plan.update(planCatalogue, entry), '计划任务已保存。', modeTaskId);
       closePlanEditor();
     } catch (error) { planError(error); }
     finally { $('save-plan-task').disabled = false; }
@@ -1767,7 +1785,7 @@
     if (columnButton) {
       const subjectId = columnButton.closest('[data-board-subject]').dataset.boardSubject;
       const action = columnButton.dataset.boardAction;
-      const chapterId = planChapterFilters.get(subjectId) || '';
+      const chapterId = $('plan-filter').value === subjectId ? planChapterFilters.get(subjectId) || '' : '';
       if (action === 'new') editPlanTask(null, subjectId, chapterId);
       else if (action === 'new-chapter') editPlanChapter(planCatalogue.subjects.find(subject => subject.id === subjectId));
       else if (action === 'rename-chapter' || action === 'delete-chapter') {
@@ -1805,10 +1823,13 @@
   });
   $('plan-list').addEventListener('change', event => {
     const select = event.target.closest('[data-board-chapter]');
-    if (!select) return;
-    planChapterFilters.set(select.dataset.boardChapter, select.value);
-    planPages.set(select.dataset.boardChapter, 0);
+    if (!select?.value || actionBusy) return;
+    const subjectId = select.dataset.boardChapter;
+    $('plan-filter').value = subjectId;
+    planChapterFilters.set(subjectId, select.value);
+    planPages.set(subjectId, 0);
     renderPlans();
+    $('plan-chapter-filter').focus({ preventScroll: true });
   });
   $('plan-list').addEventListener('dragstart', event => {
     const card = event.target.closest('[data-plan-task]');
@@ -1842,7 +1863,7 @@
     planDraggedTask = null;
     if (!task) return;
     const subjectId = column.dataset.boardSubject;
-    const chapterId = planChapterFilters.get(subjectId) || '';
+    const chapterId = $('plan-filter').value === subjectId ? planChapterFilters.get(subjectId) || '' : '';
     if (task.subject_id === subjectId && (!chapterId || chapterId === task.chapter_id)) return;
     savePlan(window.StudyStore.plan.update(planCatalogue, { ...task, subject_id: subjectId, chapter_id: chapterId }), '任务已移动。').catch(planError);
   });

@@ -908,6 +908,15 @@
           const index = libraryIndex(catalogue);
           const phases = Object.fromEntries(Object.entries(record.subject_phases || {}).map(([id, phase]) => [id, index.subjectPhases.get(id)?.has(phase) ? phase : '']));
           const next = { ...record, plan_library: catalogue, plan_customized: true, plan_tasks: [], subject_phases: phases, revision: record.revision + 1 };
+          if (Object.hasOwn(payload, 'mode_task_id')) {
+            const id = payload.mode_task_id;
+            const task = index.get(id)?.task;
+            if (!task) throw new StoreError('找不到要设置类别的计划任务。');
+            next.task_modes = { ...record.task_modes };
+            delete next.task_modes[id];
+            next.current = { ...record.current, assignments: record.current.assignments.map(assignment =>
+              assignment.task_id === id ? { ...assignment, task_mode: task.task_mode || 'single-day' } : assignment) };
+          }
           return { record: next, result: stateOf(next) };
         });
       }

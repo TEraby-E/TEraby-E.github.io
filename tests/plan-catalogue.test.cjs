@@ -172,6 +172,30 @@ test('removing tasks keeps historical IDs valid and rejects stale or malformed p
   assert.deepEqual(record(), stable);
 });
 
+test('an explicit plan mode edit updates the current task and preserves past check-ins', async () => {
+  const id = originalTask.id;
+  const index = storage.helpers.libraryIndex(library);
+  const initial = storage.helpers.saveRecord(storage.helpers.initialRecord('2026-11-07'), {
+    date: '2026-11-07', revision: 1,
+    assignments: [{ task_id: id, task_mode: 'single-day', done: true, actual_minutes: 18 }],
+    task_modes: { [id]: 'single-day' },
+  }, index);
+  initial.archives = [{ ...structuredClone(initial.current), date: '2026-11-06' }];
+  const { store, record } = fixture(initial);
+  const catalogue = await store.request('/api/library');
+  const state = await store.request('/api/state');
+  const entry = storage.plan.entries(catalogue).find(task => task.task_id === id);
+  const updated = storage.plan.update(catalogue, { ...entry, task_mode: 'multi-day' });
+  const saved = await store.request('/api/plan', {
+    method: 'PUT', body: JSON.stringify({ date: state.date, revision: state.revision, catalogue: updated, mode_task_id: id }),
+  });
+  assert.deepEqual(saved.assignments, [{ ...state.assignments[0], task_mode: 'multi-day' }]);
+  assert.equal(saved.task_modes[id], undefined);
+  assert.deepEqual(record().archives, initial.archives);
+  const exported = storage.plan.pack(await store.request('/api/library'));
+  assert.equal(storage.plan.entries(storage.plan.unpack(exported)).find(task => task.task_id === id).task_mode, 'multi-day');
+});
+
 test('an empty custom chapter survives save, export and merge, and keeps its ID when renamed', async () => {
   const chapter = { id: 'custom-chapter-review', subject_id: firstSubject.id, title: '  我的复习  ', phase: firstSubject.chapters[0].phase };
   const { store } = fixture();

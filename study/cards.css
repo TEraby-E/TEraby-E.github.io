@@ -1090,6 +1090,8 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 .plan-heading-actions .button{min-height:36px;padding:7px 13px;font-size:13px}
 .plan-toolbar{display:flex;align-items:center;gap:12px;flex-shrink:0;padding:12px 22px;border-bottom:1px solid var(--surface-border);background:var(--surface-panel)}
 .plan-toolbar .search-field{flex:1;min-width:0;max-width:440px}
+.plan-chapter-filter{flex:0 1 250px;min-width:0}
+.plan-chapter-filter select{width:100%}
 .plan-toolbar select,.plan-column-chapter,.plan-modal .modal-footer select{max-width:100%;padding:8px;border:1px solid #cdb99c;border-radius:6px;background:#fcfaf2;color:var(--surface-ink);font:inherit}
 #plan-page-label{margin-left:auto;color:var(--surface-muted);white-space:nowrap;font-size:13px}
 .plan-workspace{display:flex;flex:1;min-height:0;min-width:0;overflow:hidden;background:var(--surface-inset)}
@@ -1154,6 +1156,8 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
  .plan-modal{width:calc(100vw - 16px);height:calc(100dvh - 20px);max-height:calc(100dvh - 20px)}
  .plan-modal .modal-heading{padding:13px 15px}
  .plan-toolbar{flex-wrap:wrap;gap:8px;padding:10px 15px}
+ .plan-chapter-filter{flex:1}
+ .plan-toolbar .search-field{flex-basis:100%}
  #plan-page-label{flex-basis:100%;margin:0;font-size:12px}
  .plan-workspace{position:relative}
  .plan-board{padding:12px;gap:10px;scroll-snap-type:x proximity;scroll-padding-inline:12px}
