@@ -60,7 +60,10 @@ function createApp(initial = day(1, [task('existing', '已经安排的任务')])
   vm.runInContext(appPrefix + `
     state = normaliseState(fixtureInitial);
     library = fixtureLibrary.subjects;
-    if (fixtureExpanded) expandedSubjects.add('english');
+    if (fixtureExpanded) {
+      expandedSubjects.add('english');
+      expandedDailyPhases.add(studyPhaseKey('english', ''));
+    }
     renderDay();
     globalThis.fixtureApp = {
       startLoad: () => load(),

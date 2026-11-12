@@ -89,6 +89,7 @@ test('daily and exported subject layouts omit the completed frame and hide summa
     globalThis.main = subjectGroupsMarkup(state.assignments);
     expandedSubjects.add('ds');
     globalThis.opened = subjectGroupsMarkup(state.assignments);
+    globalThis.planOnly = subjectGroupsMarkup([]);
     globalThis.image = subjectGroupsMarkup(state.assignments,{history:true,exporting:true,stageProgress:{ds:{phase:'旧阶段',percent:25,unknown:0,totalMinutes:100,completedMinutes:25}}});
     expandedSubjects.clear();
     globalThis.todayImage = subjectGroupsMarkup(state.assignments,{exporting:true});
@@ -100,6 +101,9 @@ test('daily and exported subject layouts omit the completed frame and hide summa
   assert.equal((context.main.match(/class="subject-stage-summary"/g)||[]).length,1);
   assert(context.opened.includes('class="subject-stage-summary" hidden'));
   assert(!context.opened.match(/id="subject-body-ds"[^>]* hidden/));
+  assert(context.planOnly.includes('class="daily-phase-panel"'));
+  assert(context.planOnly.includes('data-study-phase="二轮"'));
+  assert(!context.planOnly.includes('data-card-key'));
   assert(context.image.includes('旧阶段'));
   assert(context.image.includes('subject-stage-value">25%</strong>'));
   assert(!context.image.includes('completed-group'));

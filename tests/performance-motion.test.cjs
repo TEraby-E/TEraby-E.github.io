@@ -63,7 +63,7 @@ test('reduced motion switches subject content immediately without creating anima
   assert.equal(f.built(),1);
 });
 
-test('100 collapsed tasks create no detail cards; opening one subject renders only that subject',()=>{
+test('collapsed subjects and phases create no detail cards; opening a phase renders only its tasks',()=>{
   const tasks=raw.subjects.flatMap(s=>s.chapters.flatMap(c=>c.tasks.map(t=>({...t,task_id:t.id,subject_id:s.id,done:false}))).slice(0,13)).slice(0,100);
   const context=vm.createContext({raw,tasks,window:{StudyModels:models,StudyTime:time}});
   vm.runInContext(prefix+`
@@ -74,6 +74,8 @@ test('100 collapsed tasks create no detail cards; opening one subject renders on
     globalThis.progressA=subjectProgress(first);
     globalThis.progressB=subjectProgress(first);
     expandedSubjects.add(first.id);
+    globalThis.phaseClosed=subjectGroupsMarkup(state.assignments);
+    expandedDailyPhases.add(studyPhaseKey(first.id, first.chapters[0].phase));
     globalThis.opened=subjectGroupsMarkup(state.assignments);
     state.assignments[0].done=true;
     changeVersion++;
@@ -81,6 +83,8 @@ test('100 collapsed tasks create no detail cards; opening one subject renders on
   })();`,context);
   assert(!context.closed.includes('data-card-key'));
   assert(Buffer.byteLength(context.closed)<20000);
+  assert(context.phaseClosed.includes('class="daily-phase-panel"'));
+  assert(!context.phaseClosed.includes('data-card-key'));
   assert.equal((context.opened.match(/data-card-key/g)||[]).length,13);
   assert.equal(context.progressA,context.progressB);
   assert.notEqual(context.progressA,context.progressC);

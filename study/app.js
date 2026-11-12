@@ -42,7 +42,7 @@
   const planPhaseFilters = new Map();
   const planFoldState = new Map();
   const planClosedNotes = new Set();
-  const planPhaseSummaries = new WeakMap();
+  const phaseSummaries = new WeakMap();
   const PLAN_PAGE_SIZE = 12;
   const PLAN_EDITOR_FORMS = ['plan-form', 'plan-chapter-form', 'plan-phase-form', 'plan-subject-form'];
   let planEditBaseline = null;
@@ -54,6 +54,9 @@
   let accountReloading = false;
   const dialogOpeners = new Map();
   const expandedSubjects = new Set();
+  const expandedDailyPhases = new Set();
+  const closedDailyNotes = new Set();
+  const studyPhaseKey = (subjectId, phase) => JSON.stringify([subjectId, phase]);
   const recordStore = () => cloudAccount?.store || window.StudyStore;
 
   class ApiError extends Error {
@@ -517,13 +520,12 @@
     heading() { return `<div class="card-heading">${this.title()}</div>`; }
 
     content() {
-      const task = this.task;
       const presentation = this.presentation;
       const detailText = presentation.detail;
       const detail = detailText ? `<p class="card-detail">${escape(detailText)}</p>` : '';
-      const metadata = presentation.metadata.map(([label, value]) => `${label}：${value}`);
+      const metadata = presentation.metadata.filter(([label]) => !this.options.grouped || label === '任务量').map(([label, value]) => `${label}：${value}`);
       const tags = metadata.length ? `<div class="card-metadata">${metadata.map((text) => `<span>${escape(text)}</span>`).join('')}</div>` : '';
-      const remarks = presentation.remarks;
+      const remarks = this.options.grouped ? '' : presentation.remarks;
       const notes = remarks ? `<details class="card-notes" open><summary>学习备注${icon('chevron')}</summary><p>${escape(remarks)}</p></details>` : '';
       return detail || tags || notes ? `<div class="card-content">${detail}${tags}${notes}</div>` : '';
     }
@@ -742,8 +744,99 @@
     return progress;
   }
 
-  function taskCardsMarkup(tasks, CardView = DailyTaskCardView) {
-    return tasks.length ? `<ul class="task-list">${tasks.map(task => new CardView(task, { compact: true, chapter: true }).render()).join('')}</ul>` : '';
+  function taskCardsMarkup(tasks, CardView = DailyTaskCardView, grouped = false) {
+    return tasks.length ? `<ul class="task-list">${tasks.map(task => new CardView(task, { compact: true, chapter: !grouped, grouped }).render()).join('')}</ul>` : '';
+  }
+
+  function chapterNotesMarkup(notes, key, { plan = false, closed = false } = {}) {
+    if (!notes.length) return '';
+    return `<details class="${plan ? 'plan-chapter-notes' : 'study-chapter-notes'}" data-notes-key="${escape(key)}" ${closed ? '' : 'open'}><summary>学习备注${icon('chevron')}</summary>${notes.map(note => `<p>${escape(note)}</p>`).join('')}</details>`;
+  }
+
+  function rememberChapterNotes(event, closedNotes) {
+    const notes = event.target.closest('details[data-notes-key] > summary')?.parentElement;
+    if (!notes) return false;
+    if (notes.open) closedNotes.add(notes.dataset.notesKey);
+    else closedNotes.delete(notes.dataset.notesKey);
+    return true;
+  }
+
+  function phasePanelIn(container, key) {
+    return [...container.querySelectorAll('[data-phase-key]')].find(panel => panel.dataset.phaseKey === key);
+  }
+
+  class StudyPhaseView {
+    constructor(subject, phase, chapters) {
+      this.subject = subject;
+      this.phase = phase;
+      this.chapters = chapters;
+    }
+
+    static groupChapters(subject, chapters = subject.chapters) {
+      const groups = new Map(subject.phases.map(phase => [phase, []]));
+      for (const chapter of chapters) {
+        const phase = chapter.phase || '';
+        if (!groups.has(phase)) groups.set(phase, []);
+        groups.get(phase).push(chapter);
+      }
+      return groups;
+    }
+
+    get key() { return studyPhaseKey(this.subject.id, this.phase); }
+
+    render(open, count, content = '') {
+      const summaryClass = this.surface === 'plan' ? 'plan-phase-summary' : 'study-phase-summary';
+      return `<details class="${this.surface}-phase-panel" data-phase-key="${escape(this.key)}" data-study-phase="${escape(this.phase)}" ${open ? 'open' : ''}>
+        <summary class="${summaryClass}"><span class="plan-phase-title"><strong>${escape(this.phase || '未分大章节')}</strong><small>${escape(count)}</small></span><span class="plan-phase-meta">${phaseMetadata(this.subject, this.phase, this.chapters)}</span>${icon('chevron')}</summary>${content}
+      </details>`;
+    }
+  }
+
+  class DailyPhaseView extends StudyPhaseView {
+    get surface() { return 'daily'; }
+
+    renderChecklist({ chapters, tasks }, exporting) {
+      const open = exporting || expandedDailyPhases.has(this.key);
+      const count = tasks.length ? `${tasks.filter(task => task.done).length} / ${tasks.length} 项`
+        : `${this.chapters.reduce((total, chapter) => total + chapter.tasks.length, 0)} 项计划`;
+      const choose = !exporting && this.chapters.some(chapter => chapter.tasks.length)
+        ? `<button type="button" class="text-button" data-action="choose-phase" data-subject="${escape(this.subject.id)}" data-phase="${escape(this.phase)}">选择本章任务</button>` : '';
+      const content = open ? `<div class="daily-phase-content">${choose}${[...chapters.values()].map(chapter => {
+        const noteKey = studyPhaseKey(this.subject.id, chapter.id || chapter.title);
+        const noteTasks = chapter.tasks.map(task => /〔原图/.test(task.remarks || '')
+          ? { ...task, remarks: canonicalTask(task)?.remarks || task.remarks } : task);
+        const notes = chapterNotesMarkup(this.subject.chapterNotes({ ...chapter, tasks: noteTasks }), noteKey, { closed: !exporting && closedDailyNotes.has(noteKey) });
+        return `<section class="daily-chapter-group"><h4>${escape(chapter.title)}</h4>${notes}${taskCardsMarkup(chapter.tasks, DailyTaskCardView, true)}</section>`;
+      }).join('') || '<p class="plan-board-empty">今日暂无任务</p>'}</div>` : '';
+      return this.render(open, count, content);
+    }
+  }
+
+  function assignedChapter(subject, task) {
+    const chapter = task.chapter_id ? catalogue().chapters.get(task.chapter_id) : catalogue().tasks.get(task.task_id)?.chapter;
+    return subject.chapters.includes(chapter) ? chapter : null;
+  }
+
+  function dailyPhasesMarkup(subject, tasks, exporting = false) {
+    const model = subject instanceof window.StudyModels.StudySubject ? subject : window.StudyModels.createSubject(subject);
+    const phases = new Map();
+    for (const task of tasks) {
+      const chapter = assignedChapter(subject, task);
+      const phase = chapter?.phase || '';
+      const chapterId = task.chapter_id || chapter?.id || '';
+      const title = task.chapter_title || chapter?.title || '未分小章节';
+      if (!phases.has(phase)) phases.set(phase, { chapters: new Map(), tasks: [] });
+      const group = phases.get(phase);
+      if (!group.chapters.has(chapterId || title)) group.chapters.set(chapterId || title, { ...chapter, id: chapterId, title, tasks: [] });
+      group.chapters.get(chapterId || title).tasks.push(task);
+      group.tasks.push(task);
+    }
+    const planned = StudyPhaseView.groupChapters(model);
+    for (const [phase, group] of phases) if (!planned.has(phase)) planned.set(phase, [...group.chapters.values()]);
+    return [...planned].filter(([phase]) => !exporting || phases.has(phase)).map(([phase, chapters]) => {
+      const group = phases.get(phase) || { chapters: new Map(), tasks: [] };
+      return new DailyPhaseView(model, phase, chapters).renderChecklist(group, exporting);
+    }).join('');
   }
 
   function stageProgressMarkup(subject, progress) {
@@ -769,21 +862,20 @@
   }
 
   function subjectGroupsMarkup(assignments, { history = false, stageProgress = null, exporting = false } = {}) {
-    const CardView = history ? HistoryTaskCardView : DailyTaskCardView;
     if (!library.length && !assignments.length) return '<div class="empty-state"><strong>还没有学科</strong><p>在计划看板中新增学科。</p></div>';
     return subjectsForAssignments(assignments).map((subject) => {
       const tasks = subjectAssignments(subject.id, assignments);
       const allDone = tasks.length && tasks.every(task => task.done);
       const open = exporting ? tasks.length > 0 : !history && expandedSubjects.has(subject.id);
-      // One subject fold contains all cards, without another completed-card frame.
-      const taskContent = open ? taskCardsMarkup(tasks, CardView) : '';
+      const taskContent = open ? (history ? taskCardsMarkup(tasks, HistoryTaskCardView) : dailyPhasesMarkup(subject, tasks, exporting)) : '';
       const summary = tasks.length ? progressSummary(subject, tasks, subjectProgress(subject, stageProgress?.[subject.id]), open && !exporting) : '';
       const name = escape(subjectName(subject));
       const title = `<strong class="subject-name" id="subject-name-${escape(subject.id)}">${name}</strong>`;
       const heading = catalogue().subjects.has(subject.id)
         ? `<button type="button" class="subject-button" data-action="choose" aria-haspopup="dialog" aria-controls="library-dialog" data-subject="${escape(subject.id)}" aria-label="选择${name}的章节任务">${title}</button>`
         : `<span class="subject-button">${title}</span>`;
-      return `<section role="listitem" aria-labelledby="subject-name-${escape(subject.id)}" data-subject-row="${escape(subject.id)}" data-record-version="${state.revision}:${changeVersion}" class="subject-group ${tasks.length ? 'has-tasks' : 'is-empty'} ${allDone ? 'is-complete' : ''}">
+      const hasPlan = !exporting && (subject.chapters.length || subject.phases?.length);
+      return `<section role="listitem" aria-labelledby="subject-name-${escape(subject.id)}" data-subject-row="${escape(subject.id)}" data-record-version="${state.revision}:${changeVersion}" class="subject-group ${tasks.length ? 'has-tasks' : 'is-empty'} ${hasPlan ? 'has-plan-phases' : ''} ${allDone ? 'is-complete' : ''}">
         <div class="subject-heading"><h3>${heading}</h3><button type="button" class="subject-toggle" data-action="toggle-subject" data-subject="${escape(subject.id)}" aria-controls="subject-body-${escape(subject.id)}" aria-expanded="${open}" aria-label="${open ? '收起' : '展开'}${name}任务">${icon('chevron', 'subject-chevron')}</button></div>
         <div class="subject-transition">${summary}<div class="subject-body" id="subject-body-${escape(subject.id)}" data-loaded="${open}" ${open ? '' : 'hidden'}>${taskContent}</div></div>
       </section>`;
@@ -797,7 +889,9 @@
     if (!group) return;
     const open = expandedSubjects.has(subjectId);
     const button = group.querySelector('.subject-toggle');
-    CardMotion.switchSubject(group, open, body => { body.innerHTML = taskCardsMarkup(subjectAssignments(subjectId)); }, fitJournalWidth);
+    const tasks = subjectAssignments(subjectId);
+    const subject = catalogue().subjects.get(subjectId) || { id: subjectId, chapters: [] };
+    CardMotion.switchSubject(group, open, body => { body.innerHTML = dailyPhasesMarkup(subject, tasks); }, fitJournalWidth);
     button.setAttribute('aria-expanded', String(open));
     button.setAttribute('aria-label', `${open ? '收起' : '展开'}${subjectName(catalogue().subjects.get(subjectId) || subjectAssignments(subjectId)[0])}任务`);
   }
@@ -822,7 +916,7 @@
     // Compare visible content with the previous full-width layout before choosing the narrowest fit.
     page.classList.add('fitting-journal', 'measuring-journal');
     const originalWidth = sheet.getBoundingClientRect().width;
-    const visible = selector => [...sheet.querySelectorAll(selector)].filter(element => !element.closest('[hidden]'));
+    const visible = selector => [...sheet.querySelectorAll(selector)].filter(element => !element.closest('[hidden], details:not([open]) > :not(summary)'));
     for (const element of visible('.card-title, .card-eyebrow, .card-detail')) {
       const width = singleLine(element);
       if (width) widths.push({ element, width });
@@ -984,7 +1078,7 @@
     if ($(id).open) $(id).close();
   }
 
-  function chooseSubject(id) {
+  function chooseSubject(id, requestedPhase) {
     if (actionBusy || !state) return;
     const subject = library.find((item) => item.id === id);
     if (!subject) return;
@@ -992,11 +1086,15 @@
     const selected = new Set(subjectAssignments(id).filter((assignment) => available.has(assignment.task_id)).map((assignment) => assignment.task_id));
     const firstSelected = subject.chapters.find((chapter) => !new LearningChapter(chapter).completed && chapter.tasks.some((task) => selected.has(task.id)));
     const nextChapter = subject.chapters.find((chapter) => chapter.tasks.some((task) => !libraryTaskCompleted(task.id)));
-    const phase = subject.resolvePhase(state.subject_phases[id], task => libraryTaskCompleted(task.id), [...selected]);
-    subjectDraft = { subject, selected, chapterId: firstSelected?.id || nextChapter?.id || subject.chapters[0]?.id, query: '', phase };
+    const phase = requestedPhase || '';
+    const progressPhase = requestedPhase ?? subject.resolvePhase(state.subject_phases[id], task => libraryTaskCompleted(task.id), [...selected]);
+    subjectDraft = {
+      subject, selected, chapterId: firstSelected?.id || nextChapter?.id || subject.chapters[0]?.id, query: '', phase, progressPhase,
+      phaseFolds: new Map(requestedPhase === undefined ? [] : [[phase, true]]), closedNotes: new Set(),
+    };
     $('library-title').textContent = `${subjectName(subject)} · 选择学习任务`;
     $('library-search').value = '';
-    $('library-phase').innerHTML = '<option value="">全部阶段</option>' + subject.phases.map((phase) => `<option value="${escape(phase)}">${escape(phase)}</option>`).join('');
+    $('library-phase').innerHTML = '<option value="">全部大章节</option>' + phaseOptions(subject, phase);
     $('library-phase').value = phase;
     renderLibrary();
     openDialog('library-dialog');
@@ -1037,24 +1135,40 @@
     badge.setAttribute('aria-label', `已选 ${count} 项`);
   }
 
-  function renderLibraryNavigation() {
-    const chapters = filteredChapters().map((chapter) => new LearningChapter(chapter));
-    const subject = new LearningGroup(subjectDraft.subject, chapters);
-    const groupKey = `chapters:${subjectDraft.subject.id}`;
-    const previousGroup = $('chapter-list').querySelector('details[data-completed-group]');
-    const open = previousGroup?.dataset.completedGroup === groupKey && previousGroup.open;
+  class LibraryPhaseView extends StudyPhaseView {
+    get surface() { return 'library'; }
+  }
+
+  function libraryPhaseOpen(phase) {
+    return subjectDraft.phaseFolds?.get(phase) ?? Boolean(subjectDraft.query.trim());
+  }
+
+  function renderLibraryNavigation(chapters) {
+    const { subject, query } = subjectDraft;
+    const completedFolds = new Set([...$('chapter-list').querySelectorAll('details[data-completed-group][open]')].map(fold => fold.dataset.completedGroup));
+    const phases = StudyPhaseView.groupChapters(subject, chapters);
+    const allPhases = StudyPhaseView.groupChapters(subject);
     const renderChapters = (nodes) => nodes.map((node) => {
       const chapter = node.data;
       const chosen = chapter.tasks.filter((task) => subjectDraft.selected.has(task.id)).length;
       return `<button type="button" class="chapter-button" data-chapter="${escape(chapter.id)}" aria-current="${chapter.id === subjectDraft.chapterId}"><span>${escape(chapter.title)}</span>${chosen ? `<span class="chapter-selected" aria-label="已选 ${chosen} 项">${chosen}</span>` : ''}</button>`;
     }).join('');
-    $('chapter-list').innerHTML = chapters.length ? subject.renderGroups(renderChapters, { key: groupKey, open, title: '已完成章节' }) : '<div class="empty-state"><p>没有匹配的章节</p></div>';
+    $('chapter-list').innerHTML = [...phases].map(([phase, matches]) => {
+      if ((subjectDraft.phase && phase !== subjectDraft.phase) || (query.trim() && !matches.length && !phase.toLowerCase().includes(query.trim().toLowerCase()))) return '';
+      const view = new LibraryPhaseView(subject, phase, allPhases.get(phase) || matches);
+      const open = libraryPhaseOpen(phase);
+      const groupKey = `chapters:${view.key}`;
+      const content = open ? `<div class="library-phase-chapters">${matches.length
+        ? new LearningGroup(subject, matches.map(chapter => new LearningChapter(chapter))).renderGroups(renderChapters, { key: groupKey, open: completedFolds.has(groupKey), title: '已完成章节' })
+        : '<p class="plan-board-empty">暂无小章节</p>'}</div>` : '';
+      return view.render(open, `${matches.length} 章`, content);
+    }).join('') || '<div class="empty-state"><p>没有匹配的章节</p></div>';
   }
 
-  function renderLibraryContent() {
-    const chapter = subjectDraft.subject.chapters.find((item) => item.id === subjectDraft.chapterId);
+  function renderLibraryContent(chapter, hasChapters) {
     if (!chapter) {
-      $('chapter-content').innerHTML = `<div class="empty-state">${icon('search')}<strong>${subjectDraft.query ? '没有找到匹配的任务' : '这个科目还没有章节任务'}</strong></div>`;
+      const message = hasChapters ? '展开大章节后选择小章节' : subjectDraft.query ? '没有找到匹配的任务' : '暂无小章节任务';
+      $('chapter-content').innerHTML = `<div class="empty-state">${icon('search')}<strong>${message}</strong></div>`;
       return;
     }
     const visible = new LearningChapter(chapter, visibleTasks(chapter));
@@ -1064,23 +1178,26 @@
     const previousGroup = $('chapter-content').querySelector('details[data-completed-group]');
     const expanded = previousGroup?.dataset.completedGroup === groupKey && previousGroup.open;
     const today = new Map(subjectAssignments(subjectDraft.subject.id).map((task) => [task.task_id, task]));
-    const taskCards = (entries) => `<div class="library-tasks">${entries.map((task) => new LibraryTaskCardView(task, { compact: true, assignment: today.get(task.id), selected: subjectDraft.selected.has(task.id) }).render()).join('')}</div>`;
-    CardMotion.update($('chapter-content'), `<div class="chapter-heading"><div><h3>${escape(chapter.title)}</h3></div>${pending.length ? `<button class="text-button" id="toggle-chapter" type="button">${allChosen ? '取消未完成全选' : '全选未完成'}</button>` : ''}</div>${visible.renderGroups((nodes) => taskCards(nodes.map((node) => node.data)), { key: groupKey, open: expanded })}`);
+    const taskCards = (entries) => `<div class="library-tasks">${entries.map((task) => new LibraryTaskCardView(task, { compact: true, grouped: true, assignment: today.get(task.id), selected: subjectDraft.selected.has(task.id) }).render()).join('')}</div>`;
+    const notes = chapterNotesMarkup(subjectDraft.subject.chapterNotes(chapter), chapter.id, { closed: subjectDraft.closedNotes?.has(chapter.id) });
+    CardMotion.update($('chapter-content'), `<div class="chapter-heading"><div><h3>${escape(chapter.title)}</h3></div>${pending.length ? `<button class="text-button" id="toggle-chapter" type="button">${allChosen ? '取消未完成全选' : '全选未完成'}</button>` : ''}</div>${notes}${visible.renderGroups((nodes) => taskCards(nodes.map((node) => node.data)), { key: groupKey, open: expanded })}`);
   }
 
   function renderLibrary() {
     window.clearTimeout(searchTimer);
     const chapters = filteredChapters();
-    if (!chapters.some((chapter) => chapter.id === subjectDraft.chapterId)) subjectDraft.chapterId = chapters[0]?.id;
-    renderLibraryNavigation();
-    renderLibraryContent();
+    const available = chapters.filter(chapter => libraryPhaseOpen(chapter.phase || ''));
+    const chapter = available.find(item => item.id === subjectDraft.chapterId) || available[0];
+    if (chapter) subjectDraft.chapterId = chapter.id;
+    renderLibraryNavigation(chapters);
+    renderLibraryContent(chapter, chapters.length > 0);
     updateSelectionSummary();
     renderLibraryProgress();
   }
 
   function renderLibraryProgress() {
     const subject = subjectDraft.subject;
-    const markup = stageProgressMarkup(subject, subjectProgress(subject, null, subjectDraft.phase));
+    const markup = stageProgressMarkup(subject, subjectProgress(subject, null, subjectDraft.progressPhase ?? subjectDraft.phase));
     const target = $('library-stage-summary');
     if (target.innerHTML !== markup) target.innerHTML = markup;
   }
@@ -1098,6 +1215,11 @@
       }
     }));
     state.assignments = state.assignments.filter((assignment) => assignment.subject_id !== id).concat(replacement, preserved);
+    const focused = replacement.find(task => task.chapter_id === subjectDraft.chapterId && !existing.has(task.task_id));
+    if (focused) {
+      expandedSubjects.add(id);
+      expandedDailyPhases.add(studyPhaseKey(id, assignedChapter(subjectDraft.subject, focused)?.phase || ''));
+    }
     closeDialog('library-dialog');
     changed();
     [...document.querySelectorAll('.subject-button')].find((element) => element.dataset.subject === id)?.focus({ preventScroll: true });
@@ -1300,8 +1422,6 @@
     return chapter ? { subjectId: subject.id, chapterId: chapter.id } : null;
   }
 
-  const planPhaseKey = (subjectId, phase) => JSON.stringify([subjectId, phase]);
-
   function planRows(chapters, query) {
     const entries = catalogue().plan;
     return chapters.flatMap(chapter => {
@@ -1318,7 +1438,7 @@
     const disabled = locked ? 'disabled' : '';
     const rename = chapter.id.startsWith('custom-chapter-') ? `<button type="button" class="text-button" data-board-action="rename-chapter" aria-label="重命名${title}" ${disabled}>重命名</button>` : '';
     const notes = subject.chapterNotes(chapter);
-    const notesMarkup = notes.length ? `<details class="plan-chapter-notes" data-plan-notes="${escape(chapter.id)}" ${planClosedNotes.has(chapter.id) ? '' : 'open'}><summary>学习备注${icon('chevron')}</summary>${notes.map(note => `<p>${escape(note)}</p>`).join('')}</details>` : '';
+    const notesMarkup = chapterNotesMarkup(notes, chapter.id, { plan: true, closed: planClosedNotes.has(chapter.id) });
     const cards = tasks.map(task => {
       const added = planned.has(task.task_id);
       return `<article class="plan-card ${planEditing === task.task_id ? 'is-editing' : ''}" data-plan-task="${escape(task.task_id)}" draggable="${!locked}">
@@ -1334,9 +1454,9 @@
     </section>`;
   }
 
-  function planPhaseMetadata(subject, phase, chapters) {
-    if (!planPhaseSummaries.has(subject)) planPhaseSummaries.set(subject, new Map());
-    const summaries = planPhaseSummaries.get(subject);
+  function phaseMetadata(subject, phase, chapters) {
+    if (!phaseSummaries.has(subject)) phaseSummaries.set(subject, new Map());
+    const summaries = phaseSummaries.get(subject);
     if (!summaries.has(phase)) summaries.set(phase, subject.phaseLearningInfo(phase));
     const { difficulty, examFrequency, taskKinds } = summaries.get(phase);
     const range = (metric, format = String) => {
@@ -1347,7 +1467,7 @@
     const kinds = taskKinds.map(({ name, count }) => `${name} ${count}`).join('、');
     let single = 0, multi = 0;
     for (const chapter of chapters) for (const task of chapter.tasks) {
-      if ((state.task_modes[task.id] || task.task_mode) === 'multi-day') multi += 1;
+      if ((state.task_modes[task.id || task.task_id] || task.task_mode) === 'multi-day') multi += 1;
       else single += 1;
     }
     const types = [kinds, single ? `单日 ${single}` : '', multi ? `多日 ${multi}` : ''].filter(Boolean).join(' · ');
@@ -1357,35 +1477,37 @@
       .map(value => `<span>${escape(value)}</span>`).join('');
   }
 
-  function renderPlanPhase(subject, phase, chapters, { query, locked, planned }) {
-    const key = planPhaseKey(subject.id, phase);
-    const expanded = planFoldState.get(key) ?? Boolean(query);
-    const title = phase || '未分大章节';
-    const matchTitle = query && title.toLowerCase().includes(query);
-    const rows = expanded || query ? planRows(chapters, matchTitle ? '' : query) : null;
-    if (query && !matchTitle && !rows.length) return null;
-    const count = rows ? rows.filter(row => row.task).length : chapters.reduce((total, chapter) => total + chapter.tasks.length, 0);
-    let content = '';
-    if (expanded) {
-      const pageCount = Math.max(1, Math.ceil(rows.length / PLAN_PAGE_SIZE));
-      const page = Math.min(Math.max(0, planPages.get(key) || 0), pageCount - 1);
-      planPages.set(key, page);
-      const groups = new Map();
-      for (const { chapter, task } of rows.slice(page * PLAN_PAGE_SIZE, (page + 1) * PLAN_PAGE_SIZE)) {
-        if (!groups.has(chapter.id)) groups.set(chapter.id, { chapter, tasks: [] });
-        if (task) groups.get(chapter.id).tasks.push(task);
+  class PlanPhaseView extends StudyPhaseView {
+    get surface() { return 'plan'; }
+
+    renderBoard({ query, locked, planned }) {
+      const { subject, phase, chapters, key } = this;
+      const expanded = planFoldState.get(key) ?? Boolean(query);
+      const title = phase || '未分大章节';
+      const matchTitle = query && title.toLowerCase().includes(query);
+      const rows = expanded || query ? planRows(chapters, matchTitle ? '' : query) : null;
+      if (query && !matchTitle && !rows.length) return null;
+      const count = rows ? rows.filter(row => row.task).length : chapters.reduce((total, chapter) => total + chapter.tasks.length, 0);
+      let content = '';
+      if (expanded) {
+        const pageCount = Math.max(1, Math.ceil(rows.length / PLAN_PAGE_SIZE));
+        const page = Math.min(Math.max(0, planPages.get(key) || 0), pageCount - 1);
+        planPages.set(key, page);
+        const groups = new Map();
+        for (const { chapter, task } of rows.slice(page * PLAN_PAGE_SIZE, (page + 1) * PLAN_PAGE_SIZE)) {
+          if (!groups.has(chapter.id)) groups.set(chapter.id, { chapter, tasks: [] });
+          if (task) groups.get(chapter.id).tasks.push(task);
+        }
+        const disabled = locked ? 'disabled' : '';
+        const cards = [...groups.values()].map(group => renderPlanChapter(group, { subject, locked, planned })).join('');
+        content = `<div class="plan-phase-content">
+          ${phase ? `<div class="plan-phase-actions plan-column-actions"><button type="button" class="text-button" data-board-action="new-chapter" ${disabled}>＋小章节</button><button type="button" class="text-button plan-remove-chapter" data-board-action="delete-phase" ${disabled}>删除大章节</button></div>` : ''}
+          ${cards || `<p class="plan-board-empty">${query ? '暂无匹配的小章节或任务' : '暂无小章节'}</p>`}
+          ${pageCount > 1 ? `<div class="plan-column-pagination"><button type="button" class="text-button" data-board-action="previous" ${page === 0 ? 'disabled' : ''}>上一页</button><span>${page + 1} / ${pageCount}</span><button type="button" class="text-button" data-board-action="next" ${page + 1 === pageCount ? 'disabled' : ''}>下一页</button></div>` : ''}
+        </div>`;
       }
-      const disabled = locked ? 'disabled' : '';
-      const cards = [...groups.values()].map(group => renderPlanChapter(group, { subject, locked, planned })).join('');
-      content = `<div class="plan-phase-content">
-        ${phase ? `<div class="plan-phase-actions plan-column-actions"><button type="button" class="text-button" data-board-action="new-chapter" ${disabled}>＋小章节</button><button type="button" class="text-button plan-remove-chapter" data-board-action="delete-phase" ${disabled}>删除大章节</button></div>` : ''}
-        ${cards || `<p class="plan-board-empty">${query ? '暂无匹配的小章节或任务' : '暂无小章节'}</p>`}
-        ${pageCount > 1 ? `<div class="plan-column-pagination"><button type="button" class="text-button" data-board-action="previous" ${page === 0 ? 'disabled' : ''}>上一页</button><span>${page + 1} / ${pageCount}</span><button type="button" class="text-button" data-board-action="next" ${page + 1 === pageCount ? 'disabled' : ''}>下一页</button></div>` : ''}
-      </div>`;
+      return { count, html: this.render(expanded, `${count} 项`, content) };
     }
-    return { count, html: `<details class="plan-phase-panel" data-phase-key="${escape(key)}" data-plan-phase="${escape(phase)}" ${expanded ? 'open' : ''}>
-      <summary class="plan-phase-summary" data-plan-phase-toggle><span class="plan-phase-title"><strong>${escape(title)}</strong><small>${count} 项</small></span><span class="plan-phase-meta">${planPhaseMetadata(subject, phase, chapters)}</span>${icon('chevron')}</summary>${content}
-    </details>` };
   }
 
   function renderPlans() {
@@ -1418,14 +1540,9 @@
     $('new-plan-subject').disabled = locked;
     let visibleCount = 0;
     $('plan-list').innerHTML = subjects.map(subject => {
-      const phaseGroups = new Map(subject.phases.map(name => [name, []]));
-      for (const chapter of subject.chapters) {
-        const name = chapter.phase || '';
-        if (!phaseGroups.has(name)) phaseGroups.set(name, []);
-        phaseGroups.get(name).push(chapter);
-      }
+      const phaseGroups = StudyPhaseView.groupChapters(subject);
       const panels = [...phaseGroups].filter(([name]) => !phase || name === phase)
-        .map(([name, chapters]) => renderPlanPhase(subject, name, chapters, { query, locked, planned })).filter(Boolean);
+        .map(([name, chapters]) => new PlanPhaseView(subject, name, chapters).renderBoard({ query, locked, planned })).filter(Boolean);
       const taskCount = panels.reduce((total, panel) => total + panel.count, 0);
       visibleCount += taskCount;
       const disabled = locked ? 'disabled' : '';
@@ -1797,10 +1914,24 @@
 
 
   $('daily-tbody').addEventListener('click', (event) => {
+    if (actionBusy || !state) return;
+    const summary = event.target.closest('.daily-phase-panel > summary');
+    if (summary) {
+      event.preventDefault();
+      const panel = summary.parentElement;
+      const key = panel.dataset.phaseKey;
+      if (panel.open) expandedDailyPhases.delete(key);
+      else expandedDailyPhases.add(key);
+      renderDay();
+      phasePanelIn($('daily-tbody'), key)?.querySelector('summary').focus({ preventScroll: true });
+      return;
+    }
+    if (rememberChapterNotes(event, closedDailyNotes)) return;
     const button = event.target.closest('button[data-action]');
-    if (!button || actionBusy || !state) return;
+    if (!button) return;
     const { action, subject: subjectId, task: taskId } = button.dataset;
     if (action === 'choose') chooseSubject(subjectId);
+    else if (action === 'choose-phase') chooseSubject(subjectId, button.dataset.phase);
     else if (action === 'toggle-subject') toggleSubject(subjectId);
     else if (action === 'record-actual') {
       const task = state.assignments.find((item) => item.task_id === taskId);
@@ -1844,6 +1975,7 @@
   $('library-phase').addEventListener('change', (event) => {
     if (!subjectDraft || !state || actionBusy) return;
     subjectDraft.phase = event.target.value;
+    subjectDraft.progressPhase = subjectDraft.phase;
     state.subject_phases[subjectDraft.subject.id] = subjectDraft.phase;
     changed();
     renderLibrary();
@@ -1851,13 +1983,26 @@
     $('chapter-content').scrollTop = 0;
   });
   $('chapter-list').addEventListener('click', (event) => {
+    if (!subjectDraft || actionBusy) return;
+    const summary = event.target.closest('.library-phase-panel > summary');
+    if (summary) {
+      event.preventDefault();
+      const panel = summary.parentElement;
+      const navigation = $('chapter-list');
+      const top = navigation.scrollTop;
+      subjectDraft.phaseFolds.set(panel.dataset.studyPhase, !panel.open);
+      renderLibrary();
+      navigation.scrollTop = top;
+      phasePanelIn(navigation, panel.dataset.phaseKey)?.querySelector('summary').focus({ preventScroll: true });
+      return;
+    }
     const button = event.target.closest('[data-chapter]');
-    if (!button || !subjectDraft) return;
+    if (!button) return;
     subjectDraft.chapterId = button.dataset.chapter;
     renderLibrary();
     $('chapter-content').scrollTop = 0;
     const current = [...$('chapter-list').querySelectorAll('[data-chapter]')].find((element) => element.dataset.chapter === subjectDraft.chapterId);
-    const completed = current?.closest('details');
+    const completed = current?.closest('details.completed-group');
     (completed && !completed.open ? completed.querySelector('summary') : current)?.focus({ preventScroll: true });
   });
   $('chapter-content').addEventListener('change', (event) => {
@@ -1874,6 +2019,7 @@
     if ($('toggle-chapter')) $('toggle-chapter').textContent = tasks.every((task) => subjectDraft.selected.has(task.id)) ? '取消未完成全选' : '全选未完成';
   });
   $('chapter-content').addEventListener('click', (event) => {
+    if (subjectDraft && rememberChapterNotes(event, subjectDraft.closedNotes)) return;
     if (!event.target.closest('#toggle-chapter') || !subjectDraft) return;
     const chapter = subjectDraft.subject.chapters.find((item) => item.id === subjectDraft.chapterId);
     const tasks = visibleTasks(chapter).filter((task) => !libraryTaskCompleted(task.id));
@@ -1890,7 +2036,7 @@
   $('plan-phase-filter').addEventListener('change', event => {
     const subjectId = $('plan-filter').value;
     planPhaseFilters.set(subjectId, event.target.value);
-    planPages.set(planPhaseKey(subjectId, event.target.value), 0);
+    planPages.set(studyPhaseKey(subjectId, event.target.value), 0);
     renderPlans();
   });
   $('plan-subject').addEventListener('change', () => planChapterOptions());
@@ -1942,7 +2088,7 @@
       planPhaseFilters.set(subjectId, phase);
       $('plan-search').value = '';
       const subject = catalogue().subjects.get(subjectId);
-      const key = planPhaseKey(subjectId, phase);
+      const key = studyPhaseKey(subjectId, phase);
       const first = planRows(subject.chapters.filter(chapter => (chapter.phase || '') === phase), '').findIndex(row => row.chapter.id === id);
       planFoldState.set(key, true);
       planPages.set(key, Math.max(0, Math.floor(first / PLAN_PAGE_SIZE)));
@@ -1961,7 +2107,7 @@
       await savePlan(catalogue, '大章节已创建。');
       $('plan-filter').value = subjectId;
       planPhaseFilters.set(subjectId, name);
-      planFoldState.set(planPhaseKey(subjectId, name), true);
+      planFoldState.set(studyPhaseKey(subjectId, name), true);
       $('plan-search').value = '';
       closePlanEditor();
       $('plan-list').querySelector('[data-board-action="new-chapter"]')?.focus();
@@ -2021,7 +2167,7 @@
   });
   $('plan-list').addEventListener('click', event => {
     if (!state || actionBusy) return;
-    const summary = event.target.closest('[data-plan-phase-toggle]');
+    const summary = event.target.closest('.plan-phase-panel > summary');
     if (summary) {
       event.preventDefault();
       const panel = summary.parentElement;
@@ -2029,19 +2175,14 @@
       const top = panel.closest('.plan-column-cards').scrollTop;
       planFoldState.set(key, !panel.open);
       renderPlans();
-      const fresh = [...$('plan-list').querySelectorAll('[data-phase-key]')].find(item => item.dataset.phaseKey === key);
+      const fresh = phasePanelIn($('plan-list'), key);
       if (fresh) {
         fresh.closest('.plan-column-cards').scrollTop = top;
         fresh.querySelector('summary').focus({ preventScroll: true });
       }
       return;
     }
-    const notes = event.target.closest('.plan-chapter-notes > summary')?.parentElement;
-    if (notes) {
-      if (notes.open) planClosedNotes.add(notes.dataset.planNotes);
-      else planClosedNotes.delete(notes.dataset.planNotes);
-      return;
-    }
+    if (rememberChapterNotes(event, planClosedNotes)) return;
     const columnButton = event.target.closest('[data-board-action]');
     if (columnButton) {
       const subjectId = columnButton.closest('[data-board-subject]').dataset.boardSubject;
@@ -2050,13 +2191,13 @@
       const panel = columnButton.closest('[data-phase-key]');
       const chapterId = columnButton.closest('[data-board-chapter-id]')?.dataset.boardChapterId;
       if (action === 'new') editPlanTask(null, subjectId, chapterId);
-      else if (action === 'new-chapter') editPlanChapter(subject, null, panel.dataset.planPhase);
+      else if (action === 'new-chapter') editPlanChapter(subject, null, panel.dataset.studyPhase);
       else if (action === 'new-phase') {
         phaseSubjectId = subjectId;
         $('plan-phase-name').value = '';
         showPlanEditor('plan-phase-form', `新建大章节 · ${subject.name}`, 'plan-phase-name');
       } else if (action === 'delete-phase') {
-        const phase = panel.dataset.planPhase;
+        const phase = panel.dataset.studyPhase;
         if (!phase) return;
         const count = subject.chapters.filter(item => item.phase === phase).reduce((sum, item) => sum + item.tasks.length, 0);
         confirmPlanDelete({ subject_id: subjectId, phase }, phase, count);
@@ -2087,6 +2228,7 @@
       const subject = catalogue().subjects.get(task.subject_id);
       state.assignments = [...state.assignments, { ...task, subject_name: subject.name, task_mode: taskMode(task), done: false }];
       expandedSubjects.add(task.subject_id);
+      expandedDailyPhases.add(studyPhaseKey(subject.id, assignedChapter(subject, task)?.phase || ''));
       changed();
       renderPlans();
       flushAutosave().then(() => showToast('已加入今日清单。')).catch(planError);
