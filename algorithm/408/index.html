@@ -7,7 +7,8 @@
   <link rel="icon" href="../../Assets/Icons/terabyte-favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../../style.css">
   <link rel="stylesheet" href="../hub.css">
-  <link rel="stylesheet" href="./strengthening.css">
+  <link rel="stylesheet" href="./strengthening.css?v=20261108-cpp">
+  <script type="module" src="./practice-runner.js?v=20261108-cpp"></script>
 </head>
 <body>
   <header class="site-header shell">
@@ -15,140 +16,543 @@
   </header>
   <main class="shell algorithm-hub">
     <h1>408强化</h1>
+    <p class="judge-intro">C++17 完整程序（含 <code>main</code>） · 每题 2 组样例</p>
+    <nav class="paper-years" aria-label="按年份跳转">
+      <a href="#year-2012">2012</a>
+      <a href="#year-2013">2013</a>
+      <a href="#year-2014">2014</a>
+      <a href="#year-2015">2015</a>
+      <a href="#year-2016">2016</a>
+      <a href="#year-2017">2017</a>
+      <a href="#year-2018">2018</a>
+      <a href="#year-2019">2019</a>
+      <a href="#year-2020">2020</a>
+      <a href="#year-2021">2021</a>
+      <a href="#year-2022">2022</a>
+      <a href="#year-2023">2023</a>
+      <a href="#year-2024">2024</a>
+      <a href="#year-2025">2025</a>
+      <a href="#year-2026">2026</a>
+    </nav>
     <section class="paper-year" aria-labelledby="year-2012">
       <h2 id="year-2012">2012</h2>
-      <div class="paper-questions">
-        <article class="paper-question">
-          <header><h3>第 41 题 · 多个有序表的最优归并</h3><span class="tag">只作答</span></header>
-          <p>将长度为 10、35、40、50、60、200 的六个升序表两两合并，求使最坏比较总次数最少的合并顺序及次数。再说明任意个不等长有序表的合并策略和理由。</p>
-          <a href="https://www.csgraduates.com/study_methods/408quiz/2012/#41" aria-label="2012 年第 41 题原题">原题 ↗</a>
-        </article>
-        <article class="paper-question">
-          <header><h3>第 42 题 · 单链表的公共后缀</h3><span class="tag">写代码</span></header>
-          <p>两个带头结点的单链表可能共用一段尾部结点。找出首个共用结点，说明算法思路和时间复杂度。</p>
-          <a href="https://www.csgraduates.com/study_methods/408quiz/2012/#42" aria-label="2012 年第 42 题原题">原题 ↗</a>
-        </article>
-      </div>
+      <article class="paper-question">
+        <h3>第 42 题 · 单链表的公共后缀</h3>
+        <p>给定两条带头结点的单链表。它们可能从某个数据结点开始共用同一条尾链。找出第一处共用的数据结点。结点是否相同由编号决定，与结点中的值无关。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行三个整数 n、h1、h2，表示结点总数及两个不同的头结点编号。结点编号为 1 到 n。第二行按编号给出 n 个 next 值，0 表示空指针。两条链均无环，数据从各头结点的 next 开始。</dd></div>
+          <div><dt>输出</dt><dd>输出首个共用数据结点的编号。两条链没有公共结点时输出 0。</dd></div>
+          <div><dt>要求</dt><dd>设计时间上尽可能高效的算法，并说明时间复杂度。</dd></div>
+        </dl>
+        <a href="https://www.csgraduates.com/study_methods/408quiz/2012/#42" aria-label="2012 年第 42 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>7 1 2
+3 7 4 5 6 0 5</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>5</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>6 2 1
+6 3 5 0 0 4</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>0</pre></dd>
+            </dl>
+          </div>
+        </div>
+      </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2013">
       <h2 id="year-2013">2013</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 查找数组的主元素</h3><span class="tag">写代码</span></header>
-        <p>在长度为 n、元素取值为 0 到 n−1 的数组中，找出出现次数超过一半的元素。没有则输出 −1，说明时空复杂度。</p>
+        <h3>第 41 题 · 查找数组的主元素</h3>
+        <p>数组中出现次数严格大于元素总数一半的值称为主元素。找出这个值。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行一个正整数 n。第二行输入 n 个整数，每个整数都在 0 到 n−1 之间。</dd></div>
+          <div><dt>输出</dt><dd>若有主元素，输出其值。否则输出 -1。</dd></div>
+          <div><dt>要求</dt><dd>算法尽可能高效，并说明时间、空间复杂度。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2013/#41" aria-label="2013 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>6
+2 0 2 2 3 2</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>2</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>6
+1 1 2 2 2 4</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>-1</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2014">
       <h2 id="year-2014">2014</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 二叉树的带权路径长度</h3><span class="tag">写代码</span></header>
-        <p>给定二叉链表和叶结点权值，求各叶结点的权值乘深度之和。给出结点类型、算法思路和实现。</p>
+        <h3>第 41 题 · 二叉树的带权路径长度</h3>
+        <p>给定一棵二叉树及各叶结点的非负权值。叶结点的带权路径长度是其权值乘以它到根结点的边数。求所有叶结点的带权路径长度之和。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行两个整数 n、root，表示结点总数和根结点编号。结点从 1 到 n 编号，随后按编号输入 n 行。每行三个整数 w、l、r，分别为权值、左孩子编号、右孩子编号。孩子编号为 0 表示不存在。只有叶结点的权值计入结果。</dd></div>
+          <div><dt>输出</dt><dd>输出一个整数，表示整棵树的带权路径长度。只有一个结点时，该结点深度为 0。</dd></div>
+          <div><dt>要求</dt><dd>给出二叉链表的结点类型，说明算法思路，并用 C/C++ 实现。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2014/#41" aria-label="2014 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>5 1
+0 2 3
+3 0 0
+0 4 5
+5 0 0
+2 0 0</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>17</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>1 1
+8 0 0</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>0</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2015">
       <h2 id="year-2015">2015</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 单链表按绝对值去重</h3><span class="tag">写代码</span></header>
-        <p>单链表中每个整数的绝对值不超过 n。同一绝对值只保留第一次出现的结点，删除其余结点，并说明时空复杂度。</p>
+        <h3>第 41 题 · 单链表按绝对值去重</h3>
+        <p>沿单链表从头到尾扫描，对于绝对值相同的一组结点，只保留最早出现的那个，删除其他结点。剩余结点的次序和带符号的原值均保持不变。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行输入正整数 m 和 n，分别为结点数和绝对值上界。第二行输入 m 个整数，依次对应链表中的数据，每个数的绝对值不超过 n。</dd></div>
+          <div><dt>输出</dt><dd>按链表顺序输出保留结点的整数值，相邻值用空格分隔。</dd></div>
+          <div><dt>要求</dt><dd>用单链表结点实现删除，尽量降低时间开销，并说明时间、空间复杂度。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2015/#41" aria-label="2015 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>7 8
+5 -5 2 -2 0 0 -8</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>5 2 0 -8</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>5 9
+-3 3 -1 1 9</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>-3 -1 9</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2016">
       <h2 id="year-2016">2016</h2>
       <article class="paper-question">
-        <header><h3>第 43 题 · 划分集合使两组元素和之差最大</h3><span class="tag">写代码</span></header>
-        <p>将 n 个正整数分成两个互不相交的子集，使两组元素个数尽量接近，并在此前提下最大化两组元素和的绝对差。给出算法思路、实现和时空复杂度。</p>
+        <h3>第 43 题 · 划分集合使两组元素和之差最大</h3>
+        <p>把一个正整数集合划分为两个互不相交的子集。首先让两组元素个数之差的绝对值最小，再在所有满足这一条件的划分中，让两组元素和之差的绝对值最大。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行一个整数 n，n ≥ 2。第二行输入集合中的 n 个互不相同的正整数。</dd></div>
+          <div><dt>输出</dt><dd>输出一个整数，表示最优划分下两组元素和之差的绝对值。</dd></div>
+          <div><dt>要求</dt><dd>设计算法时仍须满足两组元素个数尽量接近。不同划分可能产生相同最优值，样例只比对差值。说明时间、空间复杂度。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2016/#43" aria-label="2016 年第 43 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>4
+8 1 4 2</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>9</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>5
+4 10 2 7 1</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>18</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2017">
       <h2 id="year-2017">2017</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 表达式树转中缀式</h3><span class="tag">写代码</span></header>
-        <p>将二叉表达式树转换成等价的中缀表达式。输出时用括号保留原有运算次序。</p>
+        <h3>第 41 题 · 表达式树转中缀式</h3>
+        <p>把二叉表达式树转成中缀表达式。叶结点保存操作数，内部结点保存运算符。二元运算符两侧分别写左、右子表达式，一元负号写在右子表达式前。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行两个整数 n、root，表示结点总数和根结点编号。随后按 1 到 n 的编号输入 n 行，每行依次为不含空格的 token、左孩子编号、右孩子编号。孩子编号为 0 表示不存在。叶结点没有孩子，一元负号只有右孩子，其他运算结点有两个孩子。</dd></div>
+          <div><dt>输出</dt><dd>输出一行中缀表达式，不含空格。每个非根运算结点形成的完整子表达式外加一对圆括号。根结点和叶结点自身不额外加括号。</dd></div>
+          <div><dt>要求</dt><dd>用括号保留树所确定的运算次序，同时处理一元负号和二元减号。给出设计思路与带关键注释的 C/C++ 实现。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2017/#41" aria-label="2017 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>6 1
++ 2 3
+* 4 5
+- 0 6
+2 0 0
+x 0 0
+y 0 0</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>(2*x)+(-y)</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>7 3
+4 0 0
+/ 6 7
+- 4 2
++ 1 5
+x 0 0
+8 0 0
+2 0 0</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>(4+x)-(8/2)</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2018">
       <h2 id="year-2018">2018</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 找最小缺失正整数</h3><span class="tag">写代码</span></header>
-        <p>在非空整数数组中找出最小的、未在数组里出现的正整数。时间尽量高效，并说明时空复杂度。</p>
+        <h3>第 41 题 · 找最小缺失正整数</h3>
+        <p>在一个非空整数数组中，找出没有出现过的最小正整数。数组可能含有零、负数和重复值。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行一个正整数 n。第二行输入 n 个整数。</dd></div>
+          <div><dt>输出</dt><dd>输出数组中未出现的最小正整数。</dd></div>
+          <div><dt>要求</dt><dd>尽可能降低算法的运行时间，并说明时间、空间复杂度。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2018/#41" aria-label="2018 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>6
+-1 0 1 2 4 4</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>3</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>4
+2 4 1 3</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>5</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2019">
       <h2 id="year-2019">2019</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 单链表首尾交替重排</h3><span class="tag">写代码</span></header>
-        <p>把带头结点的单链表按「首、尾、第二、倒数第二……」重接。额外空间为 O(1)，时间尽量高效。</p>
+        <h3>第 41 题 · 单链表首尾交替重排</h3>
+        <p>线性表以带头结点的单链表存储。将原来的第一个、最后一个、第二个、倒数第二个结点依次接起来，直到全部结点用完。奇数长度时，中间结点排在最后。头结点不参加重排。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行是结点数 n（n ≥ 1）。第二行是 n 个整数，按数据结点原顺序给出；据此建立链表。</dd></div>
+          <div><dt>输出</dt><dd>一行输出重排后从头到尾的数据值，用空格分隔。</dd></div>
+          <div><dt>要求</dt><dd>重排应复用原有结点，只改链接。辅助空间为 O(1)，时间尽可能高效。输入建表和输出不计入重排的辅助空间。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2019/#41" aria-label="2019 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>5
+1 2 3 4 5</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>1 5 2 4 3</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>4
+9 9 -2 7</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>9 7 9 -2</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2020">
       <h2 id="year-2020">2020</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 三个升序数组的最小距离</h3><span class="tag">写代码</span></header>
-        <p>从三个非空升序数组各选一个数 a、b、c，使 |a−b| + |b−c| + |c−a| 最小。输出最小值并说明时空复杂度。</p>
+        <h3>第 41 题 · 三个升序数组的最小距离</h3>
+        <p>分别从三个非空升序数组中选取一个整数 a、b、c。三元组距离为 |a−b| + |b−c| + |c−a|，要求在所有选法中找到最小距离。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行是三个数组的长度 n₁、n₂、n₃，均为正整数。接下来三行分别给出对应数组，元素按升序排列。</dd></div>
+          <div><dt>输出</dt><dd>输出一个整数，表示最小距离。出现多个最优三元组时，仍只输出该距离。</dd></div>
+          <div><dt>要求</dt><dd>允许负数和零，与原题样例一致。元素为 32 位有符号整数，距离按 64 位计算。算法应尽可能高效，分析其时空复杂度。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2020/#41" aria-label="2020 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>3 4 5
+-1 0 9
+-25 -10 10 11
+2 9 17 30 41</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>2</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>2 2 2
+1 4
+2 4
+0 4</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>0</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2021">
       <h2 id="year-2021">2021</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 判断图是否存在 EL 路径</h3><span class="tag">写代码</span></header>
-        <p>给定无向连通图的邻接矩阵，判断是否有一条恰好经过每条边一次的路径。题目给出的判据是奇度顶点数为 0 或 2。</p>
+        <h3>第 41 题 · 判断图是否存在 EL 路径</h3>
+        <p>给定无向连通图，判断是否存在一条恰好经过每条边一次的路径。原题给出判据：度数为奇数的顶点恰好有 0 个或 2 个时，存在这样的路径。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行是顶点数 n（n ≥ 2）。随后 n 行，每行 n 个 0 或 1，表示邻接矩阵；1 表示两点之间有边。</dd></div>
+          <div><dt>输出</dt><dd>存在 EL 路径输出 1，否则输出 0。</dd></div>
+          <div><dt>要求</dt><dd>输入保证是连通的简单无向图，至少有一条边。使用邻接矩阵设计算法，并分析时空复杂度。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2021/#41" aria-label="2021 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>3
+0 1 0
+1 0 1
+0 1 0</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>1</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>4
+0 1 1 1
+1 0 0 0
+1 0 0 0
+1 0 0 0</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>0</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2022">
       <h2 id="year-2022">2022</h2>
-      <div class="paper-questions">
-        <article class="paper-question">
-          <header><h3>第 41 题 · 判定顺序存储的二叉搜索树</h3><span class="tag">写代码</span></header>
-          <p>二叉树按下标存入数组，空位用 −1 标记。判断这棵树是否为二叉搜索树，给出尽量高效的实现。</p>
-          <a href="https://www.csgraduates.com/study_methods/408quiz/2022/#41" aria-label="2022 年第 41 题原题">原题 ↗</a>
-        </article>
-        <article class="paper-question">
-          <header><h3>第 42 题 · 大数组中最小的 10 个数</h3><span class="tag">只作答</span></header>
-          <p>从超过十万个元素的一维数组中选出最小的 10 个数，尽量减少平均比较次数。写出算法思路和平均时空复杂度。</p>
-          <a href="https://www.csgraduates.com/study_methods/408quiz/2022/#42" aria-label="2022 年第 42 题原题">原题 ↗</a>
-        </article>
-      </div>
+      <article class="paper-question">
+        <h3>第 41 题 · 判定顺序存储的二叉搜索树</h3>
+        <p>一棵非空二叉树按数组下标保存。判断它是否满足二叉搜索树的条件：每个结点的整个左子树均小于该结点，整个右子树均大于该结点。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行是数组长度 n。第二行有 n 个整数，结点值是正整数，−1 表示该位置没有结点。根位于下标 0，结点 i 的左右孩子位置分别是 2i+1 和 2i+2。越界位置视为空。</dd></div>
+          <div><dt>输出</dt><dd>符合条件输出 true，否则输出 false，均为小写。</dd></div>
+          <div><dt>要求</dt><dd>输入数组表示一棵合法的非空二叉树；空位置下没有有效结点。按严格的 BST 定义判断，相同的键不满足严格不等关系。</dd></div>
+        </dl>
+        <a href="https://www.csgraduates.com/study_methods/408quiz/2022/#41" aria-label="2022 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>7
+4 2 6 -1 3 5 8</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>true</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>7
+8 4 12 -1 9 10 13</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>false</pre></dd>
+            </dl>
+          </div>
+        </div>
+      </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2023">
       <h2 id="year-2023">2023</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 找出出度大于入度的顶点</h3><span class="tag">写代码</span></header>
-        <p>给定有向图的邻接矩阵，输出所有出度大于入度的顶点，并返回它们的数量。</p>
+        <h3>第 41 题 · 找出出度大于入度的顶点</h3>
+        <p>有向图以邻接矩阵保存。一个顶点发出的边数大于指向它的边数时，记为 K 顶点。找出图中全部 K 顶点，并统计它们的个数。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行是顶点数 n（n ≥ 1），第二行是 n 个互异的单字符顶点名。随后 n 行，每行 n 个 0 或 1；第 i 行第 j 列为 1 表示从第 i 个顶点指向第 j 个顶点。</dd></div>
+          <div><dt>输出</dt><dd>第一行输出 K 顶点个数。若个数大于 0，第二行按顶点在输入中的顺序列出名称，用空格分隔。若个数为 0，只输出第一行。</dd></div>
+          <div><dt>要求</dt><dd>按有向边的方向计算度数。入度等于出度的顶点不输出。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2023/#41" aria-label="2023 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>4
+A B C D
+0 1 1 0
+0 0 1 0
+0 0 0 0
+0 0 1 0</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>2
+A D</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>3
+x y z
+0 1 0
+0 0 1
+1 0 0</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>0</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2024">
       <h2 id="year-2024">2024</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 判定拓扑序是否唯一</h3><span class="tag">写代码</span></header>
-        <p>有向图用邻接矩阵存储。若图恰好有一个拓扑序则返回 1，其余情况返回 0。</p>
+        <h3>第 41 题 · 判定拓扑序是否唯一</h3>
+        <p>给定有向图的邻接矩阵。拓扑序必须包含全部顶点，且对每条有向边，起点排在终点前面。判断满足这一条件的序列是否恰好有一个。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行是顶点数 n（n ≥ 1）。随后 n 行，每行 n 个 0 或 1；第 i 行第 j 列为 1 表示有向边 i → j。</dd></div>
+          <div><dt>输出</dt><dd>恰好存在一个拓扑序时输出 1，其他情况输出 0。</dd></div>
+          <div><dt>要求</dt><dd>输入可能有环。有环导致拓扑序不存在，与存在多个拓扑序一样，均输出 0。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2024/#41" aria-label="2024 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>3
+0 1 0
+0 0 1
+0 0 0</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>1</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>4
+0 1 1 0
+0 0 0 1
+0 0 0 1
+0 0 0 0</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>0</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2025">
       <h2 id="year-2025">2025</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · 数组后缀的最大乘积</h3><span class="tag">写代码</span></header>
-        <p>对每个下标 i，计算 A[i] 与 A[i] 到 A[n−1] 中各元素的乘积，把最大值写入 res[i]。时间和额外空间都尽量节省。</p>
+        <h3>第 41 题 · 逐项求后缀最大乘积</h3>
+        <p>给定整数数组 A。对每个位置 i，在 i ≤ j &lt; n 的范围内选择 j，使 A[i] × A[j] 最大。把对应的最大乘积写入 res[i]。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行是数组长度 n（n ≥ 1）。第二行是 n 个 32 位有符号整数，可以为正、为负或为零。</dd></div>
+          <div><dt>输出</dt><dd>一行输出 n 个最大乘积，按 i 从 0 到 n−1 排列，用空格分隔。</dd></div>
+          <div><dt>要求</dt><dd>j 可以等于 i；乘积按 64 位计算。原题要求时间和额外空间都尽量节省，并给出复杂度。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2025/#41" aria-label="2025 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>4
+1 4 -9 6</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>6 24 81 36</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>6
+-2 0 -5 3 -4 2</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>10 0 25 9 16 4</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
     <section class="paper-year" aria-labelledby="year-2026">
       <h2 id="year-2026">2026</h2>
       <article class="paper-question">
-        <header><h3>第 41 题 · BST 中最接近 K 的结点</h3><span class="tag">写代码</span></header>
-        <p>给定二叉搜索树和整数 K，求关键字与 K 的最小绝对差，并输出所有达到该最小差的关键字。</p>
+        <h3>第 41 题 · 二叉搜索树中最接近 K 的结点</h3>
+        <p>给定一棵用二叉链表表示的二叉搜索树和整数 K，求结点关键字与 K 的最小绝对差，找出所有达到该最小差的结点。</p>
+        <dl class="paper-fields">
+          <div><dt>输入</dt><dd>第一行输入位置数 m（m ≥ 1）和整数 K。第二行是 m 个按下标排列的树位置，整数为结点关键字，# 表示空位置。根在下标 0，位置 i 的左右孩子下标为 2i+1、2i+2；越界视为空。输入可据此还原二叉链表。</dd></div>
+          <div><dt>输出</dt><dd>第一行输出最小绝对差。第二行按从小到大的顺序输出所有达到最小差的关键字，用空格分隔。</dd></div>
+          <div><dt>要求</dt><dd>保证输入是一棵非空的严格二叉搜索树。K 和关键字均为 32 位有符号整数，差值按 64 位计算。</dd></div>
+        </dl>
         <a href="https://www.csgraduates.com/study_methods/408quiz/2026/#41" aria-label="2026 年第 41 题原题">原题 ↗</a>
+        <div class="judge-samples">
+          <div class="judge-sample">
+            <h4>样例 1</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>7 9
+8 4 12 2 6 10 14</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>1
+8 10</pre></dd>
+            </dl>
+          </div>
+          <div class="judge-sample">
+            <h4>样例 2</h4>
+            <dl>
+              <dt>输入</dt><dd><pre data-input>6 -1
+3 -2 7 # -1 6</pre></dd>
+              <dt>预期输出</dt><dd><pre data-expected>0
+-1</pre></dd>
+            </dl>
+          </div>
+        </div>
       </article>
     </section>
   </main>
+  <template id="judge-form-template">
+    <form class="judge-form">
+      <label>C++17 代码</label>
+      <textarea rows="7" maxlength="64000" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
+      <div class="judge-actions"><button type="submit">运行样例</button><button type="button" data-stop hidden>停止</button></div>
+      <div class="judge-status" role="status"></div>
+    </form>
+  </template>
+  <template id="judge-result-template">
+    <p data-verdict hidden></p>
+    <div class="judge-actual" hidden>
+      <strong>实际输出</strong><pre data-stdout></pre>
+      <div data-stderr hidden><strong>标准错误</strong><pre></pre></div>
+    </div>
+  </template>
 </body>
 </html>
