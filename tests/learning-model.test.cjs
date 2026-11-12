@@ -70,8 +70,10 @@ test('all four computing subjects use one subclass and one subsection schema wit
       assert.deepEqual(Object.keys(section.exam_frequency).sort(), ['small', 'large'].sort());
       for (const id of section.learning_tasks) { assert(known.has(id), id); assert(!seen.has(id), id); seen.add(id); }
     }
-    assert.equal(seen.size, tasks.length);
-    for (const task of tasks) assert.equal(model.sectionFor(task).name, task.section_name);
+    const subsectionTasks = tasks.filter(task => task.kind !== '强化课');
+    assert.equal(seen.size, subsectionTasks.length);
+    for (const task of subsectionTasks) assert.equal(model.sectionFor(task).name, task.section_name);
+    for (const task of tasks.filter(task => task.kind === '强化课')) assert.equal(model.sectionFor(task), null);
   }
 });
 
@@ -114,6 +116,45 @@ test('a declared phase is selectable before any child chapters are added', () =>
   assert.equal(subject.resolvePhase('加练'), '加练');
   assert.deepEqual(subject.stageProgress({ phase: '加练' }), {
     phase: '加练', totalMinutes: 0, completedMinutes: 0, unknown: 0, percent: null,
+  });
+});
+
+test('phase summaries report source ranges without counting textbook chapter frequencies repeatedly', () => {
+  const ds = models.createSubject(library.subjects.find(subject => subject.id === 'ds'));
+  const summary = ds.phaseLearningInfo('基础一轮');
+  assert.deepEqual(summary.difficulty, { min: 1, max: 5, known: 39, total: 39 });
+  assert.deepEqual(summary.examFrequency, {
+    small: { min: 2, max: 35, known: 8, total: 8 },
+    large: { min: 0, max: 12, known: 8, total: 8 },
+  });
+  assert.deepEqual(summary.taskKinds[0], { name: '必学', count: 99 });
+
+  const os = models.createSubject(library.subjects.find(subject => subject.id === 'os'));
+  assert.deepEqual(os.phaseLearningInfo('基础一轮').difficulty, { min: 1, max: 5, known: 17, total: 18 });
+
+  const english = models.createSubject(library.subjects.find(subject => subject.id === 'english'));
+  const withoutRatings = english.phaseLearningInfo('基础一轮');
+  assert.equal(withoutRatings.difficulty, null);
+  assert.deepEqual(withoutRatings.examFrequency, { small: null, large: null });
+  assert(withoutRatings.taskKinds.some(kind => kind.name === '复习'));
+});
+
+test('small chapter notes keep genuine guidance and suppress repeated metric annotations', () => {
+  const chapter = {
+    id: 'custom-chapter-notes', phase: '复习', remarks: '错题独立重做。',
+    tasks: [
+      { id: 'first', section_name: '本节', remarks: '难度：☆☆；章考频：小题0、大题2；先做例题。' },
+      { id: 'second', section_name: '本节', kind: '原表未标', remarks: '原表备注：先做例题。' },
+    ],
+  };
+  const subject = models.createSubject({ id: 'custom-subject-notes', chapters: [chapter], sections: {
+    本节: { remarks: ['先做例题。', '难度：☆☆；大题考频：2', '本节考频较高。'] },
+  } });
+  assert.deepEqual(subject.chapterNotes(chapter), ['错题独立重做。', '先做例题。', '本节考频较高。']);
+  assert.deepEqual(subject.phaseLearningInfo('复习'), {
+    difficulty: { min: 2, max: 2, known: 1, total: 1 },
+    examFrequency: { small: { min: 0, max: 0, known: 1, total: 1 }, large: { min: 2, max: 2, known: 1, total: 1 } },
+    taskKinds: [],
   });
 });
 

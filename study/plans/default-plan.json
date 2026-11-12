@@ -2,7 +2,7 @@
   "format": "study-journal-plan",
   "version": 2,
   "catalogue": {
-    "version": 2,
+    "version": 3,
     "subjects": [
       {
         "id": "english",
@@ -23560,6 +23560,312 @@
                 "section_name": "综合复盘"
               }
             ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-01-chapter",
+            "title": "直播P1：数据的表示和运算",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-01-video",
+                "title": "看课 · 直播P1：数据的表示和运算",
+                "detail": "整理数值表示、补码运算和溢出判定，独立复做课堂例题。",
+                "kind": "强化课",
+                "reference": "计组强化 · 直播P1：数据的表示和运算",
+                "estimated_minutes": 247,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 246.38,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-02-chapter",
+            "title": "3.2.1_1+2+6_SRAM和DRAM",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-02-video",
+                "title": "看课 · 3.2.1_1+2+6_SRAM和DRAM",
+                "detail": "对照 SRAM 与 DRAM 的存储单元，写出两者的读写与刷新区别。",
+                "kind": "强化课",
+                "reference": "计组强化 · 3.2.1_1+2+6_SRAM和DRAM",
+                "estimated_minutes": 27,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 26.36,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-03-chapter",
+            "title": "3.2.1_4_DRAM芯片的关键技术",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-03-video",
+                "title": "看课 · 3.2.1_4_DRAM芯片的关键技术",
+                "detail": "整理 DRAM 芯片的地址复用、刷新方式和时序。",
+                "kind": "强化课",
+                "reference": "计组强化 · 3.2.1_4_DRAM芯片的关键技术",
+                "estimated_minutes": 40,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 39.07,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-04-chapter",
+            "title": "3.2.1_5_SDRAM",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-04-video",
+                "title": "看课 · 3.2.1_5_SDRAM",
+                "detail": "梳理 SDRAM 的同步访问、突发传输和常见时序。",
+                "kind": "强化课",
+                "reference": "计组强化 · 3.2.1_5_SDRAM",
+                "estimated_minutes": 13,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 12.61,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-05-chapter",
+            "title": "3.2.2_只读存储器ROM（非易失性存储器）",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-05-video",
+                "title": "看课 · 3.2.2_只读存储器ROM（非易失性存储器）",
+                "detail": "对照常见 ROM 的读写与擦除特点，区分各自用途。",
+                "kind": "强化课",
+                "reference": "计组强化 · 3.2.2_只读存储器ROM（非易失性存储器）",
+                "estimated_minutes": 12,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 11.88,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-06-chapter",
+            "title": "3.2.3_双端口RAM和多模块存储器",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-06-video",
+                "title": "看课 · 3.2.3_双端口RAM和多模块存储器",
+                "detail": "区分双端口 RAM 与多模块存储器，练习带宽和访存时间计算。",
+                "kind": "强化课",
+                "reference": "计组强化 · 3.2.3_双端口RAM和多模块存储器",
+                "estimated_minutes": 32,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 31.92,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-07-chapter",
+            "title": "直播P2：存储系统大串讲",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-07-video",
+                "title": "看课 · 直播P2：存储系统大串讲",
+                "detail": "画出存储层次，串联主存、Cache 与虚拟存储的访问路径。",
+                "kind": "强化课",
+                "reference": "计组强化 · 直播P2：存储系统大串讲",
+                "estimated_minutes": 230,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 229.22,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-08-chapter",
+            "title": "直播P3：存储系统大题专项强化",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-08-video",
+                "title": "看课 · 直播P3：存储系统大题专项强化",
+                "detail": "独立复做存储系统课堂大题，核对地址划分和命中判断。",
+                "kind": "强化课",
+                "reference": "计组强化 · 直播P3：存储系统大题专项强化",
+                "estimated_minutes": 245,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 244.52,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-09-chapter",
+            "title": "直播P4：一堆指令的执行(第四章)大题专项强化",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-09-video",
+                "title": "看课 · 直播P4：一堆指令的执行(第四章)大题专项强化",
+                "detail": "按多条指令的执行顺序画流水线时空图，标出停顿与转发。",
+                "kind": "强化课",
+                "reference": "计组强化 · 直播P4：一堆指令的执行(第四章)大题专项强化",
+                "estimated_minutes": 240,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 239.7,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-10-chapter",
+            "title": "指令流水线解题技巧总结（上）",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-10-video",
+                "title": "看课 · 指令流水线解题技巧总结（上）",
+                "detail": "整理流水线题的阶段划分、时钟周期和冒险识别方法。",
+                "kind": "强化课",
+                "reference": "计组强化 · 指令流水线解题技巧总结（上）",
+                "estimated_minutes": 50,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 49.69,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-11-chapter",
+            "title": "指令流水线解题技巧总结（下）",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-11-video",
+                "title": "看课 · 指令流水线解题技巧总结（下）",
+                "detail": "复做流水线综合例题，核对停顿、转发和总周期。",
+                "kind": "强化课",
+                "reference": "计组强化 · 指令流水线解题技巧总结（下）",
+                "estimated_minutes": 12,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 11.21,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-12-chapter",
+            "title": "直播P5：一条指令的执行(第五章)大题专项强化",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-12-video",
+                "title": "看课 · 直播P5：一条指令的执行(第五章)大题专项强化",
+                "detail": "从取指到写回追踪一条指令，记录寄存器和控制信号的变化。",
+                "kind": "强化课",
+                "reference": "计组强化 · 直播P5：一条指令的执行(第五章)大题专项强化",
+                "estimated_minutes": 247,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 246.18,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-13-chapter",
+            "title": "5.3.1_数据通路的功能",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-13-video",
+                "title": "看课 · 5.3.1_数据通路的功能",
+                "detail": "按指令执行步骤标出数据流向，说明数据通路承担的功能。",
+                "kind": "强化课",
+                "reference": "计组强化 · 5.3.1_数据通路的功能",
+                "estimated_minutes": 10,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 9.37,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-14-chapter",
+            "title": "5.3.2_数据通路的组成元件",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-14-video",
+                "title": "看课 · 5.3.2_数据通路的组成元件",
+                "detail": "整理寄存器、运算器与选择器的作用，画出元件之间的连线。",
+                "kind": "强化课",
+                "reference": "计组强化 · 5.3.2_数据通路的组成元件",
+                "estimated_minutes": 16,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 15.76,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-15-chapter",
+            "title": "5.3.3_数据通路的组织与分类",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-15-video",
+                "title": "看课 · 5.3.3_数据通路的组织与分类",
+                "detail": "对照单总线与多总线数据通路，梳理读写冲突与控制差异。",
+                "kind": "强化课",
+                "reference": "计组强化 · 5.3.3_数据通路的组织与分类",
+                "estimated_minutes": 3,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 2.24,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-16-chapter",
+            "title": "5.3.4_单总线结构的数据通路",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-16-video",
+                "title": "看课 · 5.3.4_单总线结构的数据通路",
+                "detail": "在单总线图上标注一次指令执行所需的传送步骤与控制信号。",
+                "kind": "强化课",
+                "reference": "计组强化 · 5.3.4_单总线结构的数据通路",
+                "estimated_minutes": 30,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 29.9,
+                "task_mode": "single-day"
+              }
+            ]
+          },
+          {
+            "id": "co-wangdao-reinforcement-17-chapter",
+            "title": "直播P6_总线&IO系统_大题专项强化",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "co-wangdao-reinforcement-17-video",
+                "title": "看课 · 直播P6_总线&IO系统_大题专项强化",
+                "detail": "比较中断与 DMA 的数据传输流程，独立复做总线和 I/O 例题。",
+                "kind": "强化课",
+                "reference": "计组强化 · 直播P6_总线&IO系统_大题专项强化",
+                "estimated_minutes": 218,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 217.73,
+                "task_mode": "multi-day"
+              }
+            ]
           }
         ],
         "sections": {
@@ -26810,6 +27116,78 @@
                 "estimate_group": "os-source-f109da3db331465c33b8",
                 "source_video_minutes": null,
                 "section_name": "5.3 磁盘和固态硬盘"
+              }
+            ]
+          },
+          {
+            "id": "os-wangdao-reinforcement-01-chapter",
+            "title": "直播P1_进程管理大题专项强化",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "os-wangdao-reinforcement-01-video",
+                "title": "看课 · 直播P1_进程管理大题专项强化",
+                "detail": "整理进程状态转换、调度与同步题的推演步骤，复做课堂例题。",
+                "kind": "强化课",
+                "reference": "操作系统强化 · 直播P1_进程管理大题专项强化",
+                "estimated_minutes": 246,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 246.0,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "os-wangdao-reinforcement-02-chapter",
+            "title": "直播P2：内存管理大题专项强化",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "os-wangdao-reinforcement-02-video",
+                "title": "看课 · 直播P2：内存管理大题专项强化",
+                "detail": "逐步演算地址转换和页面置换，核对缺页与访存次数。",
+                "kind": "强化课",
+                "reference": "操作系统强化 · 直播P2：内存管理大题专项强化",
+                "estimated_minutes": 239,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 238.3,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "os-wangdao-reinforcement-03-chapter",
+            "title": "直播P3_文件系统大串讲",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "os-wangdao-reinforcement-03-video",
+                "title": "看课 · 直播P3_文件系统大串讲",
+                "detail": "画出目录、索引节点和数据块的关系，串联一次文件访问。",
+                "kind": "强化课",
+                "reference": "操作系统强化 · 直播P3_文件系统大串讲",
+                "estimated_minutes": 246,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 245.13,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "os-wangdao-reinforcement-04-chapter",
+            "title": "直播P4_文件系统、输入输出管理大题专项强化",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "os-wangdao-reinforcement-04-video",
+                "title": "看课 · 直播P4_文件系统、输入输出管理大题专项强化",
+                "detail": "分别复做文件系统和 I/O 管理例题，核对磁盘访问与数据传输步骤。",
+                "kind": "强化课",
+                "reference": "操作系统强化 · 直播P4_文件系统、输入输出管理大题专项强化",
+                "estimated_minutes": 217,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 216.85,
+                "task_mode": "multi-day"
               }
             ]
           }
@@ -31044,6 +31422,96 @@
                 "section_name": "综合复盘"
               }
             ]
+          },
+          {
+            "id": "cn-wangdao-reinforcement-01-chapter",
+            "title": "直播P1：物理层&链路层大题专项",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "cn-wangdao-reinforcement-01-video",
+                "title": "看课 · 直播P1：物理层&链路层大题专项",
+                "detail": "复做物理层和链路层例题，检查时延、帧和窗口计算。",
+                "kind": "强化课",
+                "reference": "计算机网络强化 · 直播P1：物理层&链路层大题专项",
+                "estimated_minutes": 242,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 241.12,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "cn-wangdao-reinforcement-02-chapter",
+            "title": "直播P2：网络层大题专项强化",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "cn-wangdao-reinforcement-02-video",
+                "title": "看课 · 直播P2：网络层大题专项强化",
+                "detail": "练习网络层的地址计算和转发判断，写出每一步依据。",
+                "kind": "强化课",
+                "reference": "计算机网络强化 · 直播P2：网络层大题专项强化",
+                "estimated_minutes": 241,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 240.57,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "cn-wangdao-reinforcement-03-chapter",
+            "title": "直播P3：传输层&应用层大题专项强化（上）",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "cn-wangdao-reinforcement-03-video",
+                "title": "看课 · 直播P3：传输层&应用层大题专项强化（上）",
+                "detail": "记录上半场传输层与应用层的题型，独立复做课堂例题。",
+                "kind": "强化课",
+                "reference": "计算机网络强化 · 直播P3：传输层&应用层大题专项强化（上）",
+                "estimated_minutes": 238,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 237.44,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "cn-wangdao-reinforcement-04-chapter",
+            "title": "直播P4：传输层&应用层大题专项强化（下）",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "cn-wangdao-reinforcement-04-video",
+                "title": "看课 · 直播P4：传输层&应用层大题专项强化（下）",
+                "detail": "复做下半场例题，按协议交互顺序标注关键报文。",
+                "kind": "强化课",
+                "reference": "计算机网络强化 · 直播P4：传输层&应用层大题专项强化（下）",
+                "estimated_minutes": 229,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 228.88,
+                "task_mode": "multi-day"
+              }
+            ]
+          },
+          {
+            "id": "cn-wangdao-reinforcement-05-chapter",
+            "title": "直播P5：各层协议封装串讲、路由选择协议（下）",
+            "phase": "强化",
+            "tasks": [
+              {
+                "id": "cn-wangdao-reinforcement-05-video",
+                "title": "看课 · 直播P5：各层协议封装串讲、路由选择协议（下）",
+                "detail": "沿端到端路径逐层标注协议封装，复做路由选择例题。",
+                "kind": "强化课",
+                "reference": "计算机网络强化 · 直播P5：各层协议封装串讲、路由选择协议（下）",
+                "estimated_minutes": 128,
+                "estimated_source": "本地视频时长（向上取整）",
+                "source_video_minutes": 127.17,
+                "task_mode": "multi-day"
+              }
+            ]
           }
         ],
         "sections": {
@@ -31969,8 +32437,8 @@
     "metadata": {
       "title": "学习任务库",
       "subject_count": 8,
-      "task_count": 1587,
-      "chapter_count": 296,
+      "task_count": 1613,
+      "chapter_count": 322,
       "counts": {
         "english": {
           "chapters": 119,
@@ -31993,16 +32461,16 @@
           "tasks": 306
         },
         "co": {
-          "chapters": 15,
-          "tasks": 225
+          "chapters": 32,
+          "tasks": 242
         },
         "os": {
-          "chapters": 10,
-          "tasks": 136
+          "chapters": 14,
+          "tasks": 140
         },
         "cn": {
-          "chapters": 19,
-          "tasks": 203
+          "chapters": 24,
+          "tasks": 208
         }
       },
       "source_files": [
@@ -32099,7 +32567,7 @@
           "shifted_wangdao_blocks.json",
           "comp_org_extracted.json"
         ],
-        "known_tasks": 1446,
+        "known_tasks": 1472,
         "unknown_tasks": 141,
         "by_subject": {
           "english": {
@@ -32123,21 +32591,21 @@
             "unknown": 0
           },
           "co": {
-            "known": 189,
+            "known": 206,
             "unknown": 36
           },
           "os": {
-            "known": 86,
+            "known": 90,
             "unknown": 50
           },
           "cn": {
-            "known": 148,
+            "known": 153,
             "unknown": 55
           }
         },
         "shared_groups": 14,
         "shared_scoped_tasks": 38,
-        "video_lengths_available": 358,
+        "video_lengths_available": 384,
         "notes": [
           "首次学习中跨日拆分的source_progress按最大已完成端点恢复，后续复做不重复累计。",
           "合并课程的不同原课段相加；周期性重复复习保留首次完整安排，不累计整个时间表中的重复次数。",
@@ -43489,7 +43957,24 @@
         "policy": "数据结构第二轮保留算法和应用题规划，课本大题退役。其余408学科明确的大题与应用综合集中到第二轮，含选择题与大题的混合任务整项迁移；八科的真题训练和模拟与复盘阶段已退役。"
       },
       "section_policy": "408共用ComputingSubject子类，sections以小节名称为主键，统一存储difficulty、estimated_minutes、exam_frequency、learning_tasks任务ID及remarks。任务实体保留稳定ID；未提供的难度、考频、单任务用时留空，不推断。小节未给参考用时时仅汇总已知任务预计时间。",
-      "excluded_408_exam_policy": "四门408选择库不包含期中、期末考试任务；已有日期快照继续保留。"
+      "excluded_408_exam_policy": "四门408选择库不包含期中、期末考试任务；已有日期快照继续保留。",
+      "reinforcement_courses": {
+        "source": "王道强化课视频",
+        "by_subject": {
+          "co": {
+            "lessons": 17,
+            "video_minutes": 1663.74
+          },
+          "os": {
+            "lessons": 4,
+            "video_minutes": 946.28
+          },
+          "cn": {
+            "lessons": 5,
+            "video_minutes": 1075.18
+          }
+        }
+      }
     }
   }
 }

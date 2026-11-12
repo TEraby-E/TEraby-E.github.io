@@ -12,7 +12,7 @@
   const BACKUP_FORMAT = 'sjtu-study-checkin-backup';
   const FULL_BACKUP_VERSION = 2;
   const PLAN_FORMAT = 'study-journal-plan';
-  const DEFAULT_PLAN_VERSION = 2;
+  const DEFAULT_PLAN_VERSION = 3;
   const MAX_PLAN_TASKS = 500;
   const MAX_TASKS = 100;
   const MAX_ARCHIVES = 36525;
@@ -129,8 +129,8 @@
     return index;
   }
 
-  function normaliseAssignments(assignments, index, preserveSnapshots = false, preserveOrder = false) {
-    if (!Array.isArray(assignments) || assignments.length > MAX_TASKS) throw new StoreError('每天最多选择 100 项任务。');
+  function normaliseAssignments(assignments, index, { preserveSnapshots = false, preserveOrder = false, limit = MAX_TASKS } = {}) {
+    if (!Array.isArray(assignments) || assignments.length > limit) throw new StoreError('每天最多选择 100 项任务。');
     const seen = new Set();
     const result = assignments.map((item) => {
       if (!item || typeof item !== 'object' || typeof item.task_id !== 'string' || item.task_id.length > 200) throw new StoreError('任务格式不正确。');
@@ -507,6 +507,7 @@
     const history = [];
     const task_progress = Object.create(null);
     for (const day of [record.current, ...record.archives]) {
+      if (day.date > record.current.date) continue;
       let count = 0;
       for (const task of day.assignments) {
         if (!task.done) continue;
@@ -517,7 +518,7 @@
         progress.segments += Array.isArray(task.checkin_segments) ? task.checkin_segments.length : Number(Number.isFinite(task.actual_minutes));
         if (typeof task.actual_minutes === 'number') progress.actual_minutes += task.actual_minutes;
       }
-      if (count && day.date < record.current.date) history.push({ date: day.date, total: day.assignments.length, completed: count });
+      if (count && day.date < record.current.date) history.push({ date: day.date, total: count, completed: count });
     }
     history.sort((a, b) => b.date.localeCompare(a.date));
     return copy({ date: record.current.date, revision: record.revision, assignments: record.current.assignments, history, completed_ids: [...completed].sort(), library_completed_ids: Array.isArray(record.library_completed_ids) ? record.library_completed_ids : [], library_reopened_ids: Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : [], task_modes: record.task_modes || {}, subject_phases: record.subject_phases || {}, plan_tasks: record.plan_tasks || [], task_progress });
@@ -571,6 +572,8 @@
       const assignments = [];
       let hasMatch = false;
       for (const task of day.assignments) {
+        const done = task.done === true;
+        if (day !== record.current && !done) continue;
         if (!subjects.has(task.subject_id)) {
           const name = subjectNames.get(task.subject_id) || task.subject_name || subjectName(null, task.subject_id) || task.subject_id;
           subjects.set(task.subject_id, { id: task.subject_id, name });
@@ -582,7 +585,6 @@
         }
         if (hasMatch && !onPage) continue;
         if (chapterId && task.chapter_id !== chapterId) continue;
-        const done = task.done === true;
         if (status && done !== (status === 'done')) continue;
         const taskMode = (day === record.current ? record.task_modes?.[task.task_id] : null) || task.task_mode || 'single-day';
         if (mode && taskMode !== mode) continue;
@@ -779,7 +781,9 @@
 
   function saveRecord(record, payload, index) {
     checkRevision(record, payload);
-    const assignments = normaliseAssignments(payload.assignments, index, true);
+    const assignments = normaliseAssignments(payload.assignments, index, {
+      preserveSnapshots: true, limit: Math.max(MAX_TASKS, record.current.assignments.length),
+    });
     const markers = {};
     for (const key of ['library_completed_ids', 'library_reopened_ids']) if (Object.hasOwn(payload, key)) markers[key] = normaliseLibraryCompletedIds(payload[key], index);
     if (Object.hasOwn(payload, 'task_modes')) markers.task_modes = normaliseTaskModes(payload.task_modes, index);
@@ -788,43 +792,60 @@
     return { ...record, ...markers, revision: record.revision + 1, current: { date: record.current.date, assignments } };
   }
 
-  function archivedDay(record, index) {
+  function multiDayCompletion(record, index) {
     const finished = new Set(record.library_completed_ids || []);
-    return { ...copy(record.current), ...(index ? { subject_stage_progress: subjectStageProgress(record, index) } : {}), assignments: record.current.assignments.map(task =>
-      (record.task_modes?.[task.task_id] || task.task_mode) === 'multi-day'
-        ? { ...copy(task), task_mode: 'multi-day', overall_completed: finished.has(task.task_id) }
-        : copy(task)) };
+    const reopened = new Set(record.library_reopened_ids || []);
+    return task => {
+      const group = index?.get(task.task_id)?.task.estimate_group || task.task_id;
+      const ids = index?.groups?.get(group) || [task.task_id];
+      return !ids.some(id => reopened.has(id)) && ids.some(id => finished.has(id));
+    };
   }
 
-  function unfinishedAssignments(record) {
-    const finished = new Set(record.library_completed_ids || []);
+  function archivedDay(record, index, isMultiDayFinished) {
+    const assignments = record.current.assignments.filter(task => task.done === true).map(task => {
+      const task_mode = record.task_modes?.[task.task_id] || task.task_mode || 'single-day';
+      const snapshot = { ...task, task_mode };
+      if (task_mode === 'multi-day') snapshot.overall_completed = isMultiDayFinished(task);
+      else delete snapshot.overall_completed;
+      return snapshot;
+    });
+    if (!assignments.length) return null;
+    return { ...record.current, assignments, ...(index ? { subject_stage_progress: subjectStageProgress(record, index) } : {}) };
+  }
+
+  function unfinishedAssignments(record, isMultiDayFinished) {
     return record.current.assignments.flatMap(task => {
-      const mode = record.task_modes?.[task.task_id] || task.task_mode;
-      if (mode !== 'multi-day') return task.done ? [] : [task];
-      if (finished.has(task.task_id)) return [];
-      return [{ ...task, task_mode: 'multi-day', done: false, actual_minutes: null, checkin_segments: [] }];
+      const task_mode = record.task_modes?.[task.task_id] || task.task_mode || 'single-day';
+      if (task_mode === 'multi-day') {
+        if (isMultiDayFinished(task)) return [];
+        const { overall_completed, ...pending } = task;
+        return [{ ...pending, task_mode, done: false, actual_minutes: null, checkin_segments: [] }];
+      }
+      return task.done ? [] : [{ ...task, task_mode }];
     });
   }
 
   function archiveRecord(record, payload, index = null) {
     checkRevision(record, payload);
     if ('carry_pending' in payload && typeof payload.carry_pending !== 'boolean') throw new StoreError('未完成任务的保留选项不正确。');
-    const next = nextDate(record.current.date);
-    const existingTomorrow = record.archives.find((day) => day.date === next);
-    const archives = record.archives.filter((day) => day.date !== record.current.date && day.date !== next);
-    archives.push(archivedDay(record, index));
-    const carried = payload.carry_pending === false ? [] : unfinishedAssignments(record);
-    return { ...copy(record), revision: record.revision + 1, current: { date: next, assignments: mergeTasks(existingTomorrow?.assignments || [], carried, index) }, archives };
+    return alignDate(record, nextDate(record.current.date), index, payload.carry_pending !== false);
   }
 
-  function alignDate(record, today, index) {
+  function alignDate(record, today, index, carryPending = true) {
     if (record.current.date === today) return record;
     const savedToday = record.archives.find(day => day.date === today);
-    const archives = record.archives.filter(day => day.date !== today);
-    if (record.current.date > today || record.current.assignments.some(task => task.done)) {
-      archives.push(archivedDay(record, index));
-    }
-    return { ...record, revision: record.revision + 1, current: { date: today, assignments: savedToday?.assignments || [] }, archives };
+    const archives = record.archives.filter(day => day.date !== today && day.date !== record.current.date);
+    const forward = record.current.date < today;
+    const isMultiDayFinished = multiDayCompletion(record, index);
+    const previous = forward ? archivedDay(record, index, isMultiDayFinished) : record.current;
+    if (previous) archives.push(previous);
+    const scheduled = savedToday?.assignments || [];
+    const scheduledIds = new Set(scheduled.map(task => task.task_id));
+    const carried = forward && carryPending ? unfinishedAssignments(record, isMultiDayFinished).filter(task => !scheduledIds.has(task.task_id)) : [];
+    // Existing scheduled tasks and carried work both survive the rollover, even above the manual selection limit.
+    const assignments = carried.length ? mergeTasks(scheduled, carried, index, Infinity) : scheduled;
+    return { ...record, revision: record.revision + 1, current: { date: today, assignments }, archives };
   }
 
   const studyDateFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -842,7 +863,8 @@
     if (plan_library) index = libraryIndex(plan_library);
     const day = (entry) => {
       if (!entry || typeof entry !== 'object') throw new StoreError('备份中的日期记录不正确。');
-      return { date: validateDate(entry.date), assignments: normaliseAssignments(entry.assignments, index, true, full), ...(entry.subject_stage_progress ? { subject_stage_progress: normaliseStageProgress(entry.subject_stage_progress) } : {}) };
+      const assignments = normaliseAssignments(entry.assignments, index, { preserveSnapshots: true, preserveOrder: full, limit: full ? Infinity : MAX_TASKS });
+      return { date: validateDate(entry.date), assignments, ...(entry.subject_stage_progress ? { subject_stage_progress: normaliseStageProgress(entry.subject_stage_progress) } : {}) };
     };
     const current = day(value.current);
     const dates = new Set();
@@ -872,19 +894,7 @@
     };
   }
 
-  function restoreBackupDate(record, today, index) {
-    const aligned = alignDate(record, today, index);
-    if (record.current.date >= today || !record.current.assignments.length) return aligned;
-    const archives = aligned.archives.some(day => day.date === record.current.date)
-      ? aligned.archives : [...aligned.archives, record.current];
-    const todayIds = new Set(aligned.current.assignments.map(task => task.task_id));
-    const pending = unfinishedAssignments(record).filter(task => !todayIds.has(task.task_id));
-    const capacity = MAX_TASKS - aligned.current.assignments.length;
-    const assignments = mergeTasks(aligned.current.assignments, pending.slice(0, capacity), index);
-    return { ...aligned, current: { ...aligned.current, assignments }, archives };
-  }
-
-  function mergeTasks(existing, incoming, index) {
+  function mergeTasks(existing, incoming, index, limit = MAX_TASKS) {
     const result = existing.map((item) => ({ ...item }));
     const map = new Map(result.map((item) => [item.task_id, item]));
     for (const task of incoming) {
@@ -900,7 +910,7 @@
       }
       else { const added = { ...task }; map.set(task.task_id, added); result.push(added); }
     }
-    if (result.length > MAX_TASKS) throw new StoreError('合并后某一天超过 100 项任务，未导入任何内容。请先整理备份。');
+    if (result.length > Math.max(limit, existing.length, incoming.length)) throw new StoreError('合并后某一天超过 100 项任务，未导入任何内容。请先整理备份。');
     return result.sort((a, b) => compareSubjects(index, a.subject_id, b.subject_id));
   }
 
@@ -1136,8 +1146,10 @@
         try { date = decodeURIComponent(path.slice('/api/history/'.length)); } catch { throw new StoreError('历史日期不正确。'); }
         validateDate(date);
         return withLibraryFallback((record, base) => {
-          const day = record.archives.find(item => item.date === date);
-          if (!day) throw new StoreError('没有找到这一天的打卡记录。', 404);
+          const saved = date < record.current.date && record.archives.find(item => item.date === date);
+          const assignments = saved ? saved.assignments.filter(task => task.done === true) : [];
+          if (!assignments.length) throw new StoreError('没有找到这一天的打卡记录。', 404);
+          const day = { ...saved, assignments };
           const frozen = day.subject_stage_progress;
           if (frozen && day.assignments.every(task => Object.hasOwn(frozen, task.subject_id))) return { result: copy(day) };
           if (!record.plan_library && !base) return { result: null };
@@ -1172,8 +1184,7 @@
       if (full && options.replace && incoming.plan_library.version < DEFAULT_PLAN_VERSION) incoming.plan_customized = true;
       return transact((record) => {
         const imported = importRecord(record, incoming, options);
-        const align = full && (options.replace || !hasStudyContent(record)) ? restoreBackupDate : alignDate;
-        const next = { ...align(imported, today(), recordLibrary(imported).index), revision: imported.revision };
+        const next = { ...alignDate(imported, today(), recordLibrary(imported).index), revision: imported.revision };
         return { record: next, result: stateOf(next) };
       });
     }

@@ -18,6 +18,56 @@
     get phases() { return [...new Set([...this.declaredPhases, ...this.chapters.map(chapter => chapter.phase)].filter(Boolean))]; }
     sectionFor() { return null; }
     learningInfo(task) { return learningInfo(task, this.sectionFor(task)); }
+    frequencyScope(section, fallback) { return fallback; }
+
+    phaseLearningInfo(phase = '') {
+      const difficulty = new Map();
+      const small = new Map();
+      const large = new Map();
+      const kinds = new Map();
+      for (const chapter of this.chapters) {
+        if ((chapter.phase || '') !== phase) continue;
+        for (const task of chapter.tasks) {
+          const section = this.sectionFor(task);
+          const info = learningInfo(task, section);
+          const source = info.section_name ? `section:${info.section_name}` : `chapter:${chapter.id}`;
+          const frequencySource = this.frequencyScope(section, source);
+          const stars = typeof info.difficulty === 'string' && /^[☆★]{1,5}$/.test(info.difficulty) ? info.difficulty.length : null;
+          includeMetric(difficulty, source, stars);
+          includeMetric(small, frequencySource, frequencyCount(info.exam_frequency.small));
+          includeMetric(large, frequencySource, frequencyCount(info.exam_frequency.large));
+          const kind = cleanText(task.kind);
+          if (kind && kind !== '原表未标') kinds.set(kind, (kinds.get(kind) || 0) + 1);
+        }
+      }
+      return {
+        difficulty: reportedRange(difficulty),
+        examFrequency: { small: reportedRange(small), large: reportedRange(large) },
+        taskKinds: [...kinds].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      };
+    }
+
+    chapterNotes(chapter) {
+      const notes = new Set();
+      const sections = new Set();
+      const append = values => {
+        for (const value of Array.isArray(values) ? values : [values]) {
+          if (typeof value !== 'string') continue;
+          const text = learningText(splitRemark(value).text);
+          if (text) notes.add(text);
+        }
+      };
+      append(chapter.remarks);
+      for (const task of chapter.tasks) {
+        append(task.remarks);
+        const section = this.sectionFor(task);
+        if (section && !sections.has(section.name)) {
+          sections.add(section.name);
+          append(section.remarks);
+        }
+      }
+      return [...notes];
+    }
 
     resolvePhase(preferred, isCompleted = () => false, selectedIds = []) {
       const phases = this.phases;
@@ -68,7 +118,12 @@
     sectionFor(task) {
       const name = task.section_name || this.taskSections.get(task.task_id || task.id);
       const section = name && Object.hasOwn(this.sections, name) ? this.sections[name] : null;
-      return section && typeof section === 'object' && !Array.isArray(section) ? { name, ...section } : null;
+      return section && typeof section === 'object' && !Array.isArray(section) ? { ...section, name } : null;
+    }
+    frequencyScope(section, fallback) {
+      // The four built-in computing plans repeat textbook chapter totals on their numbered subsections.
+      const chapterNumber = computingIds.has(this.id) ? section?.name.match(/^(\d+)\.\d+/)?.[1] : null;
+      return chapterNumber ? `textbook:${chapterNumber}` : super.frequencyScope(section, fallback);
     }
   }
 
@@ -94,6 +149,30 @@
       exam_frequency: { small: task.exam_frequency?.small ?? section?.exam_frequency?.small ?? annotation.exam_frequency.small, large: task.exam_frequency?.large ?? section?.exam_frequency?.large ?? annotation.exam_frequency.large },
       section_estimated_minutes: task.section_estimated_minutes ?? section?.estimated_minutes ?? null,
     };
+  }
+
+  const frequencyCount = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
+
+  function includeMetric(sources, key, value) {
+    if (!sources.has(key)) sources.set(key, null);
+    if (value === null) return;
+    const range = sources.get(key);
+    if (!range) sources.set(key, { min: value, max: value });
+    else {
+      range.min = Math.min(range.min, value);
+      range.max = Math.max(range.max, value);
+    }
+  }
+
+  function reportedRange(sources) {
+    let min = Infinity, max = -Infinity, known = 0;
+    for (const range of sources.values()) {
+      if (!range) continue;
+      min = Math.min(min, range.min);
+      max = Math.max(max, range.max);
+      known += 1;
+    }
+    return known ? { min, max, known, total: sources.size } : null;
   }
 
   const cleanText = value => String(value || '').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/\r\n?/g, '\n').split('\n').map(line => line.replace(/[\t ]+/g, ' ').trim()).filter(Boolean).join('\n').trim();

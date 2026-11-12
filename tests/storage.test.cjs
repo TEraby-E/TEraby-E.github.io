@@ -29,7 +29,7 @@ test('legacy 408 stage preferences migrate once and remain valid in old backups 
 
 test('subject stages persist through saving, archiving, backup import and conservative merging', () => {
   const phases = Object.fromEntries(library.subjects.map(s => [s.id, s.chapters[0].phase]));
-  const saved = h.saveRecord(initial(), { date: initial().current.date, revision: 1, assignments: [task()], subject_phases: phases }, index);
+  const saved = h.saveRecord(initial(), { date: initial().current.date, revision: 1, assignments: [task(first, true)], subject_phases: phases }, index);
   assert.deepEqual(h.stateOf(saved).subject_phases, phases);
   const advanced = h.archiveRecord(saved, { date: saved.current.date, revision: saved.revision });
   assert.deepEqual(advanced.subject_phases, phases);
@@ -106,32 +106,35 @@ test('save increments revision and rejects stale date/revision without mutating 
   for (const payload of [{ date: '2026-10-24', revision: 1 }, { date: '2026-10-25', revision: 0 }, { date: '2026-10-25', revision: '1' }]) assert.throws(() => h.saveRecord(record, { ...payload, assignments: [] }, index), (e) => e.status === 409);
 });
 
-test('archive preserves complete day, carries only unfinished tasks, and advances once', () => {
+test('archive preserves checked-in tasks, carries unfinished tasks, and advances once', () => {
   const saved = save(initial(), [task(first, true), task(second)]);
   const archived = h.archiveRecord(saved, { date: '2026-10-25', revision: 2, carry_pending: true });
   assert.equal(archived.current.date, '2026-10-26');
   assert.deepEqual(archived.current.assignments.map((t) => t.task_id), [second]);
-  assert.equal(archived.archives[0].assignments.length, 2);
+  assert.deepEqual(archived.archives[0].assignments, [saved.current.assignments[0]]);
   assert.equal(archived.revision, 3);
   assert.throws(() => h.archiveRecord(archived, { date: '2026-10-25', revision: 2 }), (e) => e.status === 409);
   const snapshot = h.stateOf(archived);
-  assert.deepEqual(snapshot.history, [{ date: '2026-10-25', total: 2, completed: 1 }]);
+  assert.deepEqual(snapshot.history, [{ date: '2026-10-25', total: 1, completed: 1 }]);
   assert.ok(snapshot.completed_ids.includes(first));
 });
 
-test('empty rest day can be archived; carry option must be boolean', () => {
-  assert.equal(h.archiveRecord(initial(), { date: '2026-10-25', revision: 1, carry_pending: false }).archives.length, 1);
+test('empty rest day advances without an archive; carry option must be boolean', () => {
+  const advanced = h.archiveRecord(initial(), { date: '2026-10-25', revision: 1, carry_pending: false });
+  assert.equal(advanced.current.date, '2026-10-26');
+  assert.deepEqual(advanced.archives, []);
   assert.throws(() => h.archiveRecord(initial(), { date: '2026-10-25', revision: 1, carry_pending: 'false' }));
 });
 
 test('advancing into an imported future day preserves its tasks without duplicating history', () => {
   const record = save(initial(), [task(first)]);
   record.archives.push({ date: '2026-10-26', assignments: h.normaliseAssignments([task(second, true)], index) });
+  assert.deepEqual(h.stateOf(record).completed_ids, []);
   const result = h.archiveRecord(record, { date: '2026-10-25', revision: 2, carry_pending: true });
   assert.equal(result.current.date, '2026-10-26');
   assert.equal(result.current.assignments.length, 2);
   assert.equal(result.current.assignments.find((t) => t.task_id === second).done, true);
-  assert.deepEqual(result.archives.map((day) => day.date), ['2026-10-25']);
+  assert.deepEqual(result.archives, []);
 });
 
 test('backup validation rejects duplicate dates and validates all days before mutation', () => {

@@ -40,6 +40,9 @@
   let planOptionsSource = null;
   const planPages = new Map();
   const planPhaseFilters = new Map();
+  const planFoldState = new Map();
+  const planClosedNotes = new Set();
+  const planPhaseSummaries = new WeakMap();
   const PLAN_PAGE_SIZE = 12;
   const PLAN_EDITOR_FORMS = ['plan-form', 'plan-chapter-form', 'plan-phase-form', 'plan-subject-form'];
   let planEditBaseline = null;
@@ -1105,9 +1108,13 @@
     return [...state.history].sort((a, b) => b.date.localeCompare(a.date));
   }
 
+  function checkinCount(completed, total) {
+    return completed === total ? `已打卡 ${completed} 项` : `打卡 ${completed} / ${total} 项`;
+  }
+
   function renderHistoryList() {
     const entries = historyQuery?.dates || historyEntries();
-    $('history-list').innerHTML = entries.map((entry) => `<button class="history-date-button" type="button" data-history-date="${escape(entry.date)}" aria-current="${entry.date === historyDate}"><span><strong>${escape(readableDate(entry.date))}</strong><small>打卡 ${entry.completed} / ${entry.total} 项</small></span>${icon('chevron')}</button>`).join('');
+    $('history-list').innerHTML = entries.map((entry) => `<button class="history-date-button" type="button" data-history-date="${escape(entry.date)}" aria-current="${entry.date === historyDate}"><span><strong>${escape(readableDate(entry.date))}</strong><small>${checkinCount(entry.completed, entry.total)}</small></span>${icon('chevron')}</button>`).join('');
     $('history-summary').textContent = historyQuery ? `匹配 ${historyQuery.total} 天` : entries.length ? `已记录 ${entries.length} 天` : '从今天开始积累';
     $('history-pagination').hidden = !historyQuery || historyQuery.total <= historyQuery.limit;
     if (historyQuery) {
@@ -1120,7 +1127,7 @@
     historyRecord = record;
     const assignments = record.assignments;
     const completed = assignments.filter(task => task.done).length;
-    $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(record.date))}</h3><span>打卡 ${completed} / ${assignments.length} 项<small class="history-time-line">${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? subjectsForAssignments(assignments).map(subject => {
+    $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(record.date))}</h3><span>${checkinCount(completed, assignments.length)}<small class="history-time-line">${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? subjectsForAssignments(assignments).map(subject => {
       const tasks = subjectAssignments(subject.id, assignments);
       if (!tasks.length) return '';
       return `<section class="history-subject"><h4 class="subject-name">${escape(subjectName(subject))}</h4>${tasks.map(task => new HistoryTaskCardView(task, { compact: true, chapter: true }).render()).join('')}</section>`;
@@ -1293,10 +1300,11 @@
     return chapter ? { subjectId: subject.id, chapterId: chapter.id } : null;
   }
 
-  function planRows(subject, phase, query) {
+  const planPhaseKey = (subjectId, phase) => JSON.stringify([subjectId, phase]);
+
+  function planRows(chapters, query) {
     const entries = catalogue().plan;
-    return subject.chapters.flatMap(chapter => {
-      if (phase && chapter.phase !== phase) return [];
+    return chapters.flatMap(chapter => {
       const matchesChapter = !query || chapter.title.toLowerCase().includes(query);
       if (!chapter.tasks.length) return matchesChapter ? [{ chapter, task: null }] : [];
       return chapter.tasks.map(task => entries.get(task.id))
@@ -1305,24 +1313,79 @@
     });
   }
 
-  function renderPlanChapter({ chapter, tasks }, { phase, locked, planned }) {
+  function renderPlanChapter({ chapter, tasks }, { subject, locked, planned }) {
     const title = escape(chapter.title);
     const disabled = locked ? 'disabled' : '';
-    const label = !phase && chapter.phase ? ` <span class="plan-chapter-phase">${escape(chapter.phase)}</span>` : '';
     const rename = chapter.id.startsWith('custom-chapter-') ? `<button type="button" class="text-button" data-board-action="rename-chapter" aria-label="重命名${title}" ${disabled}>重命名</button>` : '';
+    const notes = subject.chapterNotes(chapter);
+    const notesMarkup = notes.length ? `<details class="plan-chapter-notes" data-plan-notes="${escape(chapter.id)}" ${planClosedNotes.has(chapter.id) ? '' : 'open'}><summary>学习备注${icon('chevron')}</summary>${notes.map(note => `<p>${escape(note)}</p>`).join('')}</details>` : '';
     const cards = tasks.map(task => {
       const added = planned.has(task.task_id);
       return `<article class="plan-card ${planEditing === task.task_id ? 'is-editing' : ''}" data-plan-task="${escape(task.task_id)}" draggable="${!locked}">
         <button type="button" class="plan-card-title" data-plan-action="edit">${escape(task.title)}</button>
-        <span class="plan-card-chapter">${task.task_mode === 'multi-day' ? '多日任务' : '单日任务'}</span>
         ${task.detail ? `<p class="plan-card-detail">${escape(task.detail)}</p>` : ''}
         <div class="plan-actions"><button class="text-button" type="button" data-plan-action="add" ${added ? 'disabled' : ''}>${added ? '已在今日清单' : '加入今天'}</button><button class="text-button" type="button" data-plan-action="edit">编辑</button><button class="text-button" type="button" data-plan-action="remove">删除</button></div>
       </article>`;
     }).join('');
     return `<section class="plan-chapter-group" data-board-chapter-id="${escape(chapter.id)}">
-      <header class="plan-chapter-heading"><h4>${title}${label}</h4><div class="plan-column-actions"><button type="button" class="text-button" data-board-action="new" aria-label="在${title}新建任务" ${disabled}>＋任务</button>${rename}<button type="button" class="text-button plan-remove-chapter" data-board-action="delete-chapter" aria-label="删除小章节：${title}" ${disabled}>删除小章节</button></div></header>
+      <header class="plan-chapter-heading"><h4>${title}</h4><div class="plan-column-actions"><button type="button" class="text-button" data-board-action="new" aria-label="在${title}新建任务" ${disabled}>＋任务</button>${rename}<button type="button" class="text-button plan-remove-chapter" data-board-action="delete-chapter" aria-label="删除小章节：${title}" ${disabled}>删除小章节</button></div></header>
+      ${notesMarkup}
       <div class="plan-chapter-cards">${cards || '<p class="plan-board-empty">暂无任务</p>'}</div>
     </section>`;
+  }
+
+  function planPhaseMetadata(subject, phase, chapters) {
+    if (!planPhaseSummaries.has(subject)) planPhaseSummaries.set(subject, new Map());
+    const summaries = planPhaseSummaries.get(subject);
+    if (!summaries.has(phase)) summaries.set(phase, subject.phaseLearningInfo(phase));
+    const { difficulty, examFrequency, taskKinds } = summaries.get(phase);
+    const range = (metric, format = String) => {
+      if (!metric) return '未提供';
+      const value = metric.min === metric.max ? format(metric.min) : `${format(metric.min)}–${format(metric.max)}`;
+      return metric.known < metric.total ? `${value}（已知）` : value;
+    };
+    const kinds = taskKinds.map(({ name, count }) => `${name} ${count}`).join('、');
+    let single = 0, multi = 0;
+    for (const chapter of chapters) for (const task of chapter.tasks) {
+      if ((state.task_modes[task.id] || task.task_mode) === 'multi-day') multi += 1;
+      else single += 1;
+    }
+    const types = [kinds, single ? `单日 ${single}` : '', multi ? `多日 ${multi}` : ''].filter(Boolean).join(' · ');
+    const frequency = examFrequency.small || examFrequency.large
+      ? `考频范围 小题 ${range(examFrequency.small)} · 大题 ${range(examFrequency.large)}` : '考频 未提供';
+    return [`难度 ${range(difficulty, stars => '☆'.repeat(stars))}`, frequency, `任务类型 ${types || '未提供'}`]
+      .map(value => `<span>${escape(value)}</span>`).join('');
+  }
+
+  function renderPlanPhase(subject, phase, chapters, { query, locked, planned }) {
+    const key = planPhaseKey(subject.id, phase);
+    const expanded = planFoldState.get(key) ?? Boolean(query);
+    const title = phase || '未分大章节';
+    const matchTitle = query && title.toLowerCase().includes(query);
+    const rows = expanded || query ? planRows(chapters, matchTitle ? '' : query) : null;
+    if (query && !matchTitle && !rows.length) return null;
+    const count = rows ? rows.filter(row => row.task).length : chapters.reduce((total, chapter) => total + chapter.tasks.length, 0);
+    let content = '';
+    if (expanded) {
+      const pageCount = Math.max(1, Math.ceil(rows.length / PLAN_PAGE_SIZE));
+      const page = Math.min(Math.max(0, planPages.get(key) || 0), pageCount - 1);
+      planPages.set(key, page);
+      const groups = new Map();
+      for (const { chapter, task } of rows.slice(page * PLAN_PAGE_SIZE, (page + 1) * PLAN_PAGE_SIZE)) {
+        if (!groups.has(chapter.id)) groups.set(chapter.id, { chapter, tasks: [] });
+        if (task) groups.get(chapter.id).tasks.push(task);
+      }
+      const disabled = locked ? 'disabled' : '';
+      const cards = [...groups.values()].map(group => renderPlanChapter(group, { subject, locked, planned })).join('');
+      content = `<div class="plan-phase-content">
+        ${phase ? `<div class="plan-phase-actions plan-column-actions"><button type="button" class="text-button" data-board-action="new-chapter" ${disabled}>＋小章节</button><button type="button" class="text-button plan-remove-chapter" data-board-action="delete-phase" ${disabled}>删除大章节</button></div>` : ''}
+        ${cards || `<p class="plan-board-empty">${query ? '暂无匹配的小章节或任务' : '暂无小章节'}</p>`}
+        ${pageCount > 1 ? `<div class="plan-column-pagination"><button type="button" class="text-button" data-board-action="previous" ${page === 0 ? 'disabled' : ''}>上一页</button><span>${page + 1} / ${pageCount}</span><button type="button" class="text-button" data-board-action="next" ${page + 1 === pageCount ? 'disabled' : ''}>下一页</button></div>` : ''}
+      </div>`;
+    }
+    return { count, html: `<details class="plan-phase-panel" data-phase-key="${escape(key)}" data-plan-phase="${escape(phase)}" ${expanded ? 'open' : ''}>
+      <summary class="plan-phase-summary" data-plan-phase-toggle><span class="plan-phase-title"><strong>${escape(title)}</strong><small>${count} 项</small></span><span class="plan-phase-meta">${planPhaseMetadata(subject, phase, chapters)}</span>${icon('chevron')}</summary>${content}
+    </details>` };
   }
 
   function renderPlans() {
@@ -1355,29 +1418,24 @@
     $('new-plan-subject').disabled = locked;
     let visibleCount = 0;
     $('plan-list').innerHTML = subjects.map(subject => {
-      const title = phase || subject.name;
-      const rows = planRows(subject, phase, query);
-      const taskCount = rows.filter(row => row.task).length;
-      visibleCount += taskCount;
-      const pageCount = Math.max(1, Math.ceil(rows.length / PLAN_PAGE_SIZE));
-      const page = Math.max(0, Math.min(planPages.get(subject.id) || 0, pageCount - 1));
-      planPages.set(subject.id, page);
-      const groups = new Map();
-      for (const { chapter, task } of rows.slice(page * PLAN_PAGE_SIZE, (page + 1) * PLAN_PAGE_SIZE)) {
-        if (!groups.has(chapter.id)) groups.set(chapter.id, { chapter, tasks: [] });
-        if (task) groups.get(chapter.id).tasks.push(task);
+      const phaseGroups = new Map(subject.phases.map(name => [name, []]));
+      for (const chapter of subject.chapters) {
+        const name = chapter.phase || '';
+        if (!phaseGroups.has(name)) phaseGroups.set(name, []);
+        phaseGroups.get(name).push(chapter);
       }
-      const chapterCards = [...groups.values()].map(group => renderPlanChapter(group, { phase, locked, planned })).join('');
+      const panels = [...phaseGroups].filter(([name]) => !phase || name === phase)
+        .map(([name, chapters]) => renderPlanPhase(subject, name, chapters, { query, locked, planned })).filter(Boolean);
+      const taskCount = panels.reduce((total, panel) => total + panel.count, 0);
+      visibleCount += taskCount;
       const disabled = locked ? 'disabled' : '';
-      const empty = query ? '暂无匹配的小章节或任务' : subject.phases.length ? '暂无小章节' : '先新建大章节';
+      const empty = query ? '暂无匹配的小章节或任务' : '先新建大章节';
       return `<section class="plan-column" data-board-subject="${escape(subject.id)}" aria-labelledby="plan-column-${escape(subject.id)}">
         <div class="plan-column-heading">
-          <div class="plan-column-context"><h3 id="plan-column-${escape(subject.id)}" title="${escape(title)}">${escape(title)}</h3><span>${taskCount} 项</span></div>
-          <div class="plan-column-actions"><button type="button" class="text-button" data-board-action="new-phase" ${disabled}>＋大章节</button><button type="button" class="text-button" data-board-action="new-chapter" ${locked || !subject.phases.length ? 'disabled' : ''}>＋小章节</button>${phase ? `<button type="button" class="text-button plan-remove-chapter" data-board-action="delete-phase" ${disabled}>删除大章节</button>` : ''}</div>
+          <div class="plan-column-context"><h3 id="plan-column-${escape(subject.id)}">${escape(subject.name)}</h3>${phase ? '' : `<span>${taskCount} 项</span>`}</div>
+          <div class="plan-column-actions"><button type="button" class="text-button" data-board-action="new-phase" ${disabled}>＋大章节</button></div>
         </div>
-        ${!subjectId && subject.phases.length ? `<div class="plan-column-chapter-row"><select class="plan-column-chapter" data-board-phase="${escape(subject.id)}" aria-label="筛选${escape(subject.name)}大章节"><option value="">全部大章节</option>${phaseOptions(subject)}</select></div>` : ''}
-        <div class="plan-column-cards">${chapterCards || `<p class="plan-board-empty">${empty}</p>`}</div>
-        ${pageCount > 1 ? `<div class="plan-column-pagination"><button type="button" class="text-button" data-board-action="previous" ${page === 0 ? 'disabled' : ''}>上一页</button><span>${page + 1} / ${pageCount}</span><button type="button" class="text-button" data-board-action="next" ${page + 1 === pageCount ? 'disabled' : ''}>下一页</button></div>` : ''}
+        <div class="plan-column-cards">${panels.map(panel => panel.html).join('') || `<p class="plan-board-empty">${empty}</p>`}</div>
       </section>`;
     }).join('') || '<div class="empty-state"><strong>暂无学科</strong><p>使用「新建学科」开始添加任务。</p></div>';
     $('plan-page-label').textContent = `${subjects.length} 个学科 · ${visibleCount} 项任务`;
@@ -1425,7 +1483,7 @@
     showPlanEditor('plan-form', task ? '编辑任务' : '新建任务', 'plan-task-title');
   }
 
-  function editPlanChapter(subject, chapter = null) {
+  function editPlanChapter(subject, chapter = null, parentPhase = '') {
     if (!subject.phases.length && !chapter) return;
     chapterDraft = {
       subjectId: subject.id,
@@ -1434,7 +1492,7 @@
     };
     const parent = $('plan-chapter-phase');
     const existingUnphased = chapter && !chapter.phase;
-    const preferred = planPhase(subject) || state.subject_phases[subject.id];
+    const preferred = parentPhase || planPhase(subject) || state.subject_phases[subject.id];
     const selected = chapter ? chapter.phase || '' : subject.phases.includes(preferred) ? preferred : subject.phases[0];
     parent.required = !existingUnphased;
     parent.innerHTML = (existingUnphased ? '<option value="">未分阶段</option>' : '') + phaseOptions(subject, selected);
@@ -1454,6 +1512,8 @@
   function openPlans() {
     if (!state || actionBusy) return;
     planPages.clear();
+    planFoldState.clear();
+    planClosedNotes.clear();
     $('plan-search').value = '';
     $('plan-message').textContent = '';
     closePlanEditor();
@@ -1830,7 +1890,7 @@
   $('plan-phase-filter').addEventListener('change', event => {
     const subjectId = $('plan-filter').value;
     planPhaseFilters.set(subjectId, event.target.value);
-    planPages.set(subjectId, 0);
+    planPages.set(planPhaseKey(subjectId, event.target.value), 0);
     renderPlans();
   });
   $('plan-subject').addEventListener('change', () => planChapterOptions());
@@ -1882,8 +1942,10 @@
       planPhaseFilters.set(subjectId, phase);
       $('plan-search').value = '';
       const subject = catalogue().subjects.get(subjectId);
-      const first = planRows(subject, phase, '').findIndex(row => row.chapter.id === id);
-      planPages.set(subjectId, Math.max(0, Math.floor(first / PLAN_PAGE_SIZE)));
+      const key = planPhaseKey(subjectId, phase);
+      const first = planRows(subject.chapters.filter(chapter => (chapter.phase || '') === phase), '').findIndex(row => row.chapter.id === id);
+      planFoldState.set(key, true);
+      planPages.set(key, Math.max(0, Math.floor(first / PLAN_PAGE_SIZE)));
       closePlanEditor();
       $('plan-list').querySelector(`[data-board-chapter-id="${id}"] [data-board-action="new"]`)?.focus();
     } catch (error) { planError(error); }
@@ -1899,7 +1961,7 @@
       await savePlan(catalogue, '大章节已创建。');
       $('plan-filter').value = subjectId;
       planPhaseFilters.set(subjectId, name);
-      planPages.set(subjectId, 0);
+      planFoldState.set(planPhaseKey(subjectId, name), true);
       $('plan-search').value = '';
       closePlanEditor();
       $('plan-list').querySelector('[data-board-action="new-chapter"]')?.focus();
@@ -1959,20 +2021,42 @@
   });
   $('plan-list').addEventListener('click', event => {
     if (!state || actionBusy) return;
+    const summary = event.target.closest('[data-plan-phase-toggle]');
+    if (summary) {
+      event.preventDefault();
+      const panel = summary.parentElement;
+      const key = panel.dataset.phaseKey;
+      const top = panel.closest('.plan-column-cards').scrollTop;
+      planFoldState.set(key, !panel.open);
+      renderPlans();
+      const fresh = [...$('plan-list').querySelectorAll('[data-phase-key]')].find(item => item.dataset.phaseKey === key);
+      if (fresh) {
+        fresh.closest('.plan-column-cards').scrollTop = top;
+        fresh.querySelector('summary').focus({ preventScroll: true });
+      }
+      return;
+    }
+    const notes = event.target.closest('.plan-chapter-notes > summary')?.parentElement;
+    if (notes) {
+      if (notes.open) planClosedNotes.add(notes.dataset.planNotes);
+      else planClosedNotes.delete(notes.dataset.planNotes);
+      return;
+    }
     const columnButton = event.target.closest('[data-board-action]');
     if (columnButton) {
       const subjectId = columnButton.closest('[data-board-subject]').dataset.boardSubject;
       const action = columnButton.dataset.boardAction;
       const subject = catalogue().subjects.get(subjectId);
+      const panel = columnButton.closest('[data-phase-key]');
       const chapterId = columnButton.closest('[data-board-chapter-id]')?.dataset.boardChapterId;
       if (action === 'new') editPlanTask(null, subjectId, chapterId);
-      else if (action === 'new-chapter') editPlanChapter(subject);
+      else if (action === 'new-chapter') editPlanChapter(subject, null, panel.dataset.planPhase);
       else if (action === 'new-phase') {
         phaseSubjectId = subjectId;
         $('plan-phase-name').value = '';
         showPlanEditor('plan-phase-form', `新建大章节 · ${subject.name}`, 'plan-phase-name');
       } else if (action === 'delete-phase') {
-        const phase = planPhase(subject);
+        const phase = panel.dataset.planPhase;
         if (!phase) return;
         const count = subject.chapters.filter(item => item.phase === phase).reduce((sum, item) => sum + item.tasks.length, 0);
         confirmPlanDelete({ subject_id: subjectId, phase }, phase, count);
@@ -1981,8 +2065,9 @@
         if (!chapter) return;
         if (action === 'delete-chapter') confirmPlanDelete({ subject_id: subjectId, chapter_id: chapterId }, chapter.title, chapter.tasks.length);
         else if (chapter.id.startsWith('custom-chapter-')) editPlanChapter(subject, chapter);
-      } else {
-        planPages.set(subjectId, (planPages.get(subjectId) || 0) + (action === 'next' ? 1 : -1));
+      } else if (action === 'next' || action === 'previous') {
+        const key = panel.dataset.phaseKey;
+        planPages.set(key, (planPages.get(key) || 0) + (action === 'next' ? 1 : -1));
         renderPlans();
       }
       return;
@@ -2006,16 +2091,6 @@
       renderPlans();
       flushAutosave().then(() => showToast('已加入今日清单。')).catch(planError);
     }
-  });
-  $('plan-list').addEventListener('change', event => {
-    const select = event.target.closest('[data-board-phase]');
-    if (!select?.value || actionBusy) return;
-    const subjectId = select.dataset.boardPhase;
-    $('plan-filter').value = subjectId;
-    planPhaseFilters.set(subjectId, select.value);
-    planPages.set(subjectId, 0);
-    renderPlans();
-    $('plan-phase-filter').focus({ preventScroll: true });
   });
   $('plan-list').addEventListener('dragstart', event => {
     const card = event.target.closest('[data-plan-task]');

@@ -7,7 +7,6 @@ const all = library.subjects.flatMap(subject => subject.chapters.flatMap(chapter
 test('408 chapter long-answer exercises share the second round while video frequency metadata stays in round one', () => {
   for (const subject of library.subjects.slice(4)) {
     assert(subject.chapters.some(chapter => chapter.phase === '第二轮'), subject.id);
-    if (['co', 'os'].includes(subject.id)) assert(!subject.chapters.some(chapter => chapter.phase === '强化'), subject.id);
     assert(!subject.chapters.some(chapter => ['应用综合', '二轮算法'].includes(chapter.phase)));
     for (const chapter of subject.chapters) {
       for (const task of chapter.tasks) {
@@ -25,6 +24,29 @@ test('408 chapter long-answer exercises share the second round while video frequ
   const cn = library.subjects.find(s => s.id === 'cn');
   assert.equal(cn.chapters.find(c => c.tasks.some(t => t.id === 'cn-08eb2607804646c592a3')).phase, '第二轮');
   assert.equal(cn.chapters.find(c => c.tasks.some(t => t.id === 'cn-3ec4df05747292d69344')).phase, '强化');
+});
+
+test('the reinforcement supplement appends only video-named lessons for CO, OS and CN', () => {
+  const storage = require('../study/storage.js');
+  const supplement = storage.plan.unpack(require('../study/plans/wangdao-reinforcement.json'));
+  assert.deepEqual(supplement.subjects.map(subject => [subject.id, subject.chapters.length]), [['co', 17], ['os', 4], ['cn', 5]]);
+  for (const subject of supplement.subjects) {
+    const original = library.subjects.find(item => item.id === subject.id);
+    for (const chapter of subject.chapters) {
+      assert.deepEqual(chapter, original.chapters.find(item => item.id === chapter.id));
+      assert.equal(chapter.phase, '强化');
+      assert.equal(chapter.tasks.length, 1);
+      const task = chapter.tasks[0];
+      assert.equal(task.title, `看课 · ${chapter.title}`);
+      assert(task.source_video_minutes > 0);
+      assert.equal(task.estimated_minutes, Math.ceil(task.source_video_minutes));
+    }
+  }
+  const prior = structuredClone(library);
+  for (const subject of prior.subjects) subject.chapters = subject.chapters.filter(chapter => !chapter.id.includes('-wangdao-reinforcement-'));
+  const appended = storage.plan.merge(prior, supplement);
+  assert.deepEqual(appended.subjects.map(subject => subject.chapters), library.subjects.map(subject => subject.chapters));
+  assert.deepEqual(storage.plan.merge(appended, supplement), appended);
 });
 
 test('408 has no selectable book-title cards while the fixed subject order and valid chapters remain', () => {

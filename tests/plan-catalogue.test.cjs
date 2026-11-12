@@ -36,7 +36,7 @@ test('the downloadable default plan matches the built-in catalogue and its metad
   const file = JSON.parse(fs.readFileSync(path.join(__dirname, '../study/plans/default-plan.json'), 'utf8'));
   const catalogue = storage.plan.unpack(file);
   assert.deepEqual(catalogue, library);
-  assert.equal(storage.plan.entries(catalogue).length, 1587);
+  assert.equal(storage.plan.entries(catalogue).length, 1613);
   assert.deepEqual(storage.plan.unpack(storage.plan.pack(catalogue)), library);
 });
 
@@ -93,7 +93,7 @@ test('a built-in plan refresh retires removed tasks and keeps legacy tasks, snap
   assert(storage.plan.entries(day.library).some(task => task.id === 'custom-kept'));
   assert.deepEqual(day.state.assignments, saved.current.assignments);
   assert.deepEqual(day.state.library_completed_ids, [removed.id]);
-  assert.equal(day.state.subject_phases.os, '');
+  assert.equal(day.state.subject_phases.os, '强化');
   assert.equal(record().revision, saved.revision + 1);
   await store.request('/api/day');
   assert.equal(record().revision, saved.revision + 1);
@@ -359,7 +359,7 @@ test('a full backup preserves an intentionally empty plan when replacing the def
   assert.deepEqual(target.record().current.assignments, []);
 });
 
-test('restoring an earlier backup preserves its dated snapshot and brings unfinished work into today', async () => {
+test('restoring an earlier backup brings unfinished work into today without archiving pending work', async () => {
   const date = '2026-11-06';
   const index = storage.helpers.libraryIndex(library);
   const initial = storage.helpers.saveRecord({ ...storage.helpers.initialRecord(date), plan_library: library }, {
@@ -370,8 +370,70 @@ test('restoring an earlier backup preserves its dated snapshot and brings unfini
   const restored = await target.store.importBackup(await source.store.exportBackup(), { replace: true, revision: 1 });
   assert.equal(restored.date, '2026-11-07');
   assert.deepEqual(restored.assignments, initial.current.assignments);
-  assert.deepEqual(target.record().archives, [initial.current]);
+  assert.deepEqual(target.record().archives, []);
   assert.deepEqual(restored.history, []);
+});
+
+test('automatic rollover carries unfinished work and exposes only checked-in history', async () => {
+  const index = storage.helpers.libraryIndex(library);
+  const [pending, scheduled, done, ongoing, finished, legacyPending, future] = index.keys();
+  const day = '2026-11-06';
+  const saved = storage.helpers.saveRecord({ ...storage.helpers.initialRecord(day), plan_library: library }, {
+    date: day, revision: 1, assignments: [
+      { task_id: pending, done: false }, { task_id: scheduled, done: false },
+      { task_id: done, done: true, actual_minutes: 12 },
+      { task_id: ongoing, task_mode: 'multi-day', done: true, actual_minutes: 20, checkin_segments: [8, 12] },
+      { task_id: finished, task_mode: 'multi-day', done: true, actual_minutes: 18 },
+    ],
+    library_completed_ids: [finished],
+  }, index);
+  const legacyDay = { date: '2026-11-05', assignments: storage.helpers.normaliseAssignments([
+    { task_id: done, done: true, actual_minutes: 5 }, { task_id: legacyPending, done: false },
+  ], index) };
+  const savedToday = { date: '2026-11-07', assignments: storage.helpers.normaliseAssignments([{ task_id: scheduled, done: true, actual_minutes: 7 }], index) };
+  const futureDay = { date: '2026-11-08', assignments: storage.helpers.normaliseAssignments([{ task_id: future, done: true }], index) };
+  saved.archives = [legacyDay, savedToday, futureDay];
+  const { store, record } = fixture(saved, { offline: true });
+  const { state } = await store.request('/api/day');
+  assert.equal(state.date, savedToday.date);
+  assert.deepEqual(state.assignments.map(task => task.task_id), [scheduled, pending, ongoing]);
+  assert.deepEqual(state.assignments[0], savedToday.assignments[0]);
+  assert.deepEqual([state.assignments[2].done, state.assignments[2].actual_minutes, state.assignments[2].checkin_segments], [false, null, []]);
+  const archives = record().archives;
+  assert.deepEqual(archives.find(archive => archive.date === legacyDay.date), legacyDay);
+  assert.deepEqual(archives.find(archive => archive.date === futureDay.date), futureDay);
+  assert.equal(state.task_progress[future], undefined);
+  const archived = await store.request(`/api/history/${day}`);
+  assert.deepEqual(archived.assignments.map(task => task.task_id), [done, ongoing, finished]);
+  assert.deepEqual(archived.assignments[1].checkin_segments, [8, 12]);
+  assert.equal(archived.assignments[1].overall_completed, false);
+  assert.equal(archived.assignments[2].overall_completed, true);
+  assert.deepEqual((await store.request(`/api/history/${legacyDay.date}`)).assignments, [legacyDay.assignments[0]]);
+  assert.deepEqual(state.history.map(entry => entry.total), [3, 1]);
+  assert.deepEqual((await store.request('/api/history?status=pending')).dates.flatMap(entry => entry.assignments.map(task => task.task_id)), [pending, ongoing]);
+  await assert.rejects(store.request(`/api/history/${futureDay.date}`), error => error.status === 404);
+  assert.equal((await store.request('/api/state')).revision, state.revision);
+});
+
+test('scheduled tasks and rollover overflow remain editable and survive full backup restore', async () => {
+  const index = storage.helpers.libraryIndex(library);
+  const ids = [...index.keys()].slice(0, 103);
+  const pending = task_id => ({ task_id, done: false });
+  const catalogue = { ...storage.helpers.initialRecord('2026-11-06'), plan_library: library };
+  catalogue.current.assignments = storage.helpers.normaliseAssignments(ids.slice(99, 102).map(pending), index);
+  catalogue.archives = [{ date: '2026-11-07', assignments: storage.helpers.normaliseAssignments(ids.slice(0, 100).map(pending), index) }];
+  const { store } = fixture(catalogue, { offline: true });
+  const { state } = await store.request('/api/day');
+  assert.deepEqual(state.assignments.map(task => task.task_id), ids.slice(0, 102));
+  assert.deepEqual(state.history, []);
+  const save = assignments => store.request('/api/state', { method: 'PUT', body: JSON.stringify({ date: state.date, revision: state.revision, assignments }) });
+  await assert.rejects(save([...state.assignments, pending(ids[102])]), /100 项任务/);
+  const saved = await save(state.assignments.map(task => task.task_id === ids[101] ? { ...task, done: true, actual_minutes: 14 } : task));
+  assert.equal(saved.assignments.length, 102);
+  const fullBackup = await store.exportBackup();
+  const target = fixture(undefined, { offline: true });
+  const restored = await target.store.importBackup(fullBackup, { replace: true, revision: 1 });
+  assert.deepEqual(restored.assignments, saved.assignments);
 });
 
 test('deleting a plan chapter or task removes its check-ins and time without deleting unrelated records', async () => {

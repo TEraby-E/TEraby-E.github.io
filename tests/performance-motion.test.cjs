@@ -90,7 +90,10 @@ test('100 collapsed tasks create no detail cards; opening one subject renders on
 test('history and backup use readonly transactions, leaving editing transactions available',async()=>{
   const modes=[],puts=[];
   const record=store.helpers.initialRecord('2026-10-31');
-  record.archives=[{date:'2026-10-30',assignments:[],subject_stage_progress:{}}];
+  const index=store.helpers.libraryIndex(raw);
+  const assignments=store.helpers.normaliseAssignments([{task_id:index.keys().next().value,done:true}],index);
+  record.plan_library=raw;
+  record.archives=[{date:'2026-10-30',assignments,subject_stage_progress:{}}];
   const db={close(){},transaction(name,mode){
     modes.push(mode);
     const tx={objectStore(){return {get(){const req={result:structuredClone(record)};queueMicrotask(()=>{req.onsuccess();queueMicrotask(()=>tx.oncomplete());});return req;},put(value){puts.push(value);}};}};

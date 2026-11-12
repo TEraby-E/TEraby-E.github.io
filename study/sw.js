@@ -1,12 +1,12 @@
 'use strict';
 
 const PREFIX = `sjtu-checkin-${new URL(self.registration.scope).pathname}-`;
-const CACHE = `${PREFIX}v57`;
-const RELEASE = '20261112-phase-hierarchy';
+const CACHE = `${PREFIX}v58`;
+const RELEASE = '20261112-rollover-reinforcement';
 const FILES = [
   './', './styles.css', './cards.css', './app.js', './study-time.js', './learning-model.js', './storage.js', './export-image.js',
   './cloud-config.js', './cloud.js', './vendor/supabase.js', './vendor/html-to-image.js', './manifest.webmanifest', './data/library.json', './assets/terabyte-flow.svg', './assets/terabyte-touch-icon.png',
-  './assets/study-backdrop.svg', './assets/paper-texture.svg'
+  './assets/study-backdrop.svg', './assets/paper-texture.svg', './plans/wangdao-reinforcement.json'
 ];
 const allowed = new Set(FILES.map((path) => new URL(path, self.registration.scope).href));
 const documentURL = new URL('./', self.registration.scope).href;
