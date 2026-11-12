@@ -221,6 +221,101 @@ test('an empty custom chapter survives save, export and merge, and keeps its ID 
   assert.equal(task.phase, chapter.phase);
 });
 
+test('a declared empty phase survives plan merging and full backup and can become a chapter parent', async () => {
+  const phase = '专项大章';
+  const subject_id = firstSubject.id;
+  const catalogue = storage.plan.addPhase(library, { subject_id, name: ` ${phase} ` });
+  const previousPhases = [...storage.helpers.libraryIndex(library).subjectPhases.get(subject_id)];
+  const expected = [...previousPhases, phase];
+  assert.deepEqual(catalogue.subjects[0].phases, expected);
+  assert.throws(() => storage.plan.addPhase(catalogue, { subject_id, name: phase }), /同名大章/);
+  assert.throws(() => storage.plan.addPhase(catalogue, { subject_id, name: ' ' }), /有效的大章名称/);
+  const template = storage.plan.unpack(storage.plan.pack(catalogue));
+  assert.deepEqual(storage.plan.merge(library, template).subjects[0].phases, expected);
+  assert.deepEqual(storage.plan.updateChapter(template, {
+    id: 'custom-chapter-new-phase', subject_id, title: '首个小章', phase,
+  }).subjects[0].chapters.at(-1).phase, phase);
+
+  const initial = { ...storage.helpers.initialRecord('2026-11-07'), plan_library: catalogue };
+  const saved = storage.helpers.saveRecord(initial, {
+    date: initial.current.date, revision: initial.revision, assignments: [], subject_phases: { [subject_id]: phase },
+  }, storage.helpers.libraryIndex(catalogue));
+  const { store } = fixture(saved, { offline: true });
+  const target = fixture(undefined, { offline: true });
+  const restored = await target.store.importBackup(await store.exportBackup(), { replace: true, revision: 1 });
+  assert.equal(restored.subject_phases[subject_id], phase);
+  assert.deepEqual((await target.store.request('/api/library')).subjects[0].phases, expected);
+  const result = await target.store.request('/api/plan', {
+    method: 'DELETE', body: JSON.stringify({ date: restored.date, revision: restored.revision, subject_id, phase }),
+  });
+  assert.equal(result.subject_phases[subject_id], '');
+  assert.deepEqual((await target.store.request('/api/library')).subjects[0].phases, previousPhases);
+});
+
+test('removing the last small chapter preserves its inferred parent as an empty phase', async () => {
+  const phase = '基础一轮';
+  const chapter = { id: 'old-chapter', title: '旧小章', phase, tasks: [] };
+  const subject = { id: 'english', name: '英语', chapters: [chapter] };
+  const initial = { ...storage.helpers.initialRecord('2026-11-07'), plan_library: { subjects: [subject] }, subject_phases: { english: phase } };
+  const { store, record } = fixture(initial, { offline: true });
+  const result = await store.request('/api/plan', { method: 'DELETE', body: JSON.stringify({
+    date: initial.current.date, revision: initial.revision, subject_id: subject.id, chapter_id: chapter.id,
+  }) });
+  assert.equal(result.subject_phases.english, phase);
+  assert.deepEqual(record().plan_library.subjects[0], { ...subject, chapters: [], phases: [phase] });
+});
+
+test('deleting a phase removes its small chapters and their check-ins while preserving other phases', async () => {
+  const phase = '第二轮';
+  const siblingPhase = '基础一轮';
+  const chapter = (id, phase, tasks) => ({ id, title: id, phase, tasks: tasks.map(id => ({ id, title: id })) });
+  const subjects = [
+    { id: 'english', name: '英语', phases: [siblingPhase, phase], chapters: [
+      chapter('removed-chapter', phase, ['removed-task']), chapter('removed-empty-chapter', phase, []),
+      chapter('kept-chapter', siblingPhase, ['moved-task']), chapter('unphased', '', ['unphased-task']),
+    ] },
+    { id: 'ds', name: '数据结构', chapters: [chapter('other-subject-chapter', phase, ['other-subject-task'])] },
+  ];
+  const retired = { id: 'retired-task', subject_id: 'english', chapter_id: 'retired-chapter', phase };
+  const catalogue = { subjects, metadata: { retired_tasks: [retired] } };
+  const index = storage.helpers.libraryIndex(catalogue);
+  const initial = { ...storage.helpers.initialRecord('2026-11-07'), plan_library: catalogue };
+  const saved = storage.helpers.saveRecord(initial, {
+    date: initial.current.date, revision: initial.revision,
+    assignments: [
+      { task_id: 'removed-task', done: true, actual_minutes: 11 }, { task_id: 'moved-task', done: true, actual_minutes: 21 },
+      { task_id: 'unphased-task', done: true, actual_minutes: 31 }, { task_id: 'other-subject-task', done: true, actual_minutes: 41 },
+      { ...retired, task_id: retired.id, title: '已停用的任务', done: true, actual_minutes: 51 },
+    ],
+    library_completed_ids: ['removed-task', 'moved-task', retired.id],
+    task_modes: { 'removed-task': 'multi-day', 'moved-task': 'multi-day', [retired.id]: 'multi-day' },
+    subject_phases: { english: phase, ds: phase },
+  }, index);
+  const [removed, moved, unphased, removedRetired, other] = saved.current.assignments;
+  const beforeMove = { ...moved, chapter_id: 'retired-chapter', actual_minutes: 8 };
+  const progress = { phase: siblingPhase, totalMinutes: 100, completedMinutes: 30, unknown: 0, percent: 30 };
+  saved.archives = [
+    { date: '2026-11-05', assignments: [removed, beforeMove, removedRetired] },
+    { date: '2026-11-06', assignments: [removed, moved, unphased, other], subject_stage_progress: { english: progress } },
+  ];
+  const { store, record } = fixture(saved, { offline: true });
+  const remove = revision => store.request('/api/plan', { method: 'DELETE', body: JSON.stringify({
+    date: saved.current.date, revision, subject_id: 'english', phase,
+  }) });
+  await assert.rejects(remove(saved.revision - 1), error => error.status === 409);
+  assert.deepEqual(record(), saved);
+  const result = await remove(saved.revision);
+  assert.deepEqual(result.assignments, [moved, unphased, other]);
+  assert.deepEqual(result.subject_phases, { english: '', ds: phase });
+  assert.deepEqual(result.library_completed_ids, ['moved-task']);
+  assert.deepEqual(result.task_modes, { 'moved-task': 'multi-day' });
+  assert.deepEqual(record().archives, [{ date: '2026-11-06', assignments: [moved, unphased, other], subject_stage_progress: { english: progress } }]);
+  assert.deepEqual(record().plan_library.subjects[0].phases, [siblingPhase]);
+  assert.deepEqual(record().plan_library.subjects[0].chapters, subjects[0].chapters.slice(2));
+  assert.deepEqual(record().plan_library.subjects[1], subjects[1]);
+  assert.deepEqual(record().plan_library.metadata.retired_tasks, []);
+});
+
 test('complete JSON restores the entire journal offline after deleting a subject', async () => {
   const subject = { id: 'custom-subject-review', name: '算法复习' };
   const chapter = { id: 'custom-chapter-review', subject_id: subject.id, title: '图搜索', phase: '' };

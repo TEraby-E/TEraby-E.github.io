@@ -1106,12 +1106,19 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
 .plan-column-chapter-row{margin-bottom:8px}
 .plan-column-chapter{flex:1;min-width:0;font-size:13px}
 .plan-column-actions .plan-remove-chapter,.plan-actions .text-button:last-child{color:#8b3733}
-.plan-column-cards{display:grid;align-content:start;gap:8px;flex:1;min-height:0;overflow-y:auto;padding:2px 3px 6px;overscroll-behavior:contain}
+.plan-column-cards{display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:12px;flex:1;min-height:0;overflow-y:auto;padding:2px 3px 6px;overscroll-behavior:contain}
+.plan-chapter-group{min-width:0;border-radius:6px;transition:background .15s}
+.plan-chapter-group+.plan-chapter-group{padding-top:5px;border-top:1px solid var(--surface-border)}
+.plan-chapter-heading{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;margin:0 2px 5px}
+.plan-chapter-heading h4{flex:1 1 10ch;min-width:0;margin:0;color:var(--surface-ink);font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.plan-chapter-phase{display:inline-block;margin-inline-start:.45em;color:var(--surface-muted);font-size:11px;font-weight:400;overflow-wrap:anywhere}
+.plan-chapter-heading .plan-column-actions{flex-wrap:wrap;justify-content:flex-end;margin-inline-start:auto}
+.plan-chapter-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
 .plan-card{display:flex;flex-direction:column;min-width:0;padding:9px 11px;border:1px solid var(--surface-border);border-radius:8px;background:#fffefa;box-shadow:0 2px 5px #5147380d}
 .plan-card[draggable=true]{cursor:grab}
 .plan-card.is-editing{border-color:var(--surface-focus);box-shadow:0 0 0 2px #a2836126}
 .plan-card.is-dragging{opacity:.45}
-.plan-column.is-drop-target{border-color:var(--surface-focus);background:#eadac0}
+.plan-chapter-group.is-drop-target{outline:1px solid var(--surface-focus);outline-offset:1px;background:var(--surface-selected)}
 .plan-card-title{display:block;width:100%;border:0;padding:0;background:none;color:var(--surface-ink);text-align:left;font:inherit;font-size:14px;font-weight:700;line-height:1.6;overflow-wrap:anywhere;cursor:pointer}
 .plan-card-title:hover{color:var(--button-ink)}
 .plan-card-chapter{display:block;margin-top:2px;color:var(--surface-muted);font-size:12px;line-height:1.5}
@@ -1164,8 +1171,8 @@ body{font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothin
  .plan-modal .modal-footer .button{font-size:11px;padding:7px 10px;min-height:35px}
  .plan-modal .modal-footer select{min-height:35px;font-size:11px}
 }
-@media(min-width:900px){
- .plan-column:only-child .plan-column-cards{grid-template-columns:repeat(auto-fit,minmax(min(100%,355px),1fr))}
+@media(min-width:751px){
+ .plan-column:only-child .plan-chapter-cards{grid-template-columns:repeat(auto-fill,minmax(min(100%,285px),1fr))}
 }
 @media(max-width:600px){
  .plan-toolbar{grid-template-columns:minmax(90px,1fr) minmax(0,1.6fr)}

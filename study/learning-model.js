@@ -12,9 +12,10 @@
       this.id = data.id;
       this.name = data.name;
       this.chapters = data.chapters || [];
+      this.declaredPhases = Array.isArray(data.phases) ? data.phases : [];
     }
     get supportsLearningInfo() { return false; }
-    get phases() { return [...new Set(this.chapters.map(chapter => chapter.phase).filter(Boolean))]; }
+    get phases() { return [...new Set([...this.declaredPhases, ...this.chapters.map(chapter => chapter.phase)].filter(Boolean))]; }
     sectionFor() { return null; }
     learningInfo(task) { return learningInfo(task, this.sectionFor(task)); }
 

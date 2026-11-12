@@ -23,6 +23,7 @@
   const isCustomSubject = id => typeof id === 'string' && /^custom-subject-[\w-]{1,185}$/.test(id);
   const isSubjectId = id => typeof id === 'string' && (Object.hasOwn(SUBJECTS, id) || isCustomSubject(id));
   const isSubjectName = name => typeof name === 'string' && Boolean(name.trim()) && name.length <= 100;
+  const isPhaseName = name => typeof name === 'string' && Boolean(name.trim()) && name.length <= 200;
   const subjectName = (index, id) => index?.subjects
     ? index.subjects.get(id)?.name
     : Object.hasOwn(SUBJECTS, id) ? SUBJECTS[id] : undefined;
@@ -99,6 +100,9 @@
     for (const subject of library.subjects) {
       if (!isSubjectId(subject?.id) || index.subjects.has(subject.id) || !isSubjectName(subject.name) ||
           !Array.isArray(subject.chapters)) throw new StoreError('章节任务库的科目不正确或重复。');
+      if (Object.hasOwn(subject, 'phases') && (!Array.isArray(subject.phases) ||
+          subject.phases.some(phase => !isPhaseName(phase)) ||
+          new Set(subject.phases).size !== subject.phases.length)) throw new StoreError('大章名称格式不正确或重复。');
       index.subjectOrder.set(subject.id, index.subjects.size);
       index.subjects.set(subject.id, subject);
       const subjectModel = models().createSubject(subject);
@@ -286,6 +290,25 @@
     return typeof id === 'string' && /^custom-chapter-[\w-]{1,185}$/.test(id);
   }
 
+  function addPlanPhase(catalogue, { subject_id, name }) {
+    const phase = typeof name === 'string' ? name.trim() : '';
+    if (!isPhaseName(phase)) throw new StoreError('请填写有效的大章名称。');
+    const next = copy(catalogue);
+    const subject = planSubject(next, subject_id);
+    const phases = models().createSubject(subject).phases.filter(isPhaseName);
+    if (phases.includes(phase)) throw new StoreError('该学科已有同名大章。');
+    subject.phases = [...phases, phase];
+    return validateCatalogue(next);
+  }
+
+  function preserveEmptyParent(subject, chapter) {
+    const phase = chapter.phase;
+    if (isPhaseName(phase) && !subject.phases?.includes(phase) &&
+        !subject.chapters.some(item => item !== chapter && item.phase === phase)) {
+      subject.phases = models().createSubject(subject).phases.filter(isPhaseName);
+    }
+  }
+
   function updatePlanChapter(catalogue, { id, subject_id, title, phase }) {
     if (!isCustomChapter(id)) throw new StoreError('请选择自定义章节。');
     const name = typeof title === 'string' ? title.trim() : '';
@@ -294,14 +317,16 @@
     const subject = planSubject(next, subject_id);
     const chapter = subject.chapters.find(item => item.id === id);
     const selectedPhase = phase ?? chapter?.phase ?? '';
-    if (selectedPhase !== '' && !subject.chapters.some(item => item.phase === selectedPhase)) {
+    if (selectedPhase !== '' && !models().createSubject(subject).phases.includes(selectedPhase)) {
       throw new StoreError('请选择此学科已有的学习阶段。');
     }
     if (subject.chapters.some(item => item.id !== id && (item.phase || '') === selectedPhase && item.title.trim() === name)) {
       throw new StoreError('该阶段已有同名章节。');
     }
-    if (chapter) Object.assign(chapter, { title: name, phase: selectedPhase });
-    else subject.chapters.push({ id, title: name, phase: selectedPhase, tasks: [] });
+    if (chapter) {
+      if (chapter.phase !== selectedPhase) preserveEmptyParent(subject, chapter);
+      Object.assign(chapter, { title: name, phase: selectedPhase });
+    } else subject.chapters.push({ id, title: name, phase: selectedPhase, tasks: [] });
     return validateCatalogue(next);
   }
 
@@ -365,6 +390,10 @@
         next.subjects.push(target);
         subjects.set(target.id, target);
       }
+      if (subject.phases?.length) {
+        const phases = models().createSubject(target).phases.filter(isPhaseName);
+        target.phases = [...new Set([...phases, ...subject.phases])];
+      }
       for (const chapter of subject.chapters) {
         const tasks = chapter.tasks.filter(task => !ids.has(task.id) && !retired.has(task.id));
         tasks.forEach(task => ids.add(task.id));
@@ -394,7 +423,7 @@
   function refreshDefaultPlan(base, record) {
     const previous = record.plan_library;
     const known = id => base.index.has(id) || base.index.retired.has(id);
-    const hasExtraTasks = previous.subjects.some(subject => isCustomSubject(subject.id) ||
+    const hasExtraTasks = previous.subjects.some(subject => isCustomSubject(subject.id) || subject.phases?.length ||
       subject.chapters.some(chapter => isCustomChapter(chapter.id) || chapter.tasks.some(task => !known(task.id))));
     const hasExtraRetiredIds = previous.metadata?.retired_tasks?.some(task => !known(task.id));
     const catalogue = hasExtraTasks || hasExtraRetiredIds ? mergeCatalogues(base.library, previous) : base.library;
@@ -580,23 +609,36 @@
   function deletePlanContent(record, payload, source) {
     checkRevision(record, payload);
     const byChapter = Object.hasOwn(payload, 'chapter_id');
+    const byPhase = Object.hasOwn(payload, 'phase');
     const byTask = Object.hasOwn(payload, 'task_id');
     const hasSubject = Object.hasOwn(payload, 'subject_id');
-    if ((byTask && (byChapter || hasSubject)) || (!byTask && !hasSubject)) {
-      throw new StoreError('请选择要删除的学科、章节或任务。');
+    if ((byTask && (byChapter || byPhase || hasSubject)) || (!byTask && (!hasSubject || (byChapter && byPhase)))) {
+      throw new StoreError('请选择要删除的学科、大章、章节或任务。');
     }
     const catalogue = copy(source.library);
     const days = [record.current, ...record.archives];
     const deletedIds = new Set();
     let deletedSubjectId = null;
-    let deletedChapter = null;
-    if (byChapter) {
+    let chapterScope = null;
+    if (byChapter || byPhase) {
       const subject = planSubject(catalogue, payload.subject_id);
-      const chapter = subject.chapters.find(item => item.id === payload.chapter_id);
-      if (!chapter) throw new StoreError('这个章节已不存在。');
-      deletedChapter = { id: chapter.id, subjectId: subject.id };
-      for (const task of chapter.tasks) deletedIds.add(task.id);
-      subject.chapters = subject.chapters.filter(item => item !== chapter);
+      if (byPhase && !source.index.subjectPhases.get(subject.id).has(payload.phase)) throw new StoreError('这个大章已不存在。');
+      const chapters = subject.chapters.filter(item => byPhase ? item.phase === payload.phase : item.id === payload.chapter_id);
+      if (byChapter && !chapters.length) throw new StoreError('这个章节已不存在。');
+      if (byChapter) preserveEmptyParent(subject, chapters[0]);
+      const chapterIds = new Set(chapters.map(chapter => chapter.id));
+      chapterScope = { ids: chapterIds, subjectId: subject.id };
+      for (const chapter of chapters) for (const task of chapter.tasks) deletedIds.add(task.id);
+      subject.chapters = subject.chapters.filter(chapter => !chapterIds.has(chapter.id));
+      if (byPhase) {
+        if (subject.phases) subject.phases = subject.phases.filter(phase => phase !== payload.phase);
+        const remainingChapterIds = new Set(subject.chapters.map(chapter => chapter.id));
+        for (const task of source.index.retired.values()) {
+          if (task.subject_id !== subject.id || task.phase !== payload.phase) continue;
+          deletedIds.add(task.id);
+          if (task.chapter_id && !remainingChapterIds.has(task.chapter_id)) chapterIds.add(task.chapter_id);
+        }
+      }
     } else if (byTask) {
       const entry = source.index.get(payload.task_id);
       if (!entry) throw new StoreError('这项任务已不存在。');
@@ -621,8 +663,8 @@
     }
 
     const matchesDeletedScope = task => (deletedSubjectId !== null && task.subject_id === deletedSubjectId) ||
-      (deletedChapter !== null && task.subject_id === deletedChapter.subjectId && task.chapter_id === deletedChapter.id);
-    if (deletedSubjectId || deletedChapter) {
+      (chapterScope !== null && task.subject_id === chapterScope.subjectId && chapterScope.ids.has(task.chapter_id));
+    if (deletedSubjectId || chapterScope) {
       for (const task of source.index.retired.values()) if (matchesDeletedScope(task)) deletedIds.add(task.id);
       const addOrphan = task => {
         if (matchesDeletedScope(task) && !source.index.has(task.task_id) && !source.index.retired.has(task.task_id)) deletedIds.add(task.task_id);
@@ -633,7 +675,9 @@
 
     const subject_phases = Object.fromEntries(Object.entries(record.subject_phases || {}).flatMap(([id, phase]) => {
       const subject = catalogue.subjects.find(item => item.id === id);
-      return subject ? [[id, subject.chapters.some(chapter => chapter.phase === phase) ? phase : '']] : [];
+      if (!subject) return [];
+      const phaseExists = subject.phases?.includes(phase) || subject.chapters.some(chapter => chapter.phase === phase);
+      return [[id, phaseExists ? phase : '']];
     }));
     const next = { ...record, revision: record.revision + 1, plan_library: catalogue, plan_customized: true, subject_phases };
 
@@ -647,7 +691,7 @@
         affectedTaskIds.add(task.task_id);
       }
     }
-    if (!affectedTaskIds.size && !deletedSubjectId) return next;
+    if (!affectedTaskIds.size && !deletedSubjectId && !byPhase) return next;
     for (const id of affectedTaskIds) {
       const entry = source.index.get(id);
       if (!entry) continue;
@@ -657,12 +701,14 @@
         affectedSubjects.add(source.index.get(relatedId).subject.id);
       }
     }
-    if (catalogue.metadata?.retired_tasks) {
-      catalogue.metadata.retired_tasks = catalogue.metadata.retired_tasks.filter(task => !deletedIds.has(task.id));
-    }
-    for (const subject of catalogue.subjects) {
-      for (const section of Object.values(subject.sections || {})) {
-        if (Array.isArray(section.learning_tasks)) section.learning_tasks = section.learning_tasks.filter(id => !deletedIds.has(id));
+    if (deletedIds.size) {
+      if (catalogue.metadata?.retired_tasks) {
+        catalogue.metadata.retired_tasks = catalogue.metadata.retired_tasks.filter(task => !deletedIds.has(task.id));
+      }
+      for (const subject of catalogue.subjects) {
+        for (const section of Object.values(subject.sections || {})) {
+          if (Array.isArray(section.learning_tasks)) section.learning_tasks = section.learning_tasks.filter(id => !deletedIds.has(id));
+        }
       }
     }
 
@@ -670,7 +716,14 @@
       const assignments = day.assignments.filter(task => !removesAssignment(task));
       const frozen = day.subject_stage_progress;
       if (!frozen) return { ...day, assignments };
-      const subject_stage_progress = Object.fromEntries(Object.entries(frozen).filter(([id]) => !affectedSubjects.has(id)));
+      const subject_stage_progress = Object.fromEntries(Object.entries(frozen).filter(([id, progress]) => {
+        if (byPhase && id === chapterScope.subjectId) {
+          if (progress.phase === payload.phase) return false;
+          if (progress.phase) return !day.assignments.some(task => task.subject_id === id &&
+            deletedIds.has(task.task_id) && !matchesDeletedScope(task));
+        }
+        return !affectedSubjects.has(id);
+      }));
       return { ...day, assignments, subject_stage_progress };
     };
     const archives = record.archives.flatMap(day => {
@@ -1148,6 +1201,7 @@
     update: updatePlan,
     remove: removePlanTask,
     updateSubject: updatePlanSubject,
+    addPhase: addPlanPhase,
     updateChapter: updatePlanChapter,
     merge: mergeCatalogues,
     pack: catalogue => ({ format: PLAN_FORMAT, version: 2, catalogue: validateCatalogue(catalogue) }),

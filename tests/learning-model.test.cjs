@@ -100,6 +100,23 @@ test('a restored custom subject shares section metadata and phase progress', () 
   assert.deepEqual(empty.phases, []);
 });
 
+test('a declared phase is selectable before any child chapters are added', () => {
+  const subject = models.createSubject({
+    id: 'custom-subject-review', name: '我的复习', phases: ['第一轮', '加练'],
+    chapters: [
+      { id: 'custom-chapter-second', phase: '第二轮', tasks: [] },
+      { id: 'custom-chapter-first', phase: '第一轮', tasks: [{ id: 'custom-task-practice', estimated_minutes: 20 }] },
+    ],
+    sections: { 复习: { learning_tasks: ['custom-task-practice'] } },
+  });
+  assert(subject instanceof models.SectionedSubject);
+  assert.deepEqual(subject.phases, ['第一轮', '加练', '第二轮']);
+  assert.equal(subject.resolvePhase('加练'), '加练');
+  assert.deepEqual(subject.stageProgress({ phase: '加练' }), {
+    phase: '加练', totalMinutes: 0, completedMinutes: 0, unknown: 0, percent: null,
+  });
+});
+
 test('OS and CN import every source row and exclude book-only cards while retaining multiline remarks', () => {
   for (const [id, imported, excluded] of [['os', 136, 82], ['cn', 140, 62]]) {
     const subject = library.subjects.find(subject => subject.id === id);

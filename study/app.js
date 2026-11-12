@@ -33,14 +33,15 @@
   let completionDraft = null;
   let planEditing = null;
   let chapterDraft = null;
+  let phaseSubjectId = null;
   let planDeleteDraft = null;
   let backupRestoreDraft = null;
   let planCatalogue = null;
   let planOptionsSource = null;
   const planPages = new Map();
-  const planChapterFilters = new Map();
+  const planPhaseFilters = new Map();
   const PLAN_PAGE_SIZE = 12;
-  const PLAN_EDITOR_FORMS = ['plan-form', 'plan-chapter-form', 'plan-subject-form'];
+  const PLAN_EDITOR_FORMS = ['plan-form', 'plan-chapter-form', 'plan-phase-form', 'plan-subject-form'];
   let planEditBaseline = null;
   let planDraggedTask = null;
   let cloudAccount = null;
@@ -111,14 +112,7 @@
 
     get plan() {
       if (!this.planTasks) {
-        const byId = new Map();
-        const bySubject = new Map();
-        for (const entry of window.StudyStore.plan.entries({ subjects: this.source })) {
-          byId.set(entry.task_id, entry);
-          if (!bySubject.has(entry.subject_id)) bySubject.set(entry.subject_id, []);
-          bySubject.get(entry.subject_id).push(entry);
-        }
-        this.planTasks = { byId, bySubject };
+        this.planTasks = new Map(window.StudyStore.plan.entries({ subjects: this.source }).map(entry => [entry.task_id, entry]));
       }
       return this.planTasks;
     }
@@ -344,9 +338,10 @@
     $('plan-button').disabled = unavailable;
     const editing = !$('plan-editor-panel').hidden;
     $('new-plan-subject').disabled = unavailable || editing;
-    $('new-plan-task').disabled = unavailable || editing || !library.length;
+    $('new-plan-task').disabled = unavailable || editing || !planTaskTarget();
     $('plan-fields').disabled = actionBusy;
     $('plan-chapter-fields').disabled = actionBusy;
+    $('plan-phase-fields').disabled = actionBusy;
     $('plan-subject-fields').disabled = actionBusy;
     $('confirm-plan-delete').disabled = unavailable;
     $('confirm-backup-restore').disabled = unavailable;
@@ -1280,6 +1275,56 @@
     }
   }
 
+  function planPhase(subject) {
+    const phase = planPhaseFilters.get(subject.id);
+    return subject.phases.includes(phase) ? phase : '';
+  }
+
+  function phaseOptions(subject, selected = '') {
+    return subject.phases.map(phase => `<option value="${escape(phase)}" ${phase === selected ? 'selected' : ''}>${escape(phase)}</option>`).join('');
+  }
+
+  function planTaskTarget() {
+    const subjectId = $('plan-filter').value;
+    const subject = subjectId ? catalogue().subjects.get(subjectId) : library.find(item => item.chapters.length);
+    if (!subject) return null;
+    const phase = subjectId ? planPhase(subject) : '';
+    const chapter = subject.chapters.find(item => !phase || item.phase === phase);
+    return chapter ? { subjectId: subject.id, chapterId: chapter.id } : null;
+  }
+
+  function planRows(subject, phase, query) {
+    const entries = catalogue().plan;
+    return subject.chapters.flatMap(chapter => {
+      if (phase && chapter.phase !== phase) return [];
+      const matchesChapter = !query || chapter.title.toLowerCase().includes(query);
+      if (!chapter.tasks.length) return matchesChapter ? [{ chapter, task: null }] : [];
+      return chapter.tasks.map(task => entries.get(task.id))
+        .filter(task => matchesChapter || `${task.title} ${task.detail || ''} ${chapter.title}`.toLowerCase().includes(query))
+        .map(task => ({ chapter, task }));
+    });
+  }
+
+  function renderPlanChapter({ chapter, tasks }, { phase, locked, planned }) {
+    const title = escape(chapter.title);
+    const disabled = locked ? 'disabled' : '';
+    const label = !phase && chapter.phase ? ` <span class="plan-chapter-phase">${escape(chapter.phase)}</span>` : '';
+    const rename = chapter.id.startsWith('custom-chapter-') ? `<button type="button" class="text-button" data-board-action="rename-chapter" aria-label="重命名${title}" ${disabled}>重命名</button>` : '';
+    const cards = tasks.map(task => {
+      const added = planned.has(task.task_id);
+      return `<article class="plan-card ${planEditing === task.task_id ? 'is-editing' : ''}" data-plan-task="${escape(task.task_id)}" draggable="${!locked}">
+        <button type="button" class="plan-card-title" data-plan-action="edit">${escape(task.title)}</button>
+        <span class="plan-card-chapter">${task.task_mode === 'multi-day' ? '多日任务' : '单日任务'}</span>
+        ${task.detail ? `<p class="plan-card-detail">${escape(task.detail)}</p>` : ''}
+        <div class="plan-actions"><button class="text-button" type="button" data-plan-action="add" ${added ? 'disabled' : ''}>${added ? '已在今日清单' : '加入今天'}</button><button class="text-button" type="button" data-plan-action="edit">编辑</button><button class="text-button" type="button" data-plan-action="remove">删除</button></div>
+      </article>`;
+    }).join('');
+    return `<section class="plan-chapter-group" data-board-chapter-id="${escape(chapter.id)}">
+      <header class="plan-chapter-heading"><h4>${title}${label}</h4><div class="plan-column-actions"><button type="button" class="text-button" data-board-action="new" aria-label="在${title}新建任务" ${disabled}>＋任务</button>${rename}<button type="button" class="text-button plan-remove-chapter" data-board-action="delete-chapter" aria-label="删除小章节：${title}" ${disabled}>删除小章节</button></div></header>
+      <div class="plan-chapter-cards">${cards || '<p class="plan-board-empty">暂无任务</p>'}</div>
+    </section>`;
+  }
+
   function renderPlans() {
     if (planOptionsSource !== planCatalogue) {
       const filter = $('plan-filter');
@@ -1296,51 +1341,42 @@
     }
     const query = $('plan-search').value.trim().toLowerCase();
     const subjectId = $('plan-filter').value;
-    const { bySubject } = catalogue().plan;
     const subjects = library.filter(subject => !subjectId || subject.id === subjectId);
-    const chapterFilter = $('plan-chapter-filter');
+    const phaseFilter = $('plan-phase-filter');
     const selectedSubject = subjectId ? subjects[0] : null;
-    const selectedChapterId = planChapterFilters.get(subjectId) || '';
-    chapterFilter.disabled = !selectedSubject?.chapters.length;
-    chapterFilter.innerHTML = selectedSubject
-      ? '<option value="">全部章节</option>' + chapterOptions(selectedSubject, selectedChapterId)
+    const phase = selectedSubject ? planPhase(selectedSubject) : '';
+    phaseFilter.disabled = !selectedSubject?.phases.length;
+    phaseFilter.innerHTML = selectedSubject
+      ? '<option value="">全部大章节</option>' + phaseOptions(selectedSubject, phase)
       : '<option value="">先选学科</option>';
     const planned = new Set(state.assignments.map(task => task.task_id));
-    const editing = !$('plan-editor-panel').hidden;
-    const lockActions = actionBusy || editing;
-    $('new-plan-task').disabled = lockActions || !library.length;
-    $('new-plan-subject').disabled = lockActions;
+    const locked = actionBusy || !$('plan-editor-panel').hidden;
+    $('new-plan-task').disabled = locked || !planTaskTarget();
+    $('new-plan-subject').disabled = locked;
     let visibleCount = 0;
     $('plan-list').innerHTML = subjects.map(subject => {
-      const chapter = subjectId ? subject.chapters.find(item => item.id === selectedChapterId) : null;
-      const chapterId = chapter?.id || '';
-      const title = chapter?.title || subject.name;
-      if (subjectId && !chapter) planChapterFilters.delete(subject.id);
-      const tasks = (bySubject.get(subject.id) || []).filter(task => (!chapterId || task.chapter_id === chapterId) &&
-        (!query || `${task.title} ${task.detail} ${task.chapter_title}`.toLowerCase().includes(query)));
-      visibleCount += tasks.length;
-      const pageCount = Math.max(1, Math.ceil(tasks.length / PLAN_PAGE_SIZE));
+      const title = phase || subject.name;
+      const rows = planRows(subject, phase, query);
+      const taskCount = rows.filter(row => row.task).length;
+      visibleCount += taskCount;
+      const pageCount = Math.max(1, Math.ceil(rows.length / PLAN_PAGE_SIZE));
       const page = Math.max(0, Math.min(planPages.get(subject.id) || 0, pageCount - 1));
       planPages.set(subject.id, page);
-      const cards = tasks.slice(page * PLAN_PAGE_SIZE, (page + 1) * PLAN_PAGE_SIZE).map(task => {
-        const added = planned.has(task.task_id);
-        return `<article class="plan-card ${planEditing === task.task_id ? 'is-editing' : ''}" data-plan-task="${escape(task.task_id)}" draggable="${!editing && !actionBusy}">
-          <button type="button" class="plan-card-title" data-plan-action="edit">${escape(task.title)}</button>
-          <span class="plan-card-chapter">${chapter ? '' : `${escape(task.chapter_title)} · `}${task.task_mode === 'multi-day' ? '多日任务' : '单日任务'}</span>
-          ${task.detail ? `<p class="plan-card-detail">${escape(task.detail)}</p>` : ''}
-          <div class="plan-actions"><button class="text-button" type="button" data-plan-action="add" ${added ? 'disabled' : ''}>${added ? '已在今日清单' : '加入今天'}</button><button class="text-button" type="button" data-plan-action="edit">编辑</button><button class="text-button" type="button" data-plan-action="remove">删除</button></div>
-        </article>`;
-      }).join('');
-      const disabled = lockActions ? 'disabled' : '';
-      const addChapter = `<button type="button" class="text-button" data-board-action="new-chapter" aria-label="新建${escape(subject.name)}章节" ${disabled}>＋章节</button>`;
-      const chapterActions = chapter ? `${chapterId.startsWith('custom-chapter-') ? `<button type="button" class="text-button" data-board-action="rename-chapter" ${disabled}>重命名</button>` : ''}<button type="button" class="text-button plan-remove-chapter" data-board-action="delete-chapter" ${disabled}>删除章节</button>` : '';
+      const groups = new Map();
+      for (const { chapter, task } of rows.slice(page * PLAN_PAGE_SIZE, (page + 1) * PLAN_PAGE_SIZE)) {
+        if (!groups.has(chapter.id)) groups.set(chapter.id, { chapter, tasks: [] });
+        if (task) groups.get(chapter.id).tasks.push(task);
+      }
+      const chapterCards = [...groups.values()].map(group => renderPlanChapter(group, { phase, locked, planned })).join('');
+      const disabled = locked ? 'disabled' : '';
+      const empty = query ? '暂无匹配的小章节或任务' : subject.phases.length ? '暂无小章节' : '先新建大章节';
       return `<section class="plan-column" data-board-subject="${escape(subject.id)}" aria-labelledby="plan-column-${escape(subject.id)}">
         <div class="plan-column-heading">
-          <div class="plan-column-context"><h3 id="plan-column-${escape(subject.id)}" title="${escape(title)}">${escape(title)}</h3><span>${tasks.length} 项</span></div>
-          <div class="plan-column-actions">${subjectId ? addChapter + chapterActions : `<button type="button" class="text-button" data-board-action="new" aria-label="新建${escape(subject.name)}任务" ${disabled}>＋任务</button>`}</div>
+          <div class="plan-column-context"><h3 id="plan-column-${escape(subject.id)}" title="${escape(title)}">${escape(title)}</h3><span>${taskCount} 项</span></div>
+          <div class="plan-column-actions"><button type="button" class="text-button" data-board-action="new-phase" ${disabled}>＋大章节</button><button type="button" class="text-button" data-board-action="new-chapter" ${locked || !subject.phases.length ? 'disabled' : ''}>＋小章节</button>${phase ? `<button type="button" class="text-button plan-remove-chapter" data-board-action="delete-phase" ${disabled}>删除大章节</button>` : ''}</div>
         </div>
-        ${subjectId ? '' : `<div class="plan-column-chapter-row"><select class="plan-column-chapter" data-board-chapter="${escape(subject.id)}" aria-label="筛选${escape(subject.name)}章节"><option value="">全部章节</option>${chapterOptions(subject, '')}</select>${addChapter}</div>`}
-        <div class="plan-column-cards">${cards || `<p class="plan-board-empty">${chapter && !chapter.tasks.length ? '本章暂无任务' : '暂无匹配任务'}</p>`}</div>
+        ${!subjectId && subject.phases.length ? `<div class="plan-column-chapter-row"><select class="plan-column-chapter" data-board-phase="${escape(subject.id)}" aria-label="筛选${escape(subject.name)}大章节"><option value="">全部大章节</option>${phaseOptions(subject)}</select></div>` : ''}
+        <div class="plan-column-cards">${chapterCards || `<p class="plan-board-empty">${empty}</p>`}</div>
         ${pageCount > 1 ? `<div class="plan-column-pagination"><button type="button" class="text-button" data-board-action="previous" ${page === 0 ? 'disabled' : ''}>上一页</button><span>${page + 1} / ${pageCount}</span><button type="button" class="text-button" data-board-action="next" ${page + 1 === pageCount ? 'disabled' : ''}>下一页</button></div>` : ''}
       </section>`;
     }).join('') || '<div class="empty-state"><strong>暂无学科</strong><p>使用「新建学科」开始添加任务。</p></div>';
@@ -1359,7 +1395,7 @@
 
   function planChapterOptions(selected = '') {
     const subject = catalogue().subjects.get($('plan-subject').value);
-    $('plan-chapter').innerHTML = '<option value="">默认（我的任务）</option>' + (subject ? chapterOptions(subject, selected) : '');
+    $('plan-chapter').innerHTML = '<option value="">选择小章节</option>' + (subject ? chapterOptions(subject, selected) : '');
     if (!subject?.chapters.some(chapter => chapter.id === selected)) $('plan-chapter').value = '';
   }
 
@@ -1377,7 +1413,7 @@
   }
 
   function editPlanTask(task = null, subjectId = '', chapterId = '') {
-    if (chapterDraft || (!$('plan-editor-panel').hidden && !$('plan-subject-form').hidden) || !library.length) return;
+    if (chapterDraft || phaseSubjectId || (!$('plan-editor-panel').hidden && !$('plan-subject-form').hidden) || !library.length) return;
     planEditing = task?.task_id || null;
     planEditBaseline = task ? planTaskFingerprint(task) : null;
     $('plan-task-title').value = task?.title || '';
@@ -1390,25 +1426,27 @@
   }
 
   function editPlanChapter(subject, chapter = null) {
+    if (!subject.phases.length && !chapter) return;
     chapterDraft = {
       subjectId: subject.id,
       id: chapter?.id || `custom-chapter-${crypto.randomUUID()}`,
       original: chapter,
     };
-    const phases = subject.phases;
-    const currentPhase = subject.chapters.find(item => item.id === planChapterFilters.get(subject.id))?.phase
-      || state.subject_phases[subject.id];
-    $('plan-chapter-phase').innerHTML = '<option value="">不分阶段</option>' +
-      phases.map(phase => `<option value="${escape(phase)}">${escape(phase)}</option>`).join('');
-    $('plan-chapter-phase').value = chapter ? chapter.phase || '' : phases.includes(currentPhase) ? currentPhase : '';
+    const parent = $('plan-chapter-phase');
+    const existingUnphased = chapter && !chapter.phase;
+    const preferred = planPhase(subject) || state.subject_phases[subject.id];
+    const selected = chapter ? chapter.phase || '' : subject.phases.includes(preferred) ? preferred : subject.phases[0];
+    parent.required = !existingUnphased;
+    parent.innerHTML = (existingUnphased ? '<option value="">未分阶段</option>' : '') + phaseOptions(subject, selected);
     $('plan-chapter-title').value = chapter?.title || '';
-    showPlanEditor('plan-chapter-form', `${chapter ? '编辑章节' : '新建章节'} · ${subject.name}`, 'plan-chapter-title');
+    showPlanEditor('plan-chapter-form', `${chapter ? '编辑小章节' : '新建小章节'} · ${subject.name}`, 'plan-chapter-title');
   }
 
   function closePlanEditor() {
     planEditing = null;
     planEditBaseline = null;
     chapterDraft = null;
+    phaseSubjectId = null;
     $('plan-editor-panel').hidden = true;
     renderPlans();
   }
@@ -1452,8 +1490,11 @@
 
   function confirmPlanDelete(payload, title, taskCount) {
     planDeleteDraft = { payload, revision: state.revision };
-    const kind = payload.chapter_id ? '章节' : '任务';
+    const kind = payload.phase ? '大章节' : payload.chapter_id ? '小章节' : '任务';
     $('plan-delete-target').textContent = `删除${kind}「${title}」${taskCount ? `及其中 ${taskCount} 项任务` : ''}`;
+    $('plan-delete-detail').textContent = payload.phase
+      ? '所属小章节、打卡记录、实际用时和完成状态也会删除。'
+      : '相关打卡记录、实际用时和完成状态也会删除。';
     $('plan-delete-error').textContent = '';
     openDialog('plan-delete-dialog');
   }
@@ -1786,16 +1827,16 @@
   $('plan-button').addEventListener('click', openPlans);
   $('plan-search').addEventListener('input', () => { planPages.clear(); renderPlans(); });
   $('plan-filter').addEventListener('change', () => { planPages.clear(); renderPlans(); });
-  $('plan-chapter-filter').addEventListener('change', event => {
+  $('plan-phase-filter').addEventListener('change', event => {
     const subjectId = $('plan-filter').value;
-    planChapterFilters.set(subjectId, event.target.value);
+    planPhaseFilters.set(subjectId, event.target.value);
     planPages.set(subjectId, 0);
     renderPlans();
   });
   $('plan-subject').addEventListener('change', () => planChapterOptions());
   $('new-plan-task').addEventListener('click', () => {
-    const subjectId = $('plan-filter').value;
-    if (!actionBusy) editPlanTask(null, subjectId, planChapterFilters.get(subjectId) || '');
+    const target = planTaskTarget();
+    if (!actionBusy && target) editPlanTask(null, target.subjectId, target.chapterId);
   });
   $('new-plan-subject').addEventListener('click', () => {
     if (actionBusy || !$('plan-editor-panel').hidden) return;
@@ -1804,6 +1845,7 @@
   });
   $('cancel-plan-edit').addEventListener('click', closePlanEditor);
   $('cancel-plan-chapter').addEventListener('click', closePlanEditor);
+  $('cancel-plan-phase').addEventListener('click', closePlanEditor);
   $('cancel-plan-subject').addEventListener('click', closePlanEditor);
   $('plan-subject-form').addEventListener('submit', async event => {
     event.preventDefault();
@@ -1830,16 +1872,37 @@
           throw new Error('该章节已在其他页面更新，请关闭编辑后重新打开。');
         }
       }
-      const catalogue = window.StudyStore.plan.updateChapter(planCatalogue, {
-        id, subject_id: subjectId, title: $('plan-chapter-title').value, phase: $('plan-chapter-phase').value,
+      const phase = $('plan-chapter-phase').value;
+      if (!phase && !original) throw new Error('请选择所属的大章节。');
+      const nextCatalogue = window.StudyStore.plan.updateChapter(planCatalogue, {
+        id, subject_id: subjectId, title: $('plan-chapter-title').value, phase,
       });
-      await savePlan(catalogue, original ? '章节已保存。' : '章节已创建。');
+      await savePlan(nextCatalogue, original ? '小章节已保存。' : '小章节已创建。');
       $('plan-filter').value = subjectId;
-      planChapterFilters.set(subjectId, id);
-      planPages.set(subjectId, 0);
-      if (!original) $('plan-search').value = '';
+      planPhaseFilters.set(subjectId, phase);
+      $('plan-search').value = '';
+      const subject = catalogue().subjects.get(subjectId);
+      const first = planRows(subject, phase, '').findIndex(row => row.chapter.id === id);
+      planPages.set(subjectId, Math.max(0, Math.floor(first / PLAN_PAGE_SIZE)));
       closePlanEditor();
-      $('plan-chapter-filter').focus({ preventScroll: true });
+      $('plan-list').querySelector(`[data-board-chapter-id="${id}"] [data-board-action="new"]`)?.focus();
+    } catch (error) { planError(error); }
+  });
+  $('plan-phase-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!phaseSubjectId || actionBusy) return;
+    const subjectId = phaseSubjectId;
+    const name = $('plan-phase-name').value.trim();
+    $('plan-message').textContent = '';
+    try {
+      const catalogue = window.StudyStore.plan.addPhase(planCatalogue, { subject_id: subjectId, name });
+      await savePlan(catalogue, '大章节已创建。');
+      $('plan-filter').value = subjectId;
+      planPhaseFilters.set(subjectId, name);
+      planPages.set(subjectId, 0);
+      $('plan-search').value = '';
+      closePlanEditor();
+      $('plan-list').querySelector('[data-board-action="new-chapter"]')?.focus();
     } catch (error) { planError(error); }
   });
   $('confirm-plan-delete').addEventListener('click', async () => {
@@ -1850,9 +1913,10 @@
       await mutatePlan('DELETE', payload, revision);
       closeDialog('plan-delete-dialog');
       if (payload.task_id && planEditing === payload.task_id) closePlanEditor();
-      const filter = payload.chapter_id && !$('plan-chapter-filter').disabled ? $('plan-chapter-filter') : $('plan-filter');
+      const phaseFilter = $('plan-phase-filter');
+      const filter = (payload.chapter_id || payload.phase) && !phaseFilter.disabled ? phaseFilter : $('plan-filter');
       filter.focus({ preventScroll: true });
-      showToast(payload.chapter_id ? '章节已删除。' : '任务已删除。');
+      showToast(payload.phase ? '大章节已删除。' : payload.chapter_id ? '小章节已删除。' : '任务已删除。');
     } catch (error) {
       if ($('plan-delete-dialog').open) $('plan-delete-error').textContent = error.message;
       else planError(error);
@@ -1881,10 +1945,11 @@
       task_mode: $('plan-task-mode').value,
     };
     try {
-      const original = catalogue().plan.byId.get(planEditing);
+      const original = catalogue().plan.get(planEditing);
       if (planEditing && !original) throw new Error('该任务已删除，请取消编辑。');
       if (original && planTaskFingerprint(original) !== planEditBaseline) throw new Error('该任务已在其他页面更新，请取消编辑后重新打开。');
       if (task.estimated_minutes !== null && (!Number.isFinite(task.estimated_minutes) || task.estimated_minutes < 0 || task.estimated_minutes > 525600)) throw new Error('请填写有效的计划分钟数。');
+      if (!task.chapter_id) throw new Error('请选择小章节。');
       const entry = { ...task, task_id: planEditing || task.task_id };
       const modeTaskId = original && (original.task_mode || 'single-day') !== entry.task_mode ? entry.task_id : undefined;
       await savePlan(window.StudyStore.plan.update(planCatalogue, entry), '计划任务已保存。', modeTaskId);
@@ -1898,11 +1963,20 @@
     if (columnButton) {
       const subjectId = columnButton.closest('[data-board-subject]').dataset.boardSubject;
       const action = columnButton.dataset.boardAction;
-      const chapterId = $('plan-filter').value === subjectId ? planChapterFilters.get(subjectId) || '' : '';
+      const subject = catalogue().subjects.get(subjectId);
+      const chapterId = columnButton.closest('[data-board-chapter-id]')?.dataset.boardChapterId;
       if (action === 'new') editPlanTask(null, subjectId, chapterId);
-      else if (action === 'new-chapter') editPlanChapter(catalogue().subjects.get(subjectId));
-      else if (action === 'rename-chapter' || action === 'delete-chapter') {
-        const subject = catalogue().subjects.get(subjectId);
+      else if (action === 'new-chapter') editPlanChapter(subject);
+      else if (action === 'new-phase') {
+        phaseSubjectId = subjectId;
+        $('plan-phase-name').value = '';
+        showPlanEditor('plan-phase-form', `新建大章节 · ${subject.name}`, 'plan-phase-name');
+      } else if (action === 'delete-phase') {
+        const phase = planPhase(subject);
+        if (!phase) return;
+        const count = subject.chapters.filter(item => item.phase === phase).reduce((sum, item) => sum + item.tasks.length, 0);
+        confirmPlanDelete({ subject_id: subjectId, phase }, phase, count);
+      } else if (action === 'rename-chapter' || action === 'delete-chapter') {
         const chapter = subject.chapters.find(item => item.id === chapterId);
         if (!chapter) return;
         if (action === 'delete-chapter') confirmPlanDelete({ subject_id: subjectId, chapter_id: chapterId }, chapter.title, chapter.tasks.length);
@@ -1915,13 +1989,12 @@
     }
     const button = event.target.closest('[data-plan-action]');
     if (!button) return;
-    const task = catalogue().plan.byId.get(button.closest('[data-plan-task]')?.dataset.planTask);
+    const task = catalogue().plan.get(button.closest('[data-plan-task]')?.dataset.planTask);
     if (!task) return;
     $('plan-message').textContent = '';
     const action = button.dataset.planAction;
     if (action === 'edit') {
       editPlanTask(task);
-      $('plan-task-title').focus();
     } else if (action === 'remove') {
       confirmPlanDelete({ task_id: task.task_id }, task.title);
     } else if (action === 'add' && !state.assignments.some(item => item.task_id === task.task_id)) {
@@ -1935,14 +2008,14 @@
     }
   });
   $('plan-list').addEventListener('change', event => {
-    const select = event.target.closest('[data-board-chapter]');
+    const select = event.target.closest('[data-board-phase]');
     if (!select?.value || actionBusy) return;
-    const subjectId = select.dataset.boardChapter;
+    const subjectId = select.dataset.boardPhase;
     $('plan-filter').value = subjectId;
-    planChapterFilters.set(subjectId, select.value);
+    planPhaseFilters.set(subjectId, select.value);
     planPages.set(subjectId, 0);
     renderPlans();
-    $('plan-chapter-filter').focus({ preventScroll: true });
+    $('plan-phase-filter').focus({ preventScroll: true });
   });
   $('plan-list').addEventListener('dragstart', event => {
     const card = event.target.closest('[data-plan-task]');
@@ -1953,31 +2026,31 @@
     card.classList.add('is-dragging');
   });
   $('plan-list').addEventListener('dragover', event => {
-    const column = event.target.closest('[data-board-subject]');
-    if (!column || !planDraggedTask || actionBusy) return;
+    const chapter = event.target.closest('[data-board-chapter-id]');
+    if (!chapter || !planDraggedTask || actionBusy) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-    column.classList.add('is-drop-target');
+    chapter.classList.add('is-drop-target');
   });
   $('plan-list').addEventListener('dragleave', event => {
-    const column = event.target.closest('[data-board-subject]');
-    if (column && !column.contains(event.relatedTarget)) column.classList.remove('is-drop-target');
+    const chapter = event.target.closest('[data-board-chapter-id]');
+    if (chapter && !chapter.contains(event.relatedTarget)) chapter.classList.remove('is-drop-target');
   });
   $('plan-list').addEventListener('dragend', () => {
     planDraggedTask = null;
     $('plan-list').querySelectorAll('.is-dragging,.is-drop-target').forEach(element => element.classList.remove('is-dragging', 'is-drop-target'));
   });
   $('plan-list').addEventListener('drop', event => {
-    const column = event.target.closest('[data-board-subject]');
-    if (!column || !planDraggedTask || actionBusy) return;
+    const chapter = event.target.closest('[data-board-chapter-id]');
+    if (!chapter || !planDraggedTask || actionBusy) return;
     event.preventDefault();
-    column.classList.remove('is-drop-target');
-    const task = catalogue().plan.byId.get(planDraggedTask);
+    chapter.classList.remove('is-drop-target');
+    const task = catalogue().plan.get(planDraggedTask);
     planDraggedTask = null;
     if (!task) return;
-    const subjectId = column.dataset.boardSubject;
-    const chapterId = $('plan-filter').value === subjectId ? planChapterFilters.get(subjectId) || '' : '';
-    if (task.subject_id === subjectId && (!chapterId || chapterId === task.chapter_id)) return;
+    const subjectId = chapter.closest('[data-board-subject]').dataset.boardSubject;
+    const chapterId = chapter.dataset.boardChapterId;
+    if (chapterId === task.chapter_id) return;
     savePlan(window.StudyStore.plan.update(planCatalogue, { ...task, subject_id: subjectId, chapter_id: chapterId }), '任务已移动。').catch(planError);
   });
   $('download-default-plan').addEventListener('click', async event => {
