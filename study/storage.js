@@ -10,6 +10,7 @@
   const SUBJECTS = Object.freeze({ english: '英语', calculus: '高数', linear: '线代', probability: '概率论', ds: '数据结构', co: '计组', os: '操作系统', cn: '计网' });
   const SUBJECT_ORDER = Object.keys(SUBJECTS);
   const BACKUP_FORMAT = 'sjtu-study-checkin-backup';
+  const FULL_BACKUP_VERSION = 2;
   const PLAN_FORMAT = 'study-journal-plan';
   const DEFAULT_PLAN_VERSION = 2;
   const MAX_PLAN_TASKS = 500;
@@ -19,10 +20,26 @@
   const models = () => root.StudyModels || (typeof module === 'object' && module.exports ? require('./learning-model.js') : null);
   const studyTime = () => root.StudyTime || (typeof module === 'object' && module.exports ? require('./study-time.js') : null);
 
+  const isCustomSubject = id => typeof id === 'string' && /^custom-subject-[\w-]{1,185}$/.test(id);
+  const isSubjectId = id => typeof id === 'string' && (Object.hasOwn(SUBJECTS, id) || isCustomSubject(id));
+  const isSubjectName = name => typeof name === 'string' && Boolean(name.trim()) && name.length <= 100;
+  const subjectName = (index, id) => index?.subjects
+    ? index.subjects.get(id)?.name
+    : Object.hasOwn(SUBJECTS, id) ? SUBJECTS[id] : undefined;
+
+  function compareSubjects(index, a, b) {
+    if (index?.subjectOrder) {
+      const last = index.subjectOrder.size;
+      return (index.subjectOrder.get(a) ?? last) - (index.subjectOrder.get(b) ?? last);
+    }
+    const rank = id => Object.hasOwn(SUBJECTS, id) ? SUBJECT_ORDER.indexOf(id) : SUBJECT_ORDER.length;
+    return rank(a) - rank(b);
+  }
+
   function copyLearningInfo(row, item, section = null) {
     const annotation = models().splitRemark(item.remarks);
     if (!section && !Object.hasOwn(item, 'section_name') && !Object.hasOwn(item, 'exam_frequency') && !Object.hasOwn(item, 'difficulty') && annotation.difficulty === null && annotation.exam_frequency.small === null && annotation.exam_frequency.large === null) return;
-    const info = models().learningInfo(item, section);
+    const info = models().learningInfo(item, section, annotation);
     const validCount = value => value === null || (Number.isSafeInteger(value) && value >= 0 && value <= 100000);
     if (typeof info.section_name !== 'string' || info.section_name.length > 400 ||
         (info.difficulty !== null && !/^☆{1,5}$/.test(info.difficulty)) ||
@@ -73,19 +90,24 @@
   function libraryIndex(library) {
     if (!library || !Array.isArray(library.subjects)) throw new StoreError('章节任务库的格式不正确。');
     const index = new Map();
+    index.subjects = new Map();
+    index.subjectOrder = new Map();
     index.subjectModels = new Map();
     index.groups = new Map();
     index.subjectPhases = new Map();
     index.phaseAliases = library.metadata?.phase_aliases || {};
     for (const subject of library.subjects) {
-      if (!SUBJECTS[subject.id] || subject.name !== SUBJECTS[subject.id] || !Array.isArray(subject.chapters)) throw new StoreError('章节任务库的科目不正确。');
-      index.subjectPhases.set(subject.id, new Set(subject.chapters.map(chapter => chapter.phase).filter(Boolean)));
+      if (!isSubjectId(subject?.id) || index.subjects.has(subject.id) || !isSubjectName(subject.name) ||
+          !Array.isArray(subject.chapters)) throw new StoreError('章节任务库的科目不正确或重复。');
+      index.subjectOrder.set(subject.id, index.subjects.size);
+      index.subjects.set(subject.id, subject);
       const subjectModel = models().createSubject(subject);
+      index.subjectPhases.set(subject.id, new Set(subjectModel.phases));
       index.subjectModels.set(subject.id, subjectModel);
       for (const chapter of subject.chapters) {
-        if (typeof chapter.id !== 'string' || !Array.isArray(chapter.tasks)) throw new StoreError('章节任务库的章节不正确。');
+        if (typeof chapter?.id !== 'string' || !Array.isArray(chapter.tasks)) throw new StoreError('章节任务库的章节不正确。');
         for (const task of chapter.tasks) {
-          if (typeof task.id !== 'string' || index.has(task.id)) throw new StoreError('章节任务库含有重复或无效任务。');
+          if (typeof task?.id !== 'string' || index.has(task.id)) throw new StoreError('章节任务库含有重复或无效任务。');
           index.set(task.id, { subject, chapter, task, section: subjectModel.sectionFor(task) });
           const group = task.estimate_group || task.id;
           if (!index.groups.has(group)) index.groups.set(group, []);
@@ -93,16 +115,17 @@
         }
       }
     }
-    if (new Set(library.subjects.map((subject) => subject.id)).size !== SUBJECT_ORDER.length) throw new StoreError('章节任务库缺少科目。');
     index.retired = new Map();
     for (const item of library.metadata?.retired_tasks || []) {
-      if (!item || typeof item.id !== 'string' || !SUBJECTS[item.subject_id] || index.has(item.id) || index.retired.has(item.id)) throw new StoreError('已停用任务的登记格式不正确。');
+      if (!item || typeof item.id !== 'string' || !isSubjectId(item.subject_id) ||
+          (item.subject_name != null && !isSubjectName(item.subject_name)) ||
+          index.has(item.id) || index.retired.has(item.id)) throw new StoreError('已停用任务的登记格式不正确。');
       index.retired.set(item.id, item);
     }
     return index;
   }
 
-  function normaliseAssignments(assignments, index, preserveSnapshots = false) {
+  function normaliseAssignments(assignments, index, preserveSnapshots = false, preserveOrder = false) {
     if (!Array.isArray(assignments) || assignments.length > MAX_TASKS) throw new StoreError('每天最多选择 100 项任务。');
     const seen = new Set();
     const result = assignments.map((item) => {
@@ -114,21 +137,26 @@
       const canonical = index.get(item.task_id);
       const retired = index.retired?.get(item.task_id);
       const definition = canonical?.task || retired || {};
+      const currentSubjectName = subjectName(index, item.subject_id);
+      const savedSubjectName = preserveSnapshots && isSubjectId(item.subject_id)
+        ? (isSubjectName(item.subject_name) ? item.subject_name : currentSubjectName || subjectName(null, item.subject_id))
+        : undefined;
       if (canonical) {
         const { subject, chapter, task } = canonical;
         row = Object.fromEntries(['title', 'detail', 'kind', 'reference', 'quantity', 'remarks'].map((key) => [key, String(task[key] ?? '')]));
         Object.assign(row, { task_id: task.id, subject_id: subject.id, subject_name: subject.name, chapter_id: chapter.id, chapter_title: chapter.title });
-      } else if (retired && retired.subject_id === item.subject_id) {
+      } else if (retired && (retired.subject_id === item.subject_id || savedSubjectName)) {
         if (typeof item.title !== 'string' || !item.title.trim() || item.title.length > 400) throw new StoreError('已停用任务缺少原保存的名称，无法恢复记录。');
-        row = { task_id: item.task_id, subject_id: retired.subject_id, subject_name: SUBJECTS[retired.subject_id] };
+        row = { task_id: item.task_id, subject_id: savedSubjectName ? item.subject_id : retired.subject_id,
+          subject_name: savedSubjectName || currentSubjectName || retired.subject_name || subjectName(null, retired.subject_id) || retired.subject_id };
         for (const key of ['title', 'detail', 'kind', 'reference', 'quantity', 'remarks', 'chapter_id', 'chapter_title']) {
           const value = item[key] ?? '';
           if (typeof value !== 'string' || value.length > (key === 'title' || key === 'chapter_title' ? 400 : 10000)) throw new StoreError('已保存任务的内容格式不正确。');
           row[key] = value;
         }
-      } else if (item.task_id.startsWith('custom-') && SUBJECTS[item.subject_id]) {
+      } else if (item.task_id.startsWith('custom-') && currentSubjectName) {
         if (typeof item.title !== 'string' || !item.title.trim() || item.title.length > 400 || (item.detail !== undefined && typeof item.detail !== 'string') || (item.detail || '').length > 10000) throw new StoreError('请填写有效的任务名称。');
-        row = { task_id: item.task_id, subject_id: item.subject_id, subject_name: SUBJECTS[item.subject_id], chapter_id: 'custom', chapter_title: '自定义任务', title: item.title.trim(), detail: (item.detail || '').trim(), kind: '自定义', reference: '', quantity: '', remarks: '' };
+        row = { task_id: item.task_id, subject_id: item.subject_id, subject_name: savedSubjectName || currentSubjectName, chapter_id: 'custom', chapter_title: '自定义任务', title: item.title.trim(), detail: (item.detail || '').trim(), kind: '自定义', reference: '', quantity: '', remarks: '' };
       } else throw new StoreError('任务库中未找到这项任务，请重新选择。');
       if (preserveSnapshots && canonical && typeof item.title === 'string') {
         for (const key of ['title', 'detail', 'kind', 'reference', 'quantity', 'remarks', 'chapter_id', 'chapter_title']) {
@@ -136,7 +164,10 @@
           if (typeof value !== 'string' || value.length > (['title', 'chapter_title'].includes(key) ? 400 : key === 'chapter_id' ? 200 : 10000) || (key === 'title' && !value.trim())) throw new StoreError('已保存任务的内容格式不正确。');
           row[key] = value;
         }
-        if (SUBJECTS[item.subject_id]) { row.subject_id = item.subject_id; row.subject_name = SUBJECTS[item.subject_id]; }
+        if (savedSubjectName || currentSubjectName) {
+          row.subject_id = item.subject_id;
+          row.subject_name = savedSubjectName || currentSubjectName;
+        }
       }
       const estimate = Object.hasOwn(item, 'estimated_minutes') ? item : definition;
       if (Object.hasOwn(estimate, 'estimated_minutes') && estimate.estimated_minutes !== null &&
@@ -168,20 +199,24 @@
       }
       const hasSnapshotInfo = preserveSnapshots && ['section_name', 'difficulty', 'exam_frequency'].some(key => Object.hasOwn(item, key));
       copyLearningInfo(row, hasSnapshotInfo ? item : canonical ? canonical.task : item, hasSnapshotInfo ? null : canonical?.section);
-      if (['ds', 'co', 'os', 'cn'].includes(row.subject_id)) row.remarks = models().splitRemark(row.remarks).text;
+      const subjectModel = index.subjectModels?.get(row.subject_id) || models().createSubject({ id: row.subject_id });
+      if (subjectModel.supportsLearningInfo) {
+        row.remarks = models().splitRemark(row.remarks).text;
+      }
       return row;
     });
-    return result.sort((a, b) => SUBJECT_ORDER.indexOf(a.subject_id) - SUBJECT_ORDER.indexOf(b.subject_id));
+    return preserveOrder ? result : result.sort((a, b) => compareSubjects(index, a.subject_id, b.subject_id));
   }
 
   function initialRecord(date = localDate()) {
     return { revision: 1, current: { date: validateDate(date), assignments: [] }, archives: [] };
   }
 
-  function normalisePlan(tasks) {
+  function normalisePlan(tasks, subjectsIndex) {
     if (!Array.isArray(tasks) || tasks.length > MAX_PLAN_TASKS) throw new StoreError(`学习计划最多包含 ${MAX_PLAN_TASKS} 项任务。`);
     const ids = new Set();
     const index = new Map();
+    index.subjects = subjectsIndex?.subjects;
     return tasks.map(task => {
       if (typeof task?.task_id !== 'string' || !/^custom-[\w-]{1,193}$/.test(task.task_id) || ids.has(task.task_id)) {
         throw new StoreError('计划任务标识无效或重复。');
@@ -192,19 +227,19 @@
     });
   }
 
-  function mergePlans(existing, incoming) {
-    return normalisePlan([...new Map([...incoming, ...existing].map(task => [task.task_id, task])).values()]);
+  function mergePlans(existing, incoming, index) {
+    return normalisePlan([...new Map([...incoming, ...existing].map(task => [task.task_id, task])).values()], index);
   }
 
   function validateCatalogue(value) {
+    if (!value || !Array.isArray(value.subjects)) throw new StoreError('计划中的学科格式不正确。');
     const catalogue = copy(value);
-    if (!catalogue || !Array.isArray(catalogue.subjects) || catalogue.subjects.length !== SUBJECT_ORDER.length) throw new StoreError('计划需要包含完整的八个学科。');
     let total = 0;
     const chapterIds = new Set();
     for (const subject of catalogue.subjects) {
-      if (!Array.isArray(subject.chapters) || subject.chapters.length > 1000) throw new StoreError('计划章节格式不正确。');
+      if (!Array.isArray(subject?.chapters) || subject.chapters.length > 1000) throw new StoreError('计划章节格式不正确。');
       for (const chapter of subject.chapters) {
-        if (typeof chapter.id !== 'string' || !/^[\w-]{1,200}$/.test(chapter.id) || chapterIds.has(chapter.id) ||
+        if (typeof chapter?.id !== 'string' || !/^[\w-]{1,200}$/.test(chapter.id) || chapterIds.has(chapter.id) ||
             typeof chapter.title !== 'string' || chapter.title.length > 400 ||
             (chapter.phase != null && (typeof chapter.phase !== 'string' || chapter.phase.length > 200)) || !Array.isArray(chapter.tasks)) throw new StoreError('计划章节格式不正确。');
         chapterIds.add(chapter.id);
@@ -232,6 +267,19 @@
     const subject = catalogue.subjects.find(item => item.id === id);
     if (!subject) throw new StoreError('请选择有效的学科。');
     return subject;
+  }
+
+  function updatePlanSubject(catalogue, { id, name }) {
+    if (!isCustomSubject(id)) throw new StoreError('请选择自定义学科。');
+    const title = typeof name === 'string' ? name.trim() : '';
+    if (!isSubjectName(title)) throw new StoreError('请填写有效的学科名称。');
+    const next = copy(catalogue);
+    if (next.subjects.some(subject => subject.id !== id && subject.name.trim() === title)) throw new StoreError('已有同名学科。');
+    const subject = next.subjects.find(item => item.id === id);
+    if (subject) subject.name = title;
+    else next.subjects.push({ id, name: title, chapters: [] });
+    if (next.metadata && Object.hasOwn(next.metadata, 'subject_count')) next.metadata.subject_count = next.subjects.length;
+    return validateCatalogue(next);
   }
 
   function isCustomChapter(id) {
@@ -294,7 +342,9 @@
     next.metadata.retired_tasks ||= [];
     for (const subject of next.subjects) for (const chapter of subject.chapters) {
       const task = chapter.tasks.find(item => item.id === id);
-      if (task && !next.metadata.retired_tasks.some(item => item.id === id)) next.metadata.retired_tasks.push({ ...task, subject_id: subject.id });
+      if (task && !next.metadata.retired_tasks.some(item => item.id === id)) {
+        next.metadata.retired_tasks.push({ ...task, subject_id: subject.id, subject_name: subject.name });
+      }
       chapter.tasks = chapter.tasks.filter(item => item.id !== id);
     }
     return validateCatalogue(next);
@@ -302,10 +352,16 @@
 
   function mergeCatalogues(existing, incoming) {
     const next = copy(existing);
+    const subjects = new Map(next.subjects.map(subject => [subject.id, subject]));
     const ids = new Set(planEntries(next).map(task => task.task_id));
     const retired = new Set(next.metadata?.retired_tasks?.map(task => task.id) || []);
     for (const subject of incoming.subjects) {
-      const target = next.subjects.find(item => item.id === subject.id);
+      let target = subjects.get(subject.id);
+      if (!target) {
+        target = { ...copy(subject), chapters: [] };
+        next.subjects.push(target);
+        subjects.set(target.id, target);
+      }
       for (const chapter of subject.chapters) {
         const tasks = chapter.tasks.filter(task => !ids.has(task.id) && !retired.has(task.id));
         tasks.forEach(task => ids.add(task.id));
@@ -335,7 +391,8 @@
   function refreshDefaultPlan(base, record) {
     const previous = record.plan_library;
     const known = id => base.index.has(id) || base.index.retired.has(id);
-    const hasExtraTasks = previous.subjects.some(subject => subject.chapters.some(chapter => isCustomChapter(chapter.id) || chapter.tasks.some(task => !known(task.id))));
+    const hasExtraTasks = previous.subjects.some(subject => isCustomSubject(subject.id) ||
+      subject.chapters.some(chapter => isCustomChapter(chapter.id) || chapter.tasks.some(task => !known(task.id))));
     const hasExtraRetiredIds = previous.metadata?.retired_tasks?.some(task => !known(task.id));
     const catalogue = hasExtraTasks || hasExtraRetiredIds ? mergeCatalogues(base.library, previous) : base.library;
     return { ...record, plan_library: catalogue, revision: record.revision + 1 };
@@ -358,11 +415,13 @@
   }
 
   function normaliseSubjectPhases(value, index) {
-    if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > SUBJECT_ORDER.length) throw new StoreError('学科学习阶段设置不正确。');
+    if (!value || typeof value !== 'object' || Array.isArray(value) ||
+        Object.keys(value).length > (index.subjects?.size ?? SUBJECT_ORDER.length)) throw new StoreError('学科学习阶段设置不正确。');
     const result = {};
     for (const [id, savedPhase] of Object.entries(value)) {
-      const phase = index.subjectPhases.get(id)?.has(savedPhase) ? savedPhase : index.phaseAliases[id]?.[savedPhase] ?? savedPhase;
-      if (!SUBJECT_ORDER.includes(id) || typeof phase !== 'string' || (phase !== '' && !index.subjectPhases.get(id)?.has(phase))) throw new StoreError('学科学习阶段不存在，请重新选择。');
+      const phase = index.subjectPhases?.get(id)?.has(savedPhase) ? savedPhase : index.phaseAliases?.[id]?.[savedPhase] ?? savedPhase;
+      if (!subjectName(index, id) || typeof phase !== 'string' ||
+          (phase !== '' && !index.subjectPhases?.get(id)?.has(phase))) throw new StoreError('学科学习阶段不存在，请重新选择。');
       result[id] = phase;
     }
     return result;
@@ -380,7 +439,8 @@
         if (entry?.section && !Object.hasOwn(task, 'section_name')) copyLearningInfo(changes, entry.task, entry.section);
         if (/〔原图/.test(task.remarks || '') && entry?.task.remarks && !/〔原图/.test(entry.task.remarks)) changes.remarks = entry.task.remarks;
         const remarks = changes.remarks ?? task.remarks;
-        if (remarks && ['ds', 'co', 'os', 'cn'].includes(task.subject_id)) {
+        const subjectModel = index.subjectModels.get(task.subject_id) || models().createSubject({ id: task.subject_id });
+        if (remarks && subjectModel.supportsLearningInfo) {
           const cleaned = models().splitRemark(remarks);
           if (cleaned.text !== remarks) {
             const info = models().learningInfo({ ...task, ...changes }, entry?.section);
@@ -444,7 +504,7 @@
     const mode = params.get('task_mode') || '';
     const actual = params.get('actual') || '';
     const query = (params.get('q') || '').trim();
-    if (subjectId && !SUBJECT_ORDER.includes(subjectId)) throw new StoreError('请选择有效的学科。');
+    if (subjectId && !isSubjectId(subjectId)) throw new StoreError('请选择有效的学科。');
     if (chapterId.length > 200) throw new StoreError('章节筛选条件无效。');
     if (!['', 'done', 'pending'].includes(status) || !['', 'single-day', 'multi-day'].includes(mode) ||
         !['', 'recorded', 'unrecorded'].includes(actual)) throw new StoreError('请选择有效的记录筛选条件。');
@@ -470,6 +530,8 @@
     days.sort((a, b) => b.date.localeCompare(a.date));
     if (record.current.assignments.length) days.unshift(record.current);
     const dates = [];
+    const subjectNames = new Map(record.plan_library?.subjects.map(subject => [subject.id, subject.name]));
+    const subjects = new Map();
     const chapters = new Map();
     let total = 0;
     for (const day of days) {
@@ -477,6 +539,10 @@
       const assignments = [];
       let hasMatch = false;
       for (const task of day.assignments) {
+        if (!subjects.has(task.subject_id)) {
+          const name = subjectNames.get(task.subject_id) || task.subject_name || subjectName(null, task.subject_id) || task.subject_id;
+          subjects.set(task.subject_id, { id: task.subject_id, name });
+        }
         if (subjectId && task.subject_id !== subjectId) continue;
         if (task.chapter_id) {
           const key = `${task.subject_id}:${task.chapter_id}`;
@@ -505,47 +571,89 @@
       }
       total += 1;
     }
-    return { dates: copy(dates), total, offset, limit, chapters: [...chapters.values()] };
+    return { dates: copy(dates), total, offset, limit, subjects: [...subjects.values()], chapters: [...chapters.values()] };
   }
 
   function deletePlanContent(record, payload, source) {
     checkRevision(record, payload);
     const byChapter = Object.hasOwn(payload, 'chapter_id');
-    if (byChapter === Object.hasOwn(payload, 'task_id')) throw new StoreError('请选择要删除的章节或任务。');
+    const byTask = Object.hasOwn(payload, 'task_id');
+    const hasSubject = Object.hasOwn(payload, 'subject_id');
+    if ((byTask && (byChapter || hasSubject)) || (!byTask && !hasSubject)) {
+      throw new StoreError('请选择要删除的学科、章节或任务。');
+    }
     const catalogue = copy(source.library);
-    let deletedIds;
+    const days = [record.current, ...record.archives];
+    const deletedIds = new Set();
+    let deletedSubjectId = null;
     if (byChapter) {
       if (!isCustomChapter(payload.chapter_id)) throw new StoreError('请选择自定义章节。');
       const subject = planSubject(catalogue, payload.subject_id);
       const chapter = subject.chapters.find(item => item.id === payload.chapter_id);
       if (!chapter) throw new StoreError('这个章节已不存在。');
-      deletedIds = new Set(chapter.tasks.map(task => task.id));
+      for (const task of chapter.tasks) deletedIds.add(task.id);
       subject.chapters = subject.chapters.filter(item => item !== chapter);
-    } else {
+    } else if (byTask) {
       const entry = source.index.get(payload.task_id);
       if (!entry) throw new StoreError('这项任务已不存在。');
       const subject = planSubject(catalogue, entry.subject.id);
       const chapter = subject.chapters.find(item => item.id === entry.chapter.id);
-      deletedIds = new Set([payload.task_id]);
+      deletedIds.add(payload.task_id);
       chapter.tasks = chapter.tasks.filter(task => !deletedIds.has(task.id));
+    } else {
+      const subject = planSubject(catalogue, payload.subject_id);
+      deletedSubjectId = subject.id;
+      catalogue.subjects = catalogue.subjects.filter(item => item !== subject);
+      for (const chapter of subject.chapters) for (const task of chapter.tasks) deletedIds.add(task.id);
+      for (const task of source.index.retired.values()) if (task.subject_id === subject.id) deletedIds.add(task.id);
+      for (const task of record.plan_tasks || []) {
+        if (task.subject_id === subject.id && !source.index.has(task.task_id) && !source.index.retired.has(task.task_id)) {
+          deletedIds.add(task.task_id);
+        }
+      }
+      for (const day of days) {
+        for (const task of day.assignments) {
+          if (task.subject_id === subject.id && !source.index.has(task.task_id) && !source.index.retired.has(task.task_id)) {
+            deletedIds.add(task.task_id);
+          }
+        }
+      }
+      const metadata = catalogue.metadata;
+      if (metadata) {
+        if (Object.hasOwn(metadata, 'subject_count')) metadata.subject_count = catalogue.subjects.length;
+        if (Object.hasOwn(metadata, 'chapter_count')) metadata.chapter_count = catalogue.subjects.reduce((sum, item) => sum + item.chapters.length, 0);
+        if (Object.hasOwn(metadata, 'task_count')) metadata.task_count = source.index.size - subject.chapters.reduce((sum, chapter) => sum + chapter.tasks.length, 0);
+        for (const bySubject of [metadata.phase_aliases, metadata.counts, metadata.estimates?.by_subject, metadata.round_two_exercises?.by_subject]) {
+          if (bySubject) delete bySubject[subject.id];
+        }
+      }
     }
 
-    const subject_phases = Object.fromEntries(Object.entries(record.subject_phases || {}).map(([id, phase]) => [
-      id, catalogue.subjects.find(subject => subject.id === id)?.chapters.some(chapter => chapter.phase === phase) ? phase : '',
-    ]));
+    const subject_phases = Object.fromEntries(Object.entries(record.subject_phases || {}).flatMap(([id, phase]) => {
+      const subject = catalogue.subjects.find(item => item.id === id);
+      return subject ? [[id, subject.chapters.some(chapter => chapter.phase === phase) ? phase : '']] : [];
+    }));
     const next = { ...record, revision: record.revision + 1, plan_library: catalogue, plan_customized: true, subject_phases };
-    if (!deletedIds.size) return next;
+    if (!deletedIds.size && !deletedSubjectId) return next;
 
     const affectedSubjects = new Set();
-    for (const id of deletedIds) {
-      const { task, subject } = source.index.get(id);
+    const affectedTaskIds = new Set(deletedIds);
+    const removesAssignment = task => deletedIds.has(task.task_id) || task.subject_id === deletedSubjectId;
+    if (deletedSubjectId) affectedSubjects.add(deletedSubjectId);
+    for (const day of days) {
+      for (const task of day.assignments) if (removesAssignment(task)) {
+        affectedSubjects.add(task.subject_id);
+        affectedTaskIds.add(task.task_id);
+      }
+    }
+    for (const id of affectedTaskIds) {
+      const entry = source.index.get(id);
+      if (!entry) continue;
+      const { task, subject } = entry;
       affectedSubjects.add(subject.id);
       for (const relatedId of source.index.groups.get(task.estimate_group || id) || []) {
         affectedSubjects.add(source.index.get(relatedId).subject.id);
       }
-    }
-    for (const day of [record.current, ...record.archives]) {
-      for (const task of day.assignments) if (deletedIds.has(task.task_id)) affectedSubjects.add(task.subject_id);
     }
     if (catalogue.metadata?.retired_tasks) {
       catalogue.metadata.retired_tasks = catalogue.metadata.retired_tasks.filter(task => !deletedIds.has(task.id));
@@ -557,7 +665,7 @@
     }
 
     const cleanDay = day => {
-      const assignments = day.assignments.filter(task => !deletedIds.has(task.task_id));
+      const assignments = day.assignments.filter(task => !removesAssignment(task));
       const frozen = day.subject_stage_progress;
       if (!frozen) return { ...day, assignments };
       const subject_stage_progress = Object.fromEntries(Object.entries(frozen).filter(([id]) => !affectedSubjects.has(id)));
@@ -574,7 +682,7 @@
       library_completed_ids: (record.library_completed_ids || []).filter(id => !deletedIds.has(id)),
       library_reopened_ids: (record.library_reopened_ids || []).filter(id => !deletedIds.has(id)),
       task_modes: Object.fromEntries(Object.entries(record.task_modes || {}).filter(([id]) => !deletedIds.has(id))),
-      plan_tasks: (record.plan_tasks || []).filter(task => !deletedIds.has(task.task_id)),
+      plan_tasks: (record.plan_tasks || []).filter(task => !removesAssignment(task)),
     };
   }
 
@@ -606,7 +714,7 @@
   function normaliseStageProgress(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new StoreError('归档阶段进度不正确。');
     return Object.fromEntries(Object.entries(value).map(([id, entry]) => {
-      if (!SUBJECTS[id] || !entry || typeof entry.phase !== 'string' || entry.phase.length > 200 ||
+      if (!isSubjectId(id) || !entry || typeof entry.phase !== 'string' || entry.phase.length > 200 ||
           !Number.isFinite(entry.totalMinutes) || entry.totalMinutes < 0 || entry.totalMinutes > 1e12 ||
           !Number.isFinite(entry.completedMinutes) || entry.completedMinutes < 0 || entry.completedMinutes > entry.totalMinutes ||
           !Number.isSafeInteger(entry.unknown) || entry.unknown < 0 || entry.unknown > 100000) throw new StoreError('归档阶段进度不正确。');
@@ -621,7 +729,7 @@
     for (const key of ['library_completed_ids', 'library_reopened_ids']) if (Object.hasOwn(payload, key)) markers[key] = normaliseLibraryCompletedIds(payload[key], index);
     if (Object.hasOwn(payload, 'task_modes')) markers.task_modes = normaliseTaskModes(payload.task_modes, index);
     if (Object.hasOwn(payload, 'subject_phases')) markers.subject_phases = normaliseSubjectPhases(payload.subject_phases, index);
-    if (Object.hasOwn(payload, 'plan_tasks')) markers.plan_tasks = normalisePlan(payload.plan_tasks);
+    if (Object.hasOwn(payload, 'plan_tasks')) markers.plan_tasks = normalisePlan(payload.plan_tasks, index);
     return { ...record, ...markers, revision: record.revision + 1, current: { date: record.current.date, assignments } };
   }
 
@@ -633,16 +741,25 @@
         : copy(task)) };
   }
 
+  function unfinishedAssignments(record) {
+    const finished = new Set(record.library_completed_ids || []);
+    return record.current.assignments.flatMap(task => {
+      const mode = record.task_modes?.[task.task_id] || task.task_mode;
+      if (mode !== 'multi-day') return task.done ? [] : [task];
+      if (finished.has(task.task_id)) return [];
+      return [{ ...task, task_mode: 'multi-day', done: false, actual_minutes: null, checkin_segments: [] }];
+    });
+  }
+
   function archiveRecord(record, payload, index = null) {
     checkRevision(record, payload);
     if ('carry_pending' in payload && typeof payload.carry_pending !== 'boolean') throw new StoreError('未完成任务的保留选项不正确。');
     const next = nextDate(record.current.date);
     const existingTomorrow = record.archives.find((day) => day.date === next);
     const archives = record.archives.filter((day) => day.date !== record.current.date && day.date !== next);
-    const finished = new Set(record.library_completed_ids || []);
     archives.push(archivedDay(record, index));
-    const carried = payload.carry_pending === false ? [] : record.current.assignments.filter((task) => (record.task_modes?.[task.task_id] || task.task_mode) === 'multi-day' ? !finished.has(task.task_id) : !task.done).map((task) => (record.task_modes?.[task.task_id] || task.task_mode) === 'multi-day' ? { ...task, task_mode: 'multi-day', done: false, actual_minutes: null, checkin_segments: [] } : task);
-    return { ...copy(record), revision: record.revision + 1, current: { date: next, assignments: mergeTasks(existingTomorrow?.assignments || [], carried) }, archives };
+    const carried = payload.carry_pending === false ? [] : unfinishedAssignments(record);
+    return { ...copy(record), revision: record.revision + 1, current: { date: next, assignments: mergeTasks(existingTomorrow?.assignments || [], carried, index) }, archives };
   }
 
   function alignDate(record, today, index) {
@@ -658,13 +775,19 @@
   const studyDateFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' });
   const studyDate = (now = new Date()) => studyDateFormat.format(now);
 
+  const isBackupFile = value => value?.format === BACKUP_FORMAT;
+  const isFullBackup = value => isBackupFile(value) && value.version === FULL_BACKUP_VERSION;
+
   function validateBackup(value, index) {
-    if (!value || value.format !== BACKUP_FORMAT || value.version !== 1 || !value.current || !Array.isArray(value.archives) || value.archives.length > MAX_ARCHIVES) throw new StoreError('请选择学习手账导出的完整 JSON 备份。');
+    const full = isFullBackup(value);
+    if (!isBackupFile(value) || (!full && value.version !== 1) || !value.current || !Array.isArray(value.archives) || value.archives.length > MAX_ARCHIVES) throw new StoreError('请选择学习手账导出的完整 JSON 备份。');
+    if (full && (!value.plan_library || typeof value.plan_customized !== 'boolean')) throw new StoreError('完整备份缺少学习计划。');
+    if (full && !['library_completed_ids', 'library_reopened_ids', 'task_modes', 'subject_phases', 'plan_tasks'].every(key => Object.hasOwn(value, key))) throw new StoreError('完整备份缺少打卡状态或任务设置。');
     const plan_library = value.plan_library ? validateCatalogue(value.plan_library) : null;
     if (plan_library) index = libraryIndex(plan_library);
     const day = (entry) => {
       if (!entry || typeof entry !== 'object') throw new StoreError('备份中的日期记录不正确。');
-      return { date: validateDate(entry.date), assignments: normaliseAssignments(entry.assignments, index, true), ...(entry.subject_stage_progress ? { subject_stage_progress: normaliseStageProgress(entry.subject_stage_progress) } : {}) };
+      return { date: validateDate(entry.date), assignments: normaliseAssignments(entry.assignments, index, true, full), ...(entry.subject_stage_progress ? { subject_stage_progress: normaliseStageProgress(entry.subject_stage_progress) } : {}) };
     };
     const current = day(value.current);
     const dates = new Set();
@@ -678,11 +801,35 @@
     const library_reopened_ids = Object.hasOwn(value, 'library_reopened_ids') ? normaliseLibraryCompletedIds(value.library_reopened_ids, index) : [];
     const task_modes = Object.hasOwn(value, 'task_modes') ? normaliseTaskModes(value.task_modes, index) : {};
     const subject_phases = Object.hasOwn(value, 'subject_phases') ? normaliseSubjectPhases(value.subject_phases, index) : {};
-    const plan_tasks = Object.hasOwn(value, 'plan_tasks') ? normalisePlan(value.plan_tasks) : [];
+    const plan_tasks = Object.hasOwn(value, 'plan_tasks') ? normalisePlan(value.plan_tasks, index) : [];
     return { current, archives, library_completed_ids, library_reopened_ids, task_modes, subject_phases, plan_tasks, ...(plan_library ? { plan_library, plan_customized: Boolean(value.plan_customized) } : {}) };
   }
 
-  function mergeTasks(existing, incoming) {
+  function packBackup(record) {
+    return {
+      format: BACKUP_FORMAT, version: FULL_BACKUP_VERSION, exported_at: new Date().toISOString(),
+      ...copy({
+        plan_library: record.plan_library, plan_customized: Boolean(record.plan_customized),
+        current: record.current, archives: record.archives,
+        library_completed_ids: record.library_completed_ids || [], library_reopened_ids: record.library_reopened_ids || [],
+        task_modes: record.task_modes || {}, subject_phases: record.subject_phases || {}, plan_tasks: record.plan_tasks || [],
+      }),
+    };
+  }
+
+  function restoreBackupDate(record, today, index) {
+    const aligned = alignDate(record, today, index);
+    if (record.current.date >= today || !record.current.assignments.length) return aligned;
+    const archives = aligned.archives.some(day => day.date === record.current.date)
+      ? aligned.archives : [...aligned.archives, record.current];
+    const todayIds = new Set(aligned.current.assignments.map(task => task.task_id));
+    const pending = unfinishedAssignments(record).filter(task => !todayIds.has(task.task_id));
+    const capacity = MAX_TASKS - aligned.current.assignments.length;
+    const assignments = mergeTasks(aligned.current.assignments, pending.slice(0, capacity), index);
+    return { ...aligned, current: { ...aligned.current, assignments }, archives };
+  }
+
+  function mergeTasks(existing, incoming, index) {
     const result = existing.map((item) => ({ ...item }));
     const map = new Map(result.map((item) => [item.task_id, item]));
     for (const task of incoming) {
@@ -699,7 +846,7 @@
       else { const added = { ...task }; map.set(task.task_id, added); result.push(added); }
     }
     if (result.length > MAX_TASKS) throw new StoreError('合并后某一天超过 100 项任务，未导入任何内容。请先整理备份。');
-    return result.sort((a, b) => SUBJECT_ORDER.indexOf(a.subject_id) - SUBJECT_ORDER.indexOf(b.subject_id));
+    return result.sort((a, b) => compareSubjects(index, a.subject_id, b.subject_id));
   }
 
   function hasStudyContent(record) {
@@ -732,7 +879,7 @@
       catalogue = copy(catalogue);
       for (const task of incoming.plan_tasks || []) if (!ids.has(task.task_id)) putPlanTask(catalogue, task);
     }
-    return { ...copy(record), ...(catalogue ? { plan_library: catalogue } : {}), plan_tasks: mergePlans(record.plan_tasks || [], incoming.plan_tasks || []), subject_phases: { ...(incoming.subject_phases || {}), ...(record.subject_phases || {}) }, task_modes: { ...(incoming.task_modes || {}), ...(record.task_modes || {}) }, revision: record.revision + 1, current, archives: [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)), library_completed_ids: [...new Set([...existingMarkers, ...incomingMarkers.filter((id) => !existingReopened.includes(id))])].sort(), library_reopened_ids: [...new Set([...existingReopened, ...incomingReopened.filter((id) => !existingMarkers.includes(id))])].sort() };
+    return { ...copy(record), ...(catalogue ? { plan_library: catalogue, plan_customized: Boolean(record.plan_customized || incoming.plan_customized) } : {}), plan_tasks: mergePlans(record.plan_tasks || [], incoming.plan_tasks || [], catalogue ? libraryIndex(catalogue) : undefined), subject_phases: { ...(incoming.subject_phases || {}), ...(record.subject_phases || {}) }, task_modes: { ...(incoming.task_modes || {}), ...(record.task_modes || {}) }, revision: record.revision + 1, current, archives: [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)), library_completed_ids: [...new Set([...existingMarkers, ...incomingMarkers.filter((id) => !existingReopened.includes(id))])].sort(), library_reopened_ids: [...new Set([...existingReopened, ...incomingReopened.filter((id) => !existingMarkers.includes(id))])].sort() };
   }
 
   function storageError(error) {
@@ -896,17 +1043,19 @@
           // Removed tasks remain registered so old check-ins and completion markers retain their IDs.
           if (previous) {
             const index = libraryIndex(catalogue);
+            const previousNames = new Map(previous.subjects.map(subject => [subject.id, subject.name]));
             catalogue.metadata ||= {};
             catalogue.metadata.retired_tasks ||= [];
             for (const task of planEntries(previous)) if (!index.has(task.task_id) && !index.retired.has(task.task_id)) {
-              catalogue.metadata.retired_tasks.push({ ...task, id: task.task_id });
+              catalogue.metadata.retired_tasks.push({ ...task, id: task.task_id, subject_name: previousNames.get(task.subject_id) });
             }
             const retired = new Map(catalogue.metadata.retired_tasks.map(task => [task.id, task]));
             for (const task of previous.metadata?.retired_tasks || []) if (!index.has(task.id) && !retired.has(task.id)) retired.set(task.id, task);
             catalogue.metadata.retired_tasks = [...retired.values()];
           }
           const index = libraryIndex(catalogue);
-          const phases = Object.fromEntries(Object.entries(record.subject_phases || {}).map(([id, phase]) => [id, index.subjectPhases.get(id)?.has(phase) ? phase : '']));
+          const phases = Object.fromEntries(Object.entries(record.subject_phases || {}).flatMap(([id, phase]) =>
+            index.subjects.has(id) ? [[id, index.subjectPhases.get(id).has(phase) ? phase : '']] : []));
           const next = { ...record, plan_library: catalogue, plan_customized: true, plan_tasks: [], subject_phases: phases, revision: record.revision + 1 };
           if (Object.hasOwn(payload, 'mode_task_id')) {
             const id = payload.mode_task_id;
@@ -946,29 +1095,39 @@
     }
 
     async function exportBackup() {
-      return transact((record) => ({ result: { format: BACKUP_FORMAT, version: 1, exported_at: new Date().toISOString(), current: copy(record.current), archives: copy(record.archives), library_completed_ids: copy(Array.isArray(record.library_completed_ids) ? record.library_completed_ids : []), library_reopened_ids: copy(Array.isArray(record.library_reopened_ids) ? record.library_reopened_ids : []), task_modes: copy(record.task_modes || {}), subject_phases: copy(record.subject_phases || {}), plan_tasks: copy(record.plan_tasks || []), ...(record.plan_library ? { plan_library: copy(record.plan_library), plan_customized: Boolean(record.plan_customized) } : {}) } }), true);
+      const record = await transact(record => ({ result: record }), true);
+      if (record.plan_library) return packBackup(record);
+      const base = await loadLibrary();
+      return packBackup(migratePlan(base.library, record));
+    }
+
+    async function prepareBackup(value) {
+      const base = isBackupFile(value) && value.version === 1 && !value.plan_library ? await loadLibrary() : null;
+      const incoming = validateBackup(value, base?.index);
+      if (!incoming.plan_library) {
+        incoming.plan_library = migratePlan(base.library, { ...incoming, revision: 1 }).plan_library;
+        incoming.plan_customized = false;
+      }
+      return incoming;
     }
 
     async function importBackup(value, options = {}) {
-      const base = await loadLibrary();
-      const { index } = base;
-      const incoming = validateBackup(value, index);
-      if (!incoming.plan_library) incoming.plan_library = migratePlan(base.library, { ...incoming, revision: 1 }).plan_library;
+      const incoming = await prepareBackup(value);
+      const full = isFullBackup(value);
+      if (full && options.replace && incoming.plan_library.version < DEFAULT_PLAN_VERSION) incoming.plan_customized = true;
       return transact((record) => {
         const imported = importRecord(record, incoming, options);
-        const next = { ...alignDate(imported, today(), recordLibrary(imported, base).index), revision: imported.revision };
+        const align = full && (options.replace || !hasStudyContent(record)) ? restoreBackupDate : alignDate;
+        const next = { ...align(imported, today(), recordLibrary(imported).index), revision: imported.revision };
         return { record: next, result: stateOf(next) };
       });
     }
 
     async function importLocalOnce(backup) {
       if (!hasStudyContent(backup)) return;
-      const base = await loadLibrary();
-      const { index } = base;
+      const incoming = await prepareBackup(backup);
       return transact((record) => {
         if (record.local_imported) return {};
-        const incoming = validateBackup(backup, index);
-        if (!incoming.plan_library) incoming.plan_library = migratePlan(base.library, { ...incoming, revision: 1 }).plan_library;
         const next = importRecord(record, incoming, { revision: record.revision });
         return { record: { ...next, local_imported: true } };
       });
@@ -981,10 +1140,12 @@
   api.createStore = createStore;
   api.StoreError = StoreError;
   api.MAX_TASKS = MAX_TASKS;
+  api.backup = Object.freeze({ isFile: isBackupFile, isFull: isFullBackup });
   api.plan = Object.freeze({
     entries: planEntries,
     update: updatePlan,
     remove: removePlanTask,
+    updateSubject: updatePlanSubject,
     updateChapter: updatePlanChapter,
     merge: mergeCatalogues,
     pack: catalogue => ({ format: PLAN_FORMAT, version: 2, catalogue: validateCatalogue(catalogue) }),
@@ -993,8 +1154,13 @@
       if (value?.format !== PLAN_FORMAT) throw new StoreError('请选择从学习计划导出的 JSON 文件。');
       if (value.version === 2) return validateCatalogue(value.catalogue);
       if (value.version === 1 && base) {
-        let catalogue = copy(base);
-        for (const task of normalisePlan(value.tasks)) putPlanTask(catalogue, task);
+        const catalogue = copy(base);
+        const index = libraryIndex(catalogue);
+        for (const [id, name] of Object.entries(SUBJECTS)) if (!index.subjects.has(id)) index.subjects.set(id, { id, name, chapters: [] });
+        for (const task of normalisePlan(value.tasks, index)) {
+          if (!catalogue.subjects.some(subject => subject.id === task.subject_id)) catalogue.subjects.push(index.subjects.get(task.subject_id));
+          putPlanTask(catalogue, task);
+        }
         return validateCatalogue(catalogue);
       }
       throw new StoreError('不支持这个计划文件的版本。');

@@ -75,6 +75,31 @@ test('all four computing subjects use one subclass and one subsection schema wit
   }
 });
 
+test('a restored custom subject shares section metadata and phase progress', () => {
+  const task = { id: 'custom-task-map', title: '阅读地图', estimated_minutes: 15 };
+  const subject = models.createSubject({
+    id: 'custom-subject-geography', name: '地理',
+    chapters: [{ id: 'custom-chapter-map', phase: '复习', tasks: [task] }],
+    sections: { 地图: { learning_tasks: [task.id], exam_frequency: { small: 0 }, difficulty: '☆' } },
+  });
+  assert(subject instanceof models.SectionedSubject);
+  assert(subject instanceof models.StudySubject);
+  assert(subject.supportsLearningInfo);
+  assert.deepEqual(subject.phases, ['复习']);
+  assert.equal(subject.sectionFor({ task_id: task.id }).name, '地图');
+  assert.deepEqual(subject.learningInfo(task), {
+    section_name: '地图', difficulty: '☆', exam_frequency: { small: 0, large: null }, section_estimated_minutes: null,
+  });
+  assert.deepEqual(subject.stageProgress({ isCompleted: item => item === task }), {
+    phase: '复习', totalMinutes: 15, completedMinutes: 15, unknown: 0, percent: 100,
+  });
+
+  const empty = models.createSubject({ id: 'custom-subject-empty', name: '空学科', chapters: [] });
+  assert(!empty.supportsLearningInfo);
+  assert.equal(empty.sectionFor(task), null);
+  assert.deepEqual(empty.phases, []);
+});
+
 test('OS and CN import every source row and exclude book-only cards while retaining multiline remarks', () => {
   for (const [id, imported, excluded] of [['os', 136, 82], ['cn', 140, 62]]) {
     const subject = library.subjects.find(subject => subject.id === id);

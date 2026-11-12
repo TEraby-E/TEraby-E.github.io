@@ -9,11 +9,14 @@ const library = JSON.parse(fs.readFileSync(path.join(__dirname, '../study/data/l
 const firstSubject = library.subjects[0];
 const originalTask = firstSubject.chapters[0].tasks[0];
 
-function fixture(initial = storage.helpers.initialRecord('2026-11-07')) {
+function fixture(initial = storage.helpers.initialRecord('2026-11-07'), { offline = false } = {}) {
   let record = structuredClone(initial);
   const store = storage.createStore({
     now: () => new Date('2026-11-07T04:00:00Z'),
-    fetch: async () => ({ ok: true, json: async () => structuredClone(library) }),
+    fetch: async () => {
+      if (offline) throw new Error('offline');
+      return { ok: true, json: async () => structuredClone(library) };
+    },
   }, async operation => {
     const outcome = operation(structuredClone(record));
     if (outcome.record) record = outcome.record;
@@ -216,6 +219,64 @@ test('an empty custom chapter survives save, export and merge, and keeps its ID 
   assert.equal(task.chapter_id, chapter.id);
   assert.equal(task.chapter_title, '复习章节');
   assert.equal(task.phase, chapter.phase);
+});
+
+test('complete JSON restores the entire journal offline after deleting a subject', async () => {
+  const subject = { id: 'custom-subject-review', name: '算法复习' };
+  const chapter = { id: 'custom-chapter-review', subject_id: subject.id, title: '图搜索', phase: '' };
+  const id = 'custom-review-task';
+  let catalogue = storage.plan.updateSubject(library, subject);
+  catalogue = storage.plan.updateChapter(catalogue, chapter);
+  catalogue = storage.plan.update(catalogue, { task_id: id, subject_id: subject.id, chapter_id: chapter.id, title: '最短路', task_mode: 'multi-day' });
+  const index = storage.helpers.libraryIndex(catalogue);
+  const initial = storage.helpers.saveRecord({ ...storage.helpers.initialRecord('2026-11-07'), plan_library: catalogue, plan_customized: true }, {
+    date: '2026-11-07', revision: 1,
+    assignments: [{ task_id: id, done: true, actual_minutes: 20, checkin_segments: [8, 12] }, { task_id: originalTask.id, done: true, actual_minutes: 9 }],
+    library_completed_ids: [id], library_reopened_ids: [], task_modes: { [id]: 'multi-day' }, subject_phases: { [subject.id]: '' },
+  }, index);
+  const archived = storage.helpers.archiveRecord(initial, { date: '2026-11-07', revision: initial.revision }, index);
+  initial.archives = archived.archives.map(day => ({ ...day, date: '2026-11-06' }));
+  initial.current.assignments.reverse();
+  const { store, record } = fixture(initial, { offline: true });
+  const backup = await store.exportBackup();
+  assert(storage.backup.isFull(backup));
+  const deleted = await store.request('/api/plan', { method: 'DELETE', body: JSON.stringify({ date: initial.current.date, revision: initial.revision, subject_id: subject.id }) });
+  assert.deepEqual(deleted.assignments.map(task => task.task_id), [originalTask.id]);
+  assert.deepEqual(record().archives[0].assignments.map(task => task.task_id), [originalTask.id]);
+  assert(!record().plan_library.subjects.some(item => item.id === subject.id));
+  assert(!Object.hasOwn(deleted.task_modes, id));
+  assert(!Object.hasOwn(deleted.subject_phases, subject.id));
+  const restored = await store.importBackup(backup, { replace: true, revision: deleted.revision });
+  const { exported_at: _, ...snapshot } = backup;
+  const { exported_at: __, ...roundTrip } = await store.exportBackup();
+  assert.deepEqual(roundTrip, snapshot);
+  assert.deepEqual(restored.assignments.map(task => task.task_id), [id, originalTask.id]);
+  assert.equal((await store.request(`/api/history?subject_id=${subject.id}`)).total, 2);
+});
+
+test('a full backup preserves an intentionally empty plan when replacing the default plan', async () => {
+  const catalogue = { subjects: [] };
+  const source = fixture({ ...storage.helpers.initialRecord('2026-11-07'), plan_library: catalogue, plan_customized: true }, { offline: true });
+  const target = fixture({ ...storage.helpers.initialRecord('2026-11-07'), plan_library: library }, { offline: true });
+  const backup = await source.store.exportBackup();
+  await target.store.importBackup(backup, { replace: true, revision: 1 });
+  assert.deepEqual(await target.store.request('/api/library'), catalogue);
+  assert.deepEqual(target.record().current.assignments, []);
+});
+
+test('restoring an earlier backup preserves its dated snapshot and brings unfinished work into today', async () => {
+  const date = '2026-11-06';
+  const index = storage.helpers.libraryIndex(library);
+  const initial = storage.helpers.saveRecord({ ...storage.helpers.initialRecord(date), plan_library: library }, {
+    date, revision: 1, assignments: [{ task_id: originalTask.id, done: false }],
+  }, index);
+  const source = fixture(initial, { offline: true });
+  const target = fixture(undefined, { offline: true });
+  const restored = await target.store.importBackup(await source.store.exportBackup(), { replace: true, revision: 1 });
+  assert.equal(restored.date, '2026-11-07');
+  assert.deepEqual(restored.assignments, initial.current.assignments);
+  assert.deepEqual(target.record().archives, [initial.current]);
+  assert.deepEqual(restored.history, []);
 });
 
 test('deleting a plan chapter or task removes its check-ins and time without deleting unrelated records', async () => {

@@ -1,9 +1,8 @@
 'use strict';
 
 (() => {
-  const SUBJECT_NAMES = ['英语', '高数', '线代', '概率论', '数据结构', '计组', '操作系统', '计网'];
   const SUBJECT_LABELS = Object.freeze({ ds: 'DS', co: 'CO', os: 'OS', cn: 'CN' });
-  const subjectName = (subject) => SUBJECT_LABELS[subject.id || subject.subject_id] || subject.name || subject.subject_name || '';
+  const subjectName = (subject = {}) => SUBJECT_LABELS[subject.id || subject.subject_id] || subject.name || subject.subject_name || '';
   const $ = (id) => document.getElementById(id);
   const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
   const icon = (name, extraClass = '') => `<svg class="icon ${extraClass}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -35,11 +34,13 @@
   let planEditing = null;
   let chapterDraft = null;
   let planDeleteDraft = null;
+  let backupRestoreDraft = null;
   let planCatalogue = null;
-  const planIndexes = new WeakMap();
+  let planOptionsSource = null;
   const planPages = new Map();
   const planChapterFilters = new Map();
   const PLAN_PAGE_SIZE = 12;
+  const PLAN_EDITOR_FORMS = ['plan-form', 'plan-chapter-form', 'plan-subject-form'];
   let planEditBaseline = null;
   let planDraggedTask = null;
   let cloudAccount = null;
@@ -85,6 +86,7 @@
     constructor(subjects, retired) {
       this.source = subjects;
       this.retired = retired;
+      this.subjects = new Map(subjects.map(subject => [subject.id, subject]));
       this.tasks = new Map();
       this.chapters = new Map();
       this.identities = new Map();
@@ -106,6 +108,20 @@
       if (!this.searchText.has(item)) this.searchText.set(item, fields.map((field) => String(item[field] || '').toLocaleLowerCase()).join('\n'));
       return this.searchText.get(item);
     }
+
+    get plan() {
+      if (!this.planTasks) {
+        const byId = new Map();
+        const bySubject = new Map();
+        for (const entry of window.StudyStore.plan.entries({ subjects: this.source })) {
+          byId.set(entry.task_id, entry);
+          if (!bySubject.has(entry.subject_id)) bySubject.set(entry.subject_id, []);
+          bySubject.get(entry.subject_id).push(entry);
+        }
+        this.planTasks = { byId, bySubject };
+      }
+      return this.planTasks;
+    }
   }
 
   function catalogue() {
@@ -116,9 +132,7 @@
   function applyCatalogue(source) {
     if (!Array.isArray(source?.subjects)) throw new Error('章节任务库的格式不正确。');
     if (!preparedCatalogues.has(source)) {
-      const subjects = SUBJECT_NAMES.map(name => source.subjects.find(subject => subject.name === name))
-        .filter(Boolean).map(subject => window.StudyModels.createSubject(subject));
-      if (subjects.length !== SUBJECT_NAMES.length) throw new Error('章节任务库缺少科目，请重新载入任务库。');
+      const subjects = source.subjects.map(subject => window.StudyModels.createSubject(subject));
       const retired = new Map((source.metadata?.retired_tasks || []).map(task => [task.id, task]));
       preparedCatalogues.set(source, { subjects, retired });
     }
@@ -328,10 +342,14 @@
     $('history-button').disabled = unavailable;
     $('data-button').disabled = unavailable;
     $('plan-button').disabled = unavailable;
-    $('new-plan-task').disabled = unavailable || !$('plan-editor-panel').hidden;
+    const editing = !$('plan-editor-panel').hidden;
+    $('new-plan-subject').disabled = unavailable || editing;
+    $('new-plan-task').disabled = unavailable || editing || !library.length;
     $('plan-fields').disabled = actionBusy;
     $('plan-chapter-fields').disabled = actionBusy;
+    $('plan-subject-fields').disabled = actionBusy;
     $('confirm-plan-delete').disabled = unavailable;
+    $('confirm-backup-restore').disabled = unavailable;
     $('manage-plan-button').disabled = unavailable;
     $('export-button').disabled = unavailable;
     $('export-history-button').disabled = actionBusy || !historyRecord;
@@ -341,22 +359,18 @@
     $('task-sheet').setAttribute('aria-busy', String(unavailable));
   }
 
-  // Composite parent: tasks and chapters share partitioning and folded rendering.
   class LearningNode {
-    constructor(data, children = []) {
+    constructor(data) {
       this.data = data;
       this.id = data.task_id || data.id;
-      this.children = children;
     }
+  }
 
-    static relatedIds(taskId) {
-      const index = catalogue();
-      const identity = index.identities.get(taskId);
-      return identity ? index.groups.get(identity) : [taskId];
-    }
-
+  class LearningTask extends LearningNode {
     get taskIds() {
-      return this.children.length ? [...new Set(this.children.flatMap((child) => child.taskIds))] : LearningNode.relatedIds(this.id);
+      const index = catalogue();
+      const identity = index.identities.get(this.id);
+      return identity ? index.groups.get(identity) : [this.id];
     }
 
     get mode() {
@@ -364,12 +378,10 @@
     }
 
     get completed() {
-      if (this.children.length) return this.children.every((child) => child.completed);
       return window.StudyModels.taskCompleted(this.taskIds, this.mode, currentIndex());
     }
 
     setCompleted(completed) {
-      if (this.children.length) { this.children.forEach(child => child.setCompleted(completed)); return completed; }
       if (this.mode !== 'multi-day') return false;
       const marked = new Set(state.library_completed_ids);
       const reopened = new Set(state.library_reopened_ids);
@@ -418,6 +430,17 @@
       });
       if (wasCompleted) this.setCompleted(false);
     }
+  }
+
+  class LearningGroup extends LearningNode {
+    constructor(data, children) {
+      super(data);
+      this.children = children;
+    }
+
+    get completed() {
+      return this.children.length > 0 && this.children.every(child => child.completed);
+    }
 
     partition(children = this.children) {
       return children.reduce((groups, child) => {
@@ -429,7 +452,7 @@
     renderGroups(renderItems, { key = this.id, open = false, title = '已完成' } = {}) {
       const groups = this.partition();
       return (groups.pending.length ? renderItems(groups.pending) : '') +
-        (groups.completed.length ? LearningNode.renderFold(key, groups.completed.length, renderItems(groups.completed), open, title) : '');
+        (groups.completed.length ? LearningGroup.renderFold(key, groups.completed.length, renderItems(groups.completed), open, title) : '');
     }
 
     static renderFold(key, count, content, open = false, title = '已完成') {
@@ -437,11 +460,9 @@
     }
   }
 
-  class LearningTask extends LearningNode {}
-
-  class LearningChapter extends LearningNode {
-    constructor(chapter) {
-      super(chapter, chapter.tasks.map((task) => new LearningTask(task)));
+  class LearningChapter extends LearningGroup {
+    constructor(chapter, tasks = chapter.tasks) {
+      super(chapter, tasks.map(task => new LearningTask(task)));
     }
   }
 
@@ -467,16 +488,17 @@
     get completed() { return this.model.completed; }
     get variant() { return 'task'; }
     get timeTask() { return this.options.assignment || this.task; }
+    get subject() {
+      return catalogue().subjects.get(this.task.subject_id) || catalogue().tasks.get(this.id)?.subject;
+    }
     get learningInfo() {
       if (this.cachedLearningInfo) return this.cachedLearningInfo;
-      const subject = library.find(item => item.id === (this.task.subject_id || catalogue().tasks.get(this.id)?.subject.id));
-      return this.cachedLearningInfo = window.StudyModels.learningInfo(this.task, subject?.sectionFor?.(this.task));
+      return this.cachedLearningInfo = this.subject?.learningInfo?.(this.task) || window.StudyModels.learningInfo(this.task);
     }
     get presentation() {
       if (this.cachedPresentation) return this.cachedPresentation;
-      const subjectId = this.task.subject_id || catalogue().tasks.get(this.id)?.subject.id;
       const remarks = /〔原图/.test(this.task.remarks || '') ? canonicalTask(this.task)?.remarks || this.task.remarks : this.task.remarks;
-      return this.cachedPresentation = new window.StudyModels.TaskPresentation({ ...this.task, ...this.learningInfo, remarks }, null, { showLearningInfo: ['ds', 'co', 'os', 'cn'].includes(subjectId) });
+      return this.cachedPresentation = new window.StudyModels.TaskPresentation({ ...this.task, ...this.learningInfo, remarks }, null, { showLearningInfo: this.subject?.supportsLearningInfo || undefined });
     }
 
     status() {
@@ -738,17 +760,33 @@
     return `<div class="subject-stage-summary" ${open ? 'hidden' : ''}>${stageProgressMarkup(subject, progress)}<span class="subject-daily-time">今日${escape(actualSummaryText(tasks))}</span></div>`;
   }
 
+  function subjectsForAssignments(assignments) {
+    const active = catalogue().subjects;
+    if (assignments.every(task => active.has(task.subject_id))) return library;
+    const subjects = new Map(library.map(subject => [subject.id, subject]));
+    for (const task of assignments) {
+      if (!subjects.has(task.subject_id)) subjects.set(task.subject_id, { id: task.subject_id, name: task.subject_name, chapters: [] });
+    }
+    return [...subjects.values()];
+  }
+
   function subjectGroupsMarkup(assignments, { history = false, stageProgress = null, exporting = false } = {}) {
     const CardView = history ? HistoryTaskCardView : DailyTaskCardView;
-    return library.map((subject) => {
+    if (!library.length && !assignments.length) return '<div class="empty-state"><strong>还没有学科</strong><p>在计划看板中新增学科。</p></div>';
+    return subjectsForAssignments(assignments).map((subject) => {
       const tasks = subjectAssignments(subject.id, assignments);
       const allDone = tasks.length && tasks.every(task => task.done);
       const open = exporting ? tasks.length > 0 : !history && expandedSubjects.has(subject.id);
       // One subject fold contains all cards, without another completed-card frame.
       const taskContent = open ? taskCardsMarkup(tasks, CardView) : '';
       const summary = tasks.length ? progressSummary(subject, tasks, subjectProgress(subject, stageProgress?.[subject.id]), open && !exporting) : '';
+      const name = escape(subjectName(subject));
+      const title = `<strong class="subject-name" id="subject-name-${escape(subject.id)}">${name}</strong>`;
+      const heading = catalogue().subjects.has(subject.id)
+        ? `<button type="button" class="subject-button" data-action="choose" aria-haspopup="dialog" aria-controls="library-dialog" data-subject="${escape(subject.id)}" aria-label="选择${name}的章节任务">${title}</button>`
+        : `<span class="subject-button">${title}</span>`;
       return `<section role="listitem" aria-labelledby="subject-name-${escape(subject.id)}" data-subject-row="${escape(subject.id)}" data-record-version="${state.revision}:${changeVersion}" class="subject-group ${tasks.length ? 'has-tasks' : 'is-empty'} ${allDone ? 'is-complete' : ''}">
-        <div class="subject-heading"><h3><button type="button" class="subject-button" data-action="choose" aria-haspopup="dialog" aria-controls="library-dialog" data-subject="${escape(subject.id)}" aria-label="选择${escape(subjectName(subject))}的章节任务"><strong class="subject-name" id="subject-name-${escape(subject.id)}">${escape(subjectName(subject))}</strong></button></h3><button type="button" class="subject-toggle" data-action="toggle-subject" data-subject="${escape(subject.id)}" aria-controls="subject-body-${escape(subject.id)}" aria-expanded="${open}" aria-label="${open ? '收起' : '展开'}${escape(subjectName(subject))}任务">${icon('chevron', 'subject-chevron')}</button></div>
+        <div class="subject-heading"><h3>${heading}</h3><button type="button" class="subject-toggle" data-action="toggle-subject" data-subject="${escape(subject.id)}" aria-controls="subject-body-${escape(subject.id)}" aria-expanded="${open}" aria-label="${open ? '收起' : '展开'}${name}任务">${icon('chevron', 'subject-chevron')}</button></div>
         <div class="subject-transition">${summary}<div class="subject-body" id="subject-body-${escape(subject.id)}" data-loaded="${open}" ${open ? '' : 'hidden'}>${taskContent}</div></div>
       </section>`;
     }).join('');
@@ -763,7 +801,7 @@
     const button = group.querySelector('.subject-toggle');
     CardMotion.switchSubject(group, open, body => { body.innerHTML = taskCardsMarkup(subjectAssignments(subjectId)); }, fitJournalWidth);
     button.setAttribute('aria-expanded', String(open));
-    button.setAttribute('aria-label', `${open ? '收起' : '展开'}${subjectName(library.find(subject => subject.id === subjectId))}任务`);
+    button.setAttribute('aria-label', `${open ? '收起' : '展开'}${subjectName(catalogue().subjects.get(subjectId) || subjectAssignments(subjectId)[0])}任务`);
   }
 
   function fitJournalWidth() {
@@ -960,7 +998,7 @@
     subjectDraft = { subject, selected, chapterId: firstSelected?.id || nextChapter?.id || subject.chapters[0]?.id, query: '', phase };
     $('library-title').textContent = `${subjectName(subject)} · 选择学习任务`;
     $('library-search').value = '';
-    $('library-phase').innerHTML = '<option value="">全部阶段</option>' + [...new Set(subject.chapters.map((chapter) => chapter.phase).filter(Boolean))].map((phase) => `<option value="${escape(phase)}">${escape(phase)}</option>`).join('');
+    $('library-phase').innerHTML = '<option value="">全部阶段</option>' + subject.phases.map((phase) => `<option value="${escape(phase)}">${escape(phase)}</option>`).join('');
     $('library-phase').value = phase;
     renderLibrary();
     openDialog('library-dialog');
@@ -1003,7 +1041,7 @@
 
   function renderLibraryNavigation() {
     const chapters = filteredChapters().map((chapter) => new LearningChapter(chapter));
-    const subject = new LearningNode(subjectDraft.subject, chapters);
+    const subject = new LearningGroup(subjectDraft.subject, chapters);
     const groupKey = `chapters:${subjectDraft.subject.id}`;
     const previousGroup = $('chapter-list').querySelector('details[data-completed-group]');
     const open = previousGroup?.dataset.completedGroup === groupKey && previousGroup.open;
@@ -1021,10 +1059,7 @@
       $('chapter-content').innerHTML = `<div class="empty-state">${icon('search')}<strong>${subjectDraft.query ? '没有找到匹配的任务' : '这个科目还没有章节任务'}</strong></div>`;
       return;
     }
-    const tasks = visibleTasks(chapter);
-    const chapterNode = new LearningChapter(chapter);
-    const visibleIds = new Set(tasks.map((task) => task.id));
-    const visible = new LearningNode({ id: chapter.id }, chapterNode.children.filter((node) => visibleIds.has(node.id)));
+    const visible = new LearningChapter(chapter, visibleTasks(chapter));
     const pending = visible.partition().pending.map((node) => node.data);
     const allChosen = pending.length && pending.every((task) => subjectDraft.selected.has(task.id));
     const groupKey = `library:${subjectDraft.subject.id}:${chapter.id}`;
@@ -1090,7 +1125,7 @@
     historyRecord = record;
     const assignments = record.assignments;
     const completed = assignments.filter(task => task.done).length;
-    $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(record.date))}</h3><span>打卡 ${completed} / ${assignments.length} 项<small class="history-time-line">${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? library.map(subject => {
+    $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(record.date))}</h3><span>打卡 ${completed} / ${assignments.length} 项<small class="history-time-line">${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? subjectsForAssignments(assignments).map(subject => {
       const tasks = subjectAssignments(subject.id, assignments);
       if (!tasks.length) return '';
       return `<section class="history-subject"><h4 class="subject-name">${escape(subjectName(subject))}</h4>${tasks.map(task => new HistoryTaskCardView(task, { compact: true, chapter: true }).render()).join('')}</section>`;
@@ -1129,16 +1164,18 @@
     const request = ++historyFacetRequest;
     chapter.disabled = true;
     chapter.innerHTML = `<option value="">${subject ? '载入章节…' : '先选学科'}</option>`;
-    if (!subject) return;
+    if (!subject && !$('history-query').open) return;
     try {
-      const { chapters } = await api(`/api/history?subject_id=${encodeURIComponent(subject)}&limit=1`);
+      const { chapters, subjects } = await api(`/api/history?subject_id=${encodeURIComponent(subject)}&limit=1`);
       if (request !== historyFacetRequest || !$('history-dialog').open) return;
+      historySubjectOptions(subjects);
+      if (!subject) return;
       const matching = chapters.filter(item => item.subject_id === subject);
       chapter.innerHTML = '<option value="">全部章节</option>' + matching.map(item =>
         `<option value="${escape(item.id)}">${escape(item.title)}</option>`).join('');
       chapter.disabled = !matching.length;
     } catch {
-      if (request === historyFacetRequest) chapter.innerHTML = '<option value="">章节加载失败</option>';
+      if (subject && request === historyFacetRequest) chapter.innerHTML = '<option value="">章节加载失败</option>';
     }
   }
 
@@ -1172,6 +1209,15 @@
     }
   }
 
+  function historySubjectOptions(historicalSubjects = []) {
+    const filter = $('history-query-subject');
+    const selected = filter.value;
+    const subjects = new Map([...library, ...historicalSubjects].map(subject => [subject.id, subject.name]));
+    filter.innerHTML = '<option value="">全部学科</option>' + [...subjects].map(([id, name]) =>
+      `<option value="${escape(id)}">${escape(name)}</option>`).join('');
+    filter.value = subjects.has(selected) ? selected : '';
+  }
+
   function openHistory() {
     if (!state || actionBusy) return;
     if ($('history-dialog').open && historyQuery) {
@@ -1180,8 +1226,7 @@
     }
     if (!$('history-dialog').open) {
       $('history-query').open = false;
-      $('history-query-subject').innerHTML = '<option value="">全部学科</option>' + library.map(subject =>
-        `<option value="${escape(subject.id)}">${escape(subject.name)}</option>`).join('');
+      historySubjectOptions();
       $('history-query-form').reset();
       loadHistoryChapters();
     }
@@ -1235,25 +1280,24 @@
     }
   }
 
-  function planIndex() {
-    if (!planIndexes.has(planCatalogue)) {
-      const byId = new Map();
-      const bySubject = new Map();
-      for (const entry of window.StudyStore.plan.entries(planCatalogue)) {
-        byId.set(entry.task_id, entry);
-        if (!bySubject.has(entry.subject_id)) bySubject.set(entry.subject_id, []);
-        bySubject.get(entry.subject_id).push(entry);
-      }
-      planIndexes.set(planCatalogue, { byId, bySubject });
-    }
-    return planIndexes.get(planCatalogue);
-  }
-
   function renderPlans() {
+    if (planOptionsSource !== planCatalogue) {
+      const filter = $('plan-filter');
+      const editorSubject = $('plan-subject');
+      const selectedId = filter.value;
+      const editorId = editorSubject.value;
+      const subjects = catalogue().subjects;
+      editorSubject.innerHTML = library.map(subject => `<option value="${escape(subject.id)}">${escape(subject.name)}</option>`).join('');
+      editorSubject.value = subjects.has(editorId) ? editorId : library[0]?.id || '';
+      filter.innerHTML = '<option value="">全部学科</option>' + editorSubject.innerHTML;
+      filter.value = subjects.has(selectedId) ? selectedId : '';
+      filter.disabled = !library.length;
+      planOptionsSource = planCatalogue;
+    }
     const query = $('plan-search').value.trim().toLowerCase();
     const subjectId = $('plan-filter').value;
-    const { bySubject } = planIndex();
-    const subjects = planCatalogue.subjects.filter(subject => !subjectId || subject.id === subjectId);
+    const { bySubject } = catalogue().plan;
+    const subjects = library.filter(subject => !subjectId || subject.id === subjectId);
     const chapterFilter = $('plan-chapter-filter');
     const selectedSubject = subjectId ? subjects[0] : null;
     const selectedChapterId = planChapterFilters.get(subjectId) || '';
@@ -1263,7 +1307,8 @@
       : '<option value="">先选学科</option>';
     const planned = new Set(state.assignments.map(task => task.task_id));
     const editing = !$('plan-editor-panel').hidden;
-    $('new-plan-task').disabled = actionBusy || editing;
+    $('new-plan-task').disabled = actionBusy || editing || !library.length;
+    $('new-plan-subject').disabled = actionBusy || editing;
     let visibleCount = 0;
     $('plan-list').innerHTML = subjects.map(subject => {
       const chapter = subjectId ? subject.chapters.find(item => item.id === selectedChapterId) : null;
@@ -1290,12 +1335,13 @@
         <div class="plan-column-chapter-row">
           ${subjectId ? '' : `<select class="plan-column-chapter" data-board-chapter="${escape(subject.id)}" aria-label="筛选${escape(subject.name)}章节"><option value="">全部章节</option>${chapterOptions(subject, '')}</select>`}
           <button type="button" class="plan-column-new" data-board-action="new-chapter" aria-label="新建${escape(subject.name)}章节" ${editing ? 'disabled' : ''}>＋章节</button>
+          <button type="button" class="text-button plan-remove-subject" data-board-action="delete-subject" aria-label="删除学科：${escape(subject.name)}" ${editing ? 'disabled' : ''}>删除学科</button>
         </div>
         ${customChapter ? `<div class="plan-column-chapter-actions"><button type="button" class="text-button" data-board-action="rename-chapter" aria-label="重命名章节：${escape(chapter.title)}" ${editing ? 'disabled' : ''}>重命名</button><button type="button" class="text-button" data-board-action="delete-chapter" aria-label="删除章节：${escape(chapter.title)}" ${editing ? 'disabled' : ''}>删除</button></div>` : ''}
         <div class="plan-column-cards">${cards || `<p class="plan-board-empty">${chapter && !chapter.tasks.length ? '本章暂无任务' : '暂无匹配任务'}</p>`}</div>
         <div class="plan-column-pagination"><button type="button" class="text-button" data-board-action="previous" ${page === 0 ? 'disabled' : ''}>上一页</button><span>${page + 1} / ${pageCount}</span><button type="button" class="text-button" data-board-action="next" ${page + 1 === pageCount ? 'disabled' : ''}>下一页</button></div>
       </section>`;
-    }).join('');
+    }).join('') || '<div class="empty-state"><strong>暂无学科</strong><p>使用「新建学科」开始添加任务。</p></div>';
     $('plan-page-label').textContent = `${subjects.length} 个学科 · ${visibleCount} 项任务`;
   }
 
@@ -1310,32 +1356,35 @@
   }
 
   function planChapterOptions(selected = '') {
-    const subject = planCatalogue.subjects.find(item => item.id === $('plan-subject').value);
-    $('plan-chapter').innerHTML = '<option value="">默认（我的任务）</option>' + chapterOptions(subject, selected);
-    if (!subject.chapters.some(chapter => chapter.id === selected)) $('plan-chapter').value = '';
+    const subject = catalogue().subjects.get($('plan-subject').value);
+    $('plan-chapter').innerHTML = '<option value="">默认（我的任务）</option>' + (subject ? chapterOptions(subject, selected) : '');
+    if (!subject?.chapters.some(chapter => chapter.id === selected)) $('plan-chapter').value = '';
   }
 
   function planTaskFingerprint(task) {
     return JSON.stringify([task.title, task.detail || '', task.subject_id, task.chapter_id, task.estimated_minutes ?? null, task.task_mode || 'single-day']);
   }
 
+  function showPlanEditor(form, title, focus) {
+    $('plan-editor-title').textContent = title;
+    for (const id of PLAN_EDITOR_FORMS) $(id).hidden = id !== form;
+    $('plan-editor-panel').hidden = false;
+    $('plan-message').textContent = '';
+    renderPlans();
+    $(focus).focus({ preventScroll: true });
+  }
+
   function editPlanTask(task = null, subjectId = '', chapterId = '') {
-    if (chapterDraft) return;
+    if (chapterDraft || (!$('plan-editor-panel').hidden && !$('plan-subject-form').hidden) || !library.length) return;
     planEditing = task?.task_id || null;
     planEditBaseline = task ? planTaskFingerprint(task) : null;
     $('plan-task-title').value = task?.title || '';
     $('plan-detail').value = task?.detail || '';
     $('plan-estimated').value = task?.estimated_minutes ?? '';
     $('plan-task-mode').value = task?.task_mode || 'single-day';
-    $('plan-subject').value = task?.subject_id || subjectId || planCatalogue.subjects[0].id;
+    $('plan-subject').value = task?.subject_id || subjectId || library[0].id;
     planChapterOptions(task?.chapter_id || chapterId);
-    $('plan-editor-title').textContent = task ? '编辑任务' : '新建任务';
-    $('plan-form').hidden = false;
-    $('plan-chapter-form').hidden = true;
-    $('plan-editor-panel').hidden = false;
-    $('plan-message').textContent = '';
-    renderPlans();
-    $('plan-task-title').focus({ preventScroll: true });
+    showPlanEditor('plan-form', task ? '编辑任务' : '新建任务', 'plan-task-title');
   }
 
   function editPlanChapter(subject, chapter = null) {
@@ -1344,20 +1393,14 @@
       id: chapter?.id || `custom-chapter-${crypto.randomUUID()}`,
       original: chapter,
     };
-    const phases = [...new Set(subject.chapters.map(item => item.phase).filter(Boolean))];
+    const phases = subject.phases;
     const currentPhase = subject.chapters.find(item => item.id === planChapterFilters.get(subject.id))?.phase
       || state.subject_phases[subject.id];
     $('plan-chapter-phase').innerHTML = '<option value="">不分阶段</option>' +
       phases.map(phase => `<option value="${escape(phase)}">${escape(phase)}</option>`).join('');
     $('plan-chapter-phase').value = chapter ? chapter.phase || '' : phases.includes(currentPhase) ? currentPhase : '';
     $('plan-chapter-title').value = chapter?.title || '';
-    $('plan-editor-title').textContent = `${chapter ? '编辑章节' : '新建章节'} · ${subject.name}`;
-    $('plan-form').hidden = true;
-    $('plan-chapter-form').hidden = false;
-    $('plan-editor-panel').hidden = false;
-    $('plan-message').textContent = '';
-    renderPlans();
-    $('plan-chapter-title').focus();
+    showPlanEditor('plan-chapter-form', `${chapter ? '编辑章节' : '新建章节'} · ${subject.name}`, 'plan-chapter-title');
   }
 
   function closePlanEditor() {
@@ -1370,10 +1413,6 @@
 
   function openPlans() {
     if (!state || actionBusy) return;
-    const selectedSubject = $('plan-filter').value;
-    $('plan-subject').innerHTML = library.map(subject => `<option value="${escape(subject.id)}">${escape(subjectName(subject))}</option>`).join('');
-    $('plan-filter').innerHTML = '<option value="">全部学科</option>' + $('plan-subject').innerHTML;
-    $('plan-filter').value = selectedSubject;
     planPages.clear();
     $('plan-search').value = '';
     $('plan-message').textContent = '';
@@ -1381,12 +1420,12 @@
     openDialog('plan-dialog');
   }
 
-  async function mutatePlan(method, payload, expectedRevision) {
+  async function commitJournalChange(save, expectedRevision) {
     setBusy(true);
     try {
       await flushAutosave();
-      if (expectedRevision != null && state.revision !== expectedRevision) throw new Error('计划已更新，请重新选择要删除的内容。');
-      state = normaliseState(await api('/api/plan', { method, body: JSON.stringify({ date: state.date, revision: state.revision, ...payload }) }));
+      if (expectedRevision != null && state.revision !== expectedRevision) throw new Error('手账已更新，请重新选择后再确认。');
+      state = normaliseState(await save());
       dirty = false;
       changeVersion += 1;
       closeDialog('library-dialog');
@@ -1400,6 +1439,10 @@
     }
   }
 
+  function mutatePlan(method, payload, expectedRevision) {
+    return commitJournalChange(() => api('/api/plan', { method, body: JSON.stringify({ date: state.date, revision: state.revision, ...payload }) }), expectedRevision);
+  }
+
   async function savePlan(catalogue, message, modeTaskId) {
     await mutatePlan('PUT', { catalogue, mode_task_id: modeTaskId });
     showToast(message);
@@ -1407,7 +1450,11 @@
 
   function confirmPlanDelete(payload, title, taskCount) {
     planDeleteDraft = { payload, revision: state.revision };
-    $('plan-delete-target').textContent = taskCount == null ? `删除任务「${title}」` : `删除章节「${title}」及其中 ${taskCount} 项任务`;
+    const kind = payload.task_id ? '任务' : payload.chapter_id ? '章节' : '学科';
+    $('plan-delete-target').textContent = `删除${kind}「${title}」${taskCount == null ? '' : `及其中 ${taskCount} 项任务`}`;
+    $('plan-delete-detail').textContent = kind === '学科'
+      ? '该学科的章节、打卡记录、实际用时和完成状态也会删除。'
+      : '相关打卡记录、实际用时和完成状态也会删除。';
     $('plan-delete-error').textContent = '';
     openDialog('plan-delete-dialog');
   }
@@ -1421,7 +1468,7 @@
     return { task_id: `custom-${crypto.randomUUID()}`, subject_id, title, detail };
   }
 
-  function downloadBackup(value, filename = `学习记录备份_${state.date}_${Date.now()}.json`) {
+  function downloadBackup(value, filename = `学习手账备份_${state.date}_${Date.now()}.json`) {
     downloadFile(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' }), filename);
   }
 
@@ -1463,6 +1510,42 @@
       buttons.forEach((button) => { button.disabled = false; });
       setBusy(false);
     }
+  }
+
+  function exportJournal() {
+    return dataAction(async () => {
+      downloadBackup(await recordStore().exportBackup());
+      showToast('完整手账备份已开始下载。');
+    });
+  }
+
+  async function importJournalFile(event, acceptsPlan = false) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !state || actionBusy) return;
+    try {
+      let value;
+      try { value = JSON.parse(await file.text()); }
+      catch { throw new Error('请选择有效的 JSON 文件。'); }
+      if (window.StudyStore.backup.isFile(value)) {
+        await flushAutosave();
+        const replace = window.StudyStore.backup.isFull(value);
+        backupRestoreDraft = { value, replace, revision: state.revision };
+        $('backup-restore-name').textContent = file.name;
+        $('backup-restore-detail').textContent = replace
+          ? '完整还原会替换当前手账的计划、打卡记录和学习进度。'
+          : '这份旧版备份将与当前记录合并。';
+        $('backup-restore-error').textContent = '';
+        $('confirm-backup-restore').textContent = replace ? '完整还原' : '合并记录';
+        openDialog('backup-restore-dialog');
+        return;
+      }
+      if (!acceptsPlan) throw new Error('请选择学习手账备份。');
+      if (file.size > 24 * 1024 * 1024) throw new Error('计划模板超过 24 MB。');
+      const incoming = window.StudyStore.plan.unpack(value, planCatalogue);
+      const catalogue = $('plan-import-mode').value === 'replace' ? incoming : window.StudyStore.plan.merge(planCatalogue, incoming);
+      await savePlan(catalogue, '计划模板已导入。');
+    } catch (error) { planError(error); }
   }
 
   async function load({ duringPlanSave = false } = {}) {
@@ -1715,8 +1798,27 @@
     const subjectId = $('plan-filter').value;
     if (!actionBusy) editPlanTask(null, subjectId, planChapterFilters.get(subjectId) || '');
   });
+  $('new-plan-subject').addEventListener('click', () => {
+    if (actionBusy || !$('plan-editor-panel').hidden) return;
+    $('plan-subject-name').value = '';
+    showPlanEditor('plan-subject-form', '新建学科', 'plan-subject-name');
+  });
   $('cancel-plan-edit').addEventListener('click', closePlanEditor);
   $('cancel-plan-chapter').addEventListener('click', closePlanEditor);
+  $('cancel-plan-subject').addEventListener('click', closePlanEditor);
+  $('plan-subject-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!state || actionBusy) return;
+    try {
+      const id = `custom-subject-${crypto.randomUUID()}`;
+      const catalogue = window.StudyStore.plan.updateSubject(planCatalogue, { id, name: $('plan-subject-name').value });
+      await savePlan(catalogue, '学科已创建。');
+      $('plan-filter').value = id;
+      $('plan-search').value = '';
+      closePlanEditor();
+      $('plan-filter').focus({ preventScroll: true });
+    } catch (error) { planError(error); }
+  });
   $('plan-chapter-form').addEventListener('submit', async event => {
     event.preventDefault();
     if (!chapterDraft || actionBusy) return;
@@ -1748,13 +1850,24 @@
     try {
       await mutatePlan('DELETE', payload, revision);
       closeDialog('plan-delete-dialog');
-      if (planEditing === payload.task_id) closePlanEditor();
-      $('plan-filter').focus({ preventScroll: true });
-      showToast(payload.chapter_id ? '章节已删除。' : '任务已删除。');
+      if (payload.task_id && planEditing === payload.task_id) closePlanEditor();
+      ($('plan-filter').disabled ? $('new-plan-subject') : $('plan-filter')).focus({ preventScroll: true });
+      showToast(payload.task_id ? '任务已删除。' : payload.chapter_id ? '章节已删除。' : '学科已删除。');
     } catch (error) {
       if ($('plan-delete-dialog').open) $('plan-delete-error').textContent = error.message;
       else planError(error);
     }
+  });
+  $('confirm-backup-restore').addEventListener('click', async () => {
+    if (!backupRestoreDraft || actionBusy) return;
+    const { value, replace, revision } = backupRestoreDraft;
+    $('backup-restore-error').textContent = '';
+    try {
+      await commitJournalChange(() => recordStore().importBackup(value, { replace, revision }), revision);
+      closeDialog('backup-restore-dialog');
+      if ($('plan-dialog').open) closePlanEditor();
+      showToast(replace ? '完整手账已还原。' : '备份已合并。');
+    } catch (error) { $('backup-restore-error').textContent = error.message; }
   });
   $('plan-form').addEventListener('submit', async event => {
     event.preventDefault();
@@ -1768,7 +1881,7 @@
       task_mode: $('plan-task-mode').value,
     };
     try {
-      const original = planIndex().byId.get(planEditing);
+      const original = catalogue().plan.byId.get(planEditing);
       if (planEditing && !original) throw new Error('该任务已删除，请取消编辑。');
       if (original && planTaskFingerprint(original) !== planEditBaseline) throw new Error('该任务已在其他页面更新，请取消编辑后重新打开。');
       if (task.estimated_minutes !== null && (!Number.isFinite(task.estimated_minutes) || task.estimated_minutes < 0 || task.estimated_minutes > 525600)) throw new Error('请填写有效的计划分钟数。');
@@ -1787,9 +1900,12 @@
       const action = columnButton.dataset.boardAction;
       const chapterId = $('plan-filter').value === subjectId ? planChapterFilters.get(subjectId) || '' : '';
       if (action === 'new') editPlanTask(null, subjectId, chapterId);
-      else if (action === 'new-chapter') editPlanChapter(planCatalogue.subjects.find(subject => subject.id === subjectId));
-      else if (action === 'rename-chapter' || action === 'delete-chapter') {
-        const subject = planCatalogue.subjects.find(item => item.id === subjectId);
+      else if (action === 'new-chapter') editPlanChapter(catalogue().subjects.get(subjectId));
+      else if (action === 'delete-subject') {
+        const subject = catalogue().subjects.get(subjectId);
+        confirmPlanDelete({ subject_id: subjectId }, subject.name, catalogue().plan.bySubject.get(subjectId)?.length || 0);
+      } else if (action === 'rename-chapter' || action === 'delete-chapter') {
+        const subject = catalogue().subjects.get(subjectId);
         const chapter = subject.chapters.find(item => item.id === chapterId);
         if (!chapter?.id.startsWith('custom-chapter-')) return;
         if (action === 'rename-chapter') editPlanChapter(subject, chapter);
@@ -1802,7 +1918,7 @@
     }
     const button = event.target.closest('[data-plan-action]');
     if (!button) return;
-    const task = planIndex().byId.get(button.closest('[data-plan-task]')?.dataset.planTask);
+    const task = catalogue().plan.byId.get(button.closest('[data-plan-task]')?.dataset.planTask);
     if (!task) return;
     $('plan-message').textContent = '';
     const action = button.dataset.planAction;
@@ -1813,7 +1929,7 @@
       confirmPlanDelete({ task_id: task.task_id }, task.title);
     } else if (action === 'add' && !state.assignments.some(item => item.task_id === task.task_id)) {
       if (state.assignments.length >= window.StudyStore.MAX_TASKS) { planError(new Error('今日任务已达上限。')); return; }
-      const subject = library.find(item => item.id === task.subject_id);
+      const subject = catalogue().subjects.get(task.subject_id);
       state.assignments = [...state.assignments, { ...task, subject_name: subject.name, task_mode: taskMode(task), done: false }];
       expandedSubjects.add(task.subject_id);
       changed();
@@ -1859,7 +1975,7 @@
     if (!column || !planDraggedTask || actionBusy) return;
     event.preventDefault();
     column.classList.remove('is-drop-target');
-    const task = planIndex().byId.get(planDraggedTask);
+    const task = catalogue().plan.byId.get(planDraggedTask);
     planDraggedTask = null;
     if (!task) return;
     const subjectId = column.dataset.boardSubject;
@@ -1879,25 +1995,13 @@
       planError(new Error('默认计划暂时无法下载，请稍后重试。'));
     }
   });
-  $('download-plan').addEventListener('click', () => {
+  $('download-plan').addEventListener('click', exportJournal);
+  $('download-plan-template').addEventListener('click', () => {
     if (!state) return;
     downloadBackup(window.StudyStore.plan.pack(planCatalogue), `学习计划_${state.date}.json`);
   });
   $('upload-plan').addEventListener('click', () => $('plan-file').click());
-  $('plan-file').addEventListener('change', async event => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file || !state || actionBusy) return;
-    $('plan-message').textContent = '';
-    try {
-      if (file.size > 24 * 1024 * 1024) throw new Error('计划文件超过 24 MB。');
-      const incoming = window.StudyStore.plan.unpack(JSON.parse(await file.text()), planCatalogue);
-      const catalogue = $('plan-import-mode').value === 'replace' ? incoming : window.StudyStore.plan.merge(planCatalogue, incoming);
-      await savePlan(catalogue, '计划已导入。');
-    } catch (error) {
-      planError(error instanceof SyntaxError ? new Error('计划文件需要是有效的 JSON。') : error);
-    }
-  });
+  $('plan-file').addEventListener('change', event => importJournalFile(event, true));
   $('completion-fields').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-undo-segment]');
     if (!button || !completionDraft || actionBusy || completionDraft.version !== changeVersion) return;
@@ -1916,28 +2020,9 @@
     openDialog('data-dialog');
     updateDirectoryInfo();
   });
-  $('backup-button').addEventListener('click', () => dataAction(async () => {
-    downloadBackup(await recordStore().exportBackup());
-    showToast('全部学习记录已开始下载。');
-  }));
+  $('backup-button').addEventListener('click', exportJournal);
   $('import-button').addEventListener('click', () => { if (!actionBusy) $('backup-file').click(); });
-  $('backup-file').addEventListener('change', (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    dataAction(async () => {
-      if (file.size > 50 * 1024 * 1024) throw new Error('备份文件超过 50 MB，请确认选中了学习记录备份。');
-      let value;
-      try { value = JSON.parse(await file.text()); } catch { throw new Error('这个文件不是有效的 JSON 备份，请重新选择。'); }
-      state = normaliseState(await recordStore().importBackup(value, { replace: false, revision: state.revision }));
-      dirty = false;
-      changeVersion += 1;
-      renderDay();
-      setStatus('saved', '已自动保存');
-      clearError();
-      showToast('备份已合并，任务与打卡进度都已保存。', null, 6500);
-    });
-  });
+  $('backup-file').addEventListener('change', event => importJournalFile(event));
   $('directory-button').addEventListener('click', async () => {
     try {
       const result = await window.StudyImage.chooseDirectory();
@@ -1986,6 +2071,9 @@
   });
   window.addEventListener('appinstalled', () => { installPrompt = null; $('install-button').hidden = true; });
   $('history-button').addEventListener('click', openHistory);
+  $('history-query').addEventListener('toggle', () => {
+    if ($('history-query').open) loadHistoryChapters();
+  });
   $('history-query-subject').addEventListener('change', loadHistoryChapters);
   $('history-query-form').addEventListener('submit', event => {
     event.preventDefault();
@@ -2038,6 +2126,7 @@
       }
       if (dialog.id === 'completion-dialog') completionDraft = null;
       if (dialog.id === 'plan-delete-dialog') planDeleteDraft = null;
+      if (dialog.id === 'backup-restore-dialog') backupRestoreDraft = null;
       if (dialog.contains($('toast'))) {
         $('toast').hidden = true;
         $('toast').classList.remove('toast-in-dialog');

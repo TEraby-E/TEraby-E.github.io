@@ -13,10 +13,13 @@
       this.name = data.name;
       this.chapters = data.chapters || [];
     }
+    get supportsLearningInfo() { return false; }
+    get phases() { return [...new Set(this.chapters.map(chapter => chapter.phase).filter(Boolean))]; }
     sectionFor() { return null; }
+    learningInfo(task) { return learningInfo(task, this.sectionFor(task)); }
 
     resolvePhase(preferred, isCompleted = () => false, selectedIds = []) {
-      const phases = [...new Set(this.chapters.map(chapter => chapter.phase).filter(Boolean))];
+      const phases = this.phases;
       if (preferred === '' || phases.includes(preferred)) return preferred;
       const selected = new Set(selectedIds);
       const selectedPhase = this.chapters.find(chapter => chapter.tasks.some(task => selected.has(task.id)))?.phase;
@@ -50,24 +53,27 @@
     }
   }
 
-  class ComputingSubject extends StudySubject {
+  class SectionedSubject extends StudySubject {
     constructor(data) {
       super(data);
       this.sections = data.sections || {};
       this.taskSections = new Map();
       for (const [name, section] of Object.entries(this.sections)) {
-        for (const id of section.learning_tasks || []) this.taskSections.set(id, name);
+        if (!Array.isArray(section?.learning_tasks)) continue;
+        for (const id of section.learning_tasks) this.taskSections.set(id, name);
       }
     }
+    get supportsLearningInfo() { return true; }
     sectionFor(task) {
       const name = task.section_name || this.taskSections.get(task.task_id || task.id);
-      const section = this.sections[name];
-      return section ? { name, ...section } : null;
+      const section = name && Object.hasOwn(this.sections, name) ? this.sections[name] : null;
+      return section && typeof section === 'object' && !Array.isArray(section) ? { name, ...section } : null;
     }
   }
 
   function createSubject(data) {
-    return computingIds.has(data.id) ? new ComputingSubject(data) : new StudySubject(data);
+    return computingIds.has(data.id) || Object.keys(data.sections || {}).length
+      ? new SectionedSubject(data) : new StudySubject(data);
   }
 
   function taskCompleted(ids, mode, context) {
@@ -80,8 +86,7 @@
     });
   }
 
-  function learningInfo(task, section = null) {
-    const annotation = splitRemark(task.remarks);
+  function learningInfo(task, section = null, annotation = splitRemark(task.remarks)) {
     return {
       section_name: task.section_name || section?.name || '',
       difficulty: task.difficulty ?? section?.difficulty ?? annotation.difficulty,
@@ -133,10 +138,14 @@
   }
 
   class TaskPresentation {
-    constructor(task, section = null, { showLearningInfo = Boolean(task.section_name || section || task.difficulty || task.exam_frequency?.small != null || task.exam_frequency?.large != null || splitRemark(task.remarks).exam_frequency.small != null || splitRemark(task.remarks).exam_frequency.large != null) } = {}) {
+    constructor(task, section = null, { showLearningInfo } = {}) {
       this.task = task;
-      this.info = learningInfo(task, section);
-      this.showLearningInfo = showLearningInfo;
+      this.annotation = splitRemark(task.remarks);
+      this.info = learningInfo(task, section, this.annotation);
+      const { small, large } = this.info.exam_frequency;
+      this.showLearningInfo = showLearningInfo === undefined
+        ? Boolean(task.section_name || section || task.difficulty || small != null || large != null)
+        : showLearningInfo;
     }
     get title() {
       const title = cleanText(this.task.title);
@@ -148,18 +157,19 @@
       return detail.replace(/\s/g, '') === title.replace(/\s/g, '') ? '' : detail;
     }
     get remarks() {
-      const remarks = learningText(splitRemark(this.task.remarks).text);
+      const remarks = learningText(this.annotation.text);
       return remarks && remarks !== cleanText(this.task.title) && !this.detail.includes(remarks) ? remarks : '';
     }
     get metadata() {
       const frequency = this.info.exam_frequency;
       const learning = this.showLearningInfo ? [['难度', this.info.difficulty || '未提供'], ['小题考频', frequency.small ?? '未提供'], ['大题考频', frequency.large ?? '未提供']] : [];
+      const detail = this.detail;
       return [...learning, ['任务类型', this.task.kind], ['任务量', this.task.quantity]]
         .map(([label, value]) => [label, cleanText(value === 0 ? '0' : value)])
-        .filter(([label, value]) => value && !this.detail.includes(`${label}：${value}`));
+        .filter(([label, value]) => value && !detail.includes(`${label}：${value}`));
     }
     get metadataText() { return this.metadata.map(([label, value]) => `${label}：${value}`).join('  ·  '); }
   }
 
-  return Object.freeze({ StudySubject, ComputingSubject, TaskPresentation, createSubject, taskCompleted, learningInfo, cleanText, splitRemark, segmentsOf, sumSegments, appendSegment, defaultActualInput });
+  return Object.freeze({ StudySubject, SectionedSubject, ComputingSubject: SectionedSubject, TaskPresentation, createSubject, taskCompleted, learningInfo, cleanText, splitRemark, segmentsOf, sumSegments, appendSegment, defaultActualInput });
 });
