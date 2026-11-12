@@ -27,10 +27,14 @@
   let historyDate = null;
   let historyRecord = null;
   let historyRequest = 0;
+  let historyFacetRequest = 0;
+  let historyQuery = null;
   let loadRequest = 0;
   let installPrompt = null;
   let completionDraft = null;
   let planEditing = null;
+  let chapterDraft = null;
+  let planDeleteDraft = null;
   let planCatalogue = null;
   const planIndexes = new WeakMap();
   const planPages = new Map();
@@ -324,8 +328,10 @@
     $('history-button').disabled = unavailable;
     $('data-button').disabled = unavailable;
     $('plan-button').disabled = unavailable;
-    $('new-plan-task').disabled = unavailable;
+    $('new-plan-task').disabled = unavailable || !$('plan-editor-panel').hidden;
     $('plan-fields').disabled = actionBusy;
+    $('plan-chapter-fields').disabled = actionBusy;
+    $('confirm-plan-delete').disabled = unavailable;
     $('manage-plan-button').disabled = unavailable;
     $('export-button').disabled = unavailable;
     $('export-history-button').disabled = actionBusy || !historyRecord;
@@ -568,7 +574,8 @@
     }
 
     status() {
-      return `<div class="card-status-row"><span class="card-status ${this.task.done ? 'is-done' : ''}">${this.task.done ? '当日已打卡' : '当日未打卡'}</span><span class="card-status">${this.mode === 'multi-day' ? '多日任务' : '单日任务'}</span></div>`;
+      const duration = this.task.done ? `<span class="card-status">${Number.isFinite(this.task.actual_minutes) ? escape(formattedTime(this.task.actual_minutes)) : '用时待补记'}</span>` : '';
+      return `<div class="card-status-row"><span class="card-status ${this.task.done ? 'is-done' : ''}">${this.task.done ? '当日已打卡' : '当日未打卡'}</span><span class="card-status">${this.mode === 'multi-day' ? '多日任务' : '单日任务'}</span>${duration}</div>`;
     }
 
   }
@@ -1069,9 +1076,27 @@
   }
 
   function renderHistoryList() {
-    const entries = historyEntries();
-    $('history-list').innerHTML = entries.map((entry) => `<button class="history-date-button" type="button" data-history-date="${escape(entry.date)}" aria-current="${entry.date === historyDate}"><span><strong>${escape(readableDate(entry.date))}</strong><small>完成 ${entry.completed} / ${entry.total} 项</small></span>${icon('chevron')}</button>`).join('');
-    $('history-summary').textContent = entries.length ? `已记录 ${entries.length} 天` : '从今天开始积累';
+    const entries = historyQuery?.dates || historyEntries();
+    $('history-list').innerHTML = entries.map((entry) => `<button class="history-date-button" type="button" data-history-date="${escape(entry.date)}" aria-current="${entry.date === historyDate}"><span><strong>${escape(readableDate(entry.date))}</strong><small>打卡 ${entry.completed} / ${entry.total} 项</small></span>${icon('chevron')}</button>`).join('');
+    $('history-summary').textContent = historyQuery ? `匹配 ${historyQuery.total} 天` : entries.length ? `已记录 ${entries.length} 天` : '从今天开始积累';
+    $('history-pagination').hidden = !historyQuery || historyQuery.total <= historyQuery.limit;
+    if (historyQuery) {
+      $('history-previous').disabled = historyQuery.offset === 0;
+      $('history-next').disabled = historyQuery.offset + historyQuery.limit >= historyQuery.total;
+    }
+  }
+
+  function renderHistoryRecord(record) {
+    historyRecord = record;
+    const assignments = record.assignments;
+    const completed = assignments.filter(task => task.done).length;
+    $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(record.date))}</h3><span>打卡 ${completed} / ${assignments.length} 项<small class="history-time-line">${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? library.map(subject => {
+      const tasks = subjectAssignments(subject.id, assignments);
+      if (!tasks.length) return '';
+      return `<section class="history-subject"><h4 class="subject-name">${escape(subjectName(subject))}</h4>${tasks.map(task => new HistoryTaskCardView(task, { compact: true, chapter: true }).render()).join('')}</section>`;
+    }).join('') : '<div class="empty-state"><strong>这一天没有安排任务</strong></div>'}`;
+    $('export-history-button').hidden = !assignments.length;
+    updateControls();
   }
 
   async function selectHistoryDate(date) {
@@ -1082,28 +1107,84 @@
     renderHistoryList();
     if (restoreHistoryFocus) [...document.querySelectorAll('[data-history-date]')].find((element) => element.dataset.historyDate === date)?.focus({ preventScroll: true });
     $('export-history-button').hidden = true;
+    const match = historyQuery?.dates.find(entry => entry.date === date);
+    if (match) {
+      renderHistoryRecord(match);
+      return;
+    }
     $('history-content').innerHTML = '<div class="empty-state"><span class="loading-spinner" aria-hidden="true"></span><p>正在载入这一天的记录</p></div>';
     try {
       const record = await api(`/api/history/${encodeURIComponent(date)}`);
       if (request !== historyRequest || !$('history-dialog').open) return;
-      historyRecord = record;
-      const assignments = Array.isArray(record.assignments) ? record.assignments : [];
-      const completed = assignments.filter((assignment) => assignment.done).length;
-      $('history-content').innerHTML = `<div class="history-detail-heading"><h3>${escape(readableDate(date))}</h3><span>完成 ${completed} / ${assignments.length} 项任务<small class="history-time-line">${escape(actualSummaryText(assignments))}</small></span></div>${assignments.length ? library.map((subject) => {
-        const tasks = subjectAssignments(subject.id, assignments);
-        if (!tasks.length) return '';
-        return `<section class="history-subject"><h4 class="subject-name">${escape(subjectName(subject))}</h4>${tasks.map((task) => new HistoryTaskCardView(task, { compact: true, chapter: true }).render()).join('')}</section>`;
-      }).join('') : `<div class="empty-state">${icon('book')}<strong>这一天没有安排任务</strong></div>`}`;
-      $('export-history-button').hidden = !assignments.length;
-      updateControls();
+      renderHistoryRecord(record);
     } catch (error) {
       if (request !== historyRequest) return;
       $('history-content').innerHTML = `<div class="empty-state">${icon('folder')}<strong>记录暂时没有载入</strong><p>${escape(error.message)}</p><button type="button" class="text-button" id="retry-history">重新载入</button></div>`;
     }
   }
 
+  async function loadHistoryChapters() {
+    const subject = $('history-query-subject').value;
+    const chapter = $('history-query-chapter');
+    const request = ++historyFacetRequest;
+    chapter.disabled = true;
+    chapter.innerHTML = `<option value="">${subject ? '载入章节…' : '先选学科'}</option>`;
+    if (!subject) return;
+    try {
+      const { chapters } = await api(`/api/history?subject_id=${encodeURIComponent(subject)}&limit=1`);
+      if (request !== historyFacetRequest || !$('history-dialog').open) return;
+      const matching = chapters.filter(item => item.subject_id === subject);
+      chapter.innerHTML = '<option value="">全部章节</option>' + matching.map(item =>
+        `<option value="${escape(item.id)}">${escape(item.title)}</option>`).join('');
+      chapter.disabled = !matching.length;
+    } catch {
+      if (request === historyFacetRequest) chapter.innerHTML = '<option value="">章节加载失败</option>';
+    }
+  }
+
+  async function runHistoryQuery(query, offset = 0) {
+    const params = new URLSearchParams(query);
+    params.set('offset', offset);
+    const request = ++historyRequest;
+    historyRecord = null;
+    $('history-list').innerHTML = '';
+    $('history-pagination').hidden = true;
+    $('history-summary').textContent = '';
+    $('export-history-button').hidden = true;
+    $('history-content').innerHTML = '<div class="empty-state"><span class="loading-spinner" aria-hidden="true"></span><p>正在查询</p></div>';
+    try {
+      await flushAutosave();
+      if (request !== historyRequest || !$('history-dialog').open) return;
+      const result = await api(`/api/history?${params}`);
+      if (request !== historyRequest || !$('history-dialog').open) return;
+      if (result.total && !result.dates.length && offset > 0) {
+        return runHistoryQuery(query, Math.floor((result.total - 1) / result.limit) * result.limit);
+      }
+      historyQuery = { ...result, query };
+      const match = result.dates.find(entry => entry.date === historyDate) || result.dates[0];
+      historyDate = match?.date;
+      renderHistoryList();
+      if (match) renderHistoryRecord(match);
+      else $('history-content').innerHTML = '<div class="empty-state"><strong>没有匹配的记录</strong></div>';
+    } catch (error) {
+      if (request !== historyRequest) return;
+      $('history-content').innerHTML = `<div class="empty-state"><strong>查询未完成</strong><p>${escape(error.message)}</p></div>`;
+    }
+  }
+
   function openHistory() {
     if (!state || actionBusy) return;
+    if ($('history-dialog').open && historyQuery) {
+      runHistoryQuery(historyQuery.query, historyQuery.offset);
+      return;
+    }
+    if (!$('history-dialog').open) {
+      $('history-query').open = false;
+      $('history-query-subject').innerHTML = '<option value="">全部学科</option>' + library.map(subject =>
+        `<option value="${escape(subject.id)}">${escape(subject.name)}</option>`).join('');
+      $('history-query-form').reset();
+      loadHistoryChapters();
+    }
     const entries = historyEntries();
     historyDate = entries.some((entry) => entry.date === historyDate) ? historyDate : entries[0]?.date;
     renderHistoryList();
@@ -1131,7 +1212,7 @@
     try {
       await flushAutosave();
       const record = isCurrent ? { date: state.date, assignments: cloneAssignments() } :
-        { ...(historyRecord?.date === date ? historyRecord : await api(`/api/history/${encodeURIComponent(date)}`)) };
+        { ...(!historyQuery && historyRecord?.date === date ? historyRecord : await api(`/api/history/${encodeURIComponent(date)}`)) };
       record.assignments = record.assignments.map((task) => new (isCurrent ? DailyTaskCardView : HistoryTaskCardView)(task).exportSnapshot());
       record.surface = imageSurface(record, isCurrent);
       const result = await window.StudyImage.exportDaily(record);
@@ -1175,9 +1256,12 @@
     const subjects = planCatalogue.subjects.filter(subject => !subjectId || subject.id === subjectId);
     const planned = new Set(state.assignments.map(task => task.task_id));
     const editing = !$('plan-editor-panel').hidden;
+    $('new-plan-task').disabled = actionBusy || editing;
     let visibleCount = 0;
     $('plan-list').innerHTML = subjects.map(subject => {
-      const chapterId = planChapterFilters.get(subject.id) || '';
+      const chapter = subject.chapters.find(item => item.id === planChapterFilters.get(subject.id));
+      const chapterId = chapter?.id || '';
+      if (!chapter) planChapterFilters.delete(subject.id);
       const tasks = (bySubject.get(subject.id) || []).filter(task => (!chapterId || task.chapter_id === chapterId) &&
         (!query || `${task.title} ${task.detail} ${task.chapter_title}`.toLowerCase().includes(query)));
       visibleCount += tasks.length;
@@ -1193,21 +1277,35 @@
           <div class="plan-actions"><button class="text-button" type="button" data-plan-action="add" ${added ? 'disabled' : ''}>${added ? '已在今日清单' : '加入今天'}</button><button class="text-button" type="button" data-plan-action="edit">编辑</button><button class="text-button" type="button" data-plan-action="remove">删除</button></div>
         </article>`;
       }).join('');
-      const options = subject.chapters.map(chapter => `<option value="${escape(chapter.id)}" ${chapter.id === chapterId ? 'selected' : ''}>${escape(chapter.title)}</option>`).join('');
+      const customChapter = chapterId.startsWith('custom-chapter-');
       return `<section class="plan-column" data-board-subject="${escape(subject.id)}" aria-labelledby="plan-column-${escape(subject.id)}">
-        <div class="plan-column-heading"><h3 id="plan-column-${escape(subject.id)}">${escape(subject.name)}</h3><span>${tasks.length}</span><button type="button" class="plan-column-new" data-board-action="new" aria-label="新建${escape(subject.name)}任务">＋</button></div>
-        <select class="plan-column-chapter" data-board-chapter="${escape(subject.id)}" aria-label="筛选${escape(subject.name)}章节"><option value="">全部章节</option>${options}</select>
-        <div class="plan-column-cards">${cards || '<p class="plan-board-empty">暂无匹配任务</p>'}</div>
+        <div class="plan-column-heading"><h3 id="plan-column-${escape(subject.id)}">${escape(subject.name)}</h3><span>${tasks.length}</span><button type="button" class="plan-column-new" data-board-action="new" aria-label="新建${escape(subject.name)}任务" ${editing ? 'disabled' : ''}>＋任务</button></div>
+        <div class="plan-column-chapter-row">
+          <select class="plan-column-chapter" data-board-chapter="${escape(subject.id)}" aria-label="筛选${escape(subject.name)}章节"><option value="">全部章节</option>${chapterOptions(subject, chapterId)}</select>
+          <button type="button" class="plan-column-new" data-board-action="new-chapter" aria-label="新建${escape(subject.name)}章节" ${editing ? 'disabled' : ''}>＋章节</button>
+        </div>
+        ${customChapter ? `<div class="plan-column-chapter-actions"><button type="button" class="text-button" data-board-action="rename-chapter" aria-label="重命名章节：${escape(chapter.title)}" ${editing ? 'disabled' : ''}>重命名</button><button type="button" class="text-button" data-board-action="delete-chapter" aria-label="删除章节：${escape(chapter.title)}" ${editing ? 'disabled' : ''}>删除</button></div>` : ''}
+        <div class="plan-column-cards">${cards || `<p class="plan-board-empty">${chapter && !chapter.tasks.length ? '本章暂无任务' : '暂无匹配任务'}</p>`}</div>
         <div class="plan-column-pagination"><button type="button" class="text-button" data-board-action="previous" ${page === 0 ? 'disabled' : ''}>上一页</button><span>${page + 1} / ${pageCount}</span><button type="button" class="text-button" data-board-action="next" ${page + 1 === pageCount ? 'disabled' : ''}>下一页</button></div>
       </section>`;
     }).join('');
     $('plan-page-label').textContent = `${subjects.length} 个学科 · ${visibleCount} 项任务`;
   }
 
+  function chapterOptions(subject, selected) {
+    const groups = new Map();
+    for (const chapter of subject.chapters) {
+      const phase = chapter.phase || '不分阶段';
+      if (!groups.has(phase)) groups.set(phase, []);
+      groups.get(phase).push(`<option value="${escape(chapter.id)}" ${chapter.id === selected ? 'selected' : ''}>${escape(chapter.title)}</option>`);
+    }
+    return [...groups].map(([phase, options]) => `<optgroup label="${escape(phase)}">${options.join('')}</optgroup>`).join('');
+  }
+
   function planChapterOptions(selected = '') {
     const subject = planCatalogue.subjects.find(item => item.id === $('plan-subject').value);
-    $('plan-chapter').innerHTML = '<option value="">我的任务</option>' + subject.chapters.map(chapter => `<option value="${escape(chapter.id)}">${escape(chapter.title)}</option>`).join('');
-    $('plan-chapter').value = selected;
+    $('plan-chapter').innerHTML = '<option value="">默认（我的任务）</option>' + chapterOptions(subject, selected);
+    if (!subject.chapters.some(chapter => chapter.id === selected)) $('plan-chapter').value = '';
   }
 
   function planTaskFingerprint(task) {
@@ -1215,6 +1313,7 @@
   }
 
   function editPlanTask(task = null, subjectId = '', chapterId = '') {
+    if (chapterDraft) return;
     planEditing = task?.task_id || null;
     planEditBaseline = task ? planTaskFingerprint(task) : null;
     $('plan-task-title').value = task?.title || '';
@@ -1223,15 +1322,40 @@
     $('plan-subject').value = task?.subject_id || subjectId || planCatalogue.subjects[0].id;
     planChapterOptions(task?.chapter_id || chapterId);
     $('plan-editor-title').textContent = task ? '编辑任务' : '新建任务';
+    $('plan-form').hidden = false;
+    $('plan-chapter-form').hidden = true;
     $('plan-editor-panel').hidden = false;
     $('plan-message').textContent = '';
     renderPlans();
     $('plan-task-title').focus({ preventScroll: true });
   }
 
+  function editPlanChapter(subject, chapter = null) {
+    chapterDraft = {
+      subjectId: subject.id,
+      id: chapter?.id || `custom-chapter-${crypto.randomUUID()}`,
+      original: chapter,
+    };
+    const phases = [...new Set(subject.chapters.map(item => item.phase).filter(Boolean))];
+    const currentPhase = subject.chapters.find(item => item.id === planChapterFilters.get(subject.id))?.phase
+      || state.subject_phases[subject.id];
+    $('plan-chapter-phase').innerHTML = '<option value="">不分阶段</option>' +
+      phases.map(phase => `<option value="${escape(phase)}">${escape(phase)}</option>`).join('');
+    $('plan-chapter-phase').value = chapter ? chapter.phase || '' : phases.includes(currentPhase) ? currentPhase : '';
+    $('plan-chapter-title').value = chapter?.title || '';
+    $('plan-editor-title').textContent = `${chapter ? '编辑章节' : '新建章节'} · ${subject.name}`;
+    $('plan-form').hidden = true;
+    $('plan-chapter-form').hidden = false;
+    $('plan-editor-panel').hidden = false;
+    $('plan-message').textContent = '';
+    renderPlans();
+    $('plan-chapter-title').focus();
+  }
+
   function closePlanEditor() {
     planEditing = null;
     planEditBaseline = null;
+    chapterDraft = null;
     $('plan-editor-panel').hidden = true;
     renderPlans();
   }
@@ -1248,20 +1372,35 @@
     openDialog('plan-dialog');
   }
 
-  async function savePlan(catalogue, message) {
+  async function mutatePlan(method, payload, expectedRevision) {
     setBusy(true);
     try {
       await flushAutosave();
-      state = normaliseState(await api('/api/plan', { method: 'PUT', body: JSON.stringify({ date: state.date, revision: state.revision, catalogue }) }));
+      if (expectedRevision != null && state.revision !== expectedRevision) throw new Error('计划已更新，请重新选择要删除的内容。');
+      state = normaliseState(await api('/api/plan', { method, body: JSON.stringify({ date: state.date, revision: state.revision, ...payload }) }));
       dirty = false;
       changeVersion += 1;
       closeDialog('library-dialog');
+      await load({ duringPlanSave: true });
     } catch (error) {
       if (error.status === 409) await recoverConflict().catch(() => {});
       throw error;
-    } finally { setBusy(false); }
-    await load();
+    } finally {
+      setBusy(false);
+      if ($('plan-dialog').open) renderPlans();
+    }
+  }
+
+  async function savePlan(catalogue, message) {
+    await mutatePlan('PUT', { catalogue });
     showToast(message);
+  }
+
+  function confirmPlanDelete(payload, title, taskCount) {
+    planDeleteDraft = { payload, revision: state.revision };
+    $('plan-delete-target').textContent = taskCount == null ? `删除任务「${title}」` : `删除章节「${title}」及其中 ${taskCount} 项任务`;
+    $('plan-delete-error').textContent = '';
+    openDialog('plan-delete-dialog');
   }
 
   function planError(error) {
@@ -1317,10 +1456,10 @@
     }
   }
 
-  async function load() {
+  async function load({ duringPlanSave = false } = {}) {
     const request = ++loadRequest;
     const version = changeVersion;
-    const canApply = () => request === loadRequest && version === changeVersion && !dirty && !savePromise && !actionBusy;
+    const canApply = () => request === loadRequest && version === changeVersion && !dirty && !savePromise && (!actionBusy || duringPlanSave);
     clearError();
     $('task-sheet').setAttribute('aria-busy', 'true');
     setStatus('saving', '正在载入');
@@ -1557,8 +1696,50 @@
   $('plan-search').addEventListener('input', () => { planPages.clear(); renderPlans(); });
   $('plan-filter').addEventListener('change', () => { planPages.clear(); renderPlans(); });
   $('plan-subject').addEventListener('change', () => planChapterOptions());
-  $('new-plan-task').addEventListener('click', () => { if (!actionBusy) editPlanTask(null, $('plan-filter').value); });
+  $('new-plan-task').addEventListener('click', () => {
+    const subjectId = $('plan-filter').value;
+    if (!actionBusy) editPlanTask(null, subjectId, planChapterFilters.get(subjectId) || '');
+  });
   $('cancel-plan-edit').addEventListener('click', closePlanEditor);
+  $('cancel-plan-chapter').addEventListener('click', closePlanEditor);
+  $('plan-chapter-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!chapterDraft || actionBusy) return;
+    const { subjectId, id, original } = chapterDraft;
+    $('plan-message').textContent = '';
+    try {
+      if (original) {
+        const current = planCatalogue.subjects.find(subject => subject.id === subjectId)?.chapters.find(chapter => chapter.id === id);
+        if (!current || current.title !== original.title || current.phase !== original.phase) {
+          throw new Error('该章节已在其他页面更新，请关闭编辑后重新打开。');
+        }
+      }
+      const catalogue = window.StudyStore.plan.updateChapter(planCatalogue, {
+        id, subject_id: subjectId, title: $('plan-chapter-title').value, phase: $('plan-chapter-phase').value,
+      });
+      await savePlan(catalogue, original ? '章节已保存。' : '章节已创建。');
+      planChapterFilters.set(subjectId, id);
+      planPages.set(subjectId, 0);
+      if (!original) $('plan-search').value = '';
+      closePlanEditor();
+      $('plan-list').querySelector(`[data-board-chapter="${subjectId}"]`)?.focus({ preventScroll: true });
+    } catch (error) { planError(error); }
+  });
+  $('confirm-plan-delete').addEventListener('click', async () => {
+    if (!planDeleteDraft || actionBusy) return;
+    const { payload, revision } = planDeleteDraft;
+    $('plan-delete-error').textContent = '';
+    try {
+      await mutatePlan('DELETE', payload, revision);
+      closeDialog('plan-delete-dialog');
+      if (planEditing === payload.task_id) closePlanEditor();
+      $('plan-filter').focus({ preventScroll: true });
+      showToast(payload.chapter_id ? '章节已删除。' : '任务已删除。');
+    } catch (error) {
+      if ($('plan-delete-dialog').open) $('plan-delete-error').textContent = error.message;
+      else planError(error);
+    }
+  });
   $('plan-form').addEventListener('submit', async event => {
     event.preventDefault();
     if (!state || actionBusy) return;
@@ -1586,8 +1767,16 @@
     if (columnButton) {
       const subjectId = columnButton.closest('[data-board-subject]').dataset.boardSubject;
       const action = columnButton.dataset.boardAction;
-      if (action === 'new') editPlanTask(null, subjectId, planChapterFilters.get(subjectId) || '');
-      else {
+      const chapterId = planChapterFilters.get(subjectId) || '';
+      if (action === 'new') editPlanTask(null, subjectId, chapterId);
+      else if (action === 'new-chapter') editPlanChapter(planCatalogue.subjects.find(subject => subject.id === subjectId));
+      else if (action === 'rename-chapter' || action === 'delete-chapter') {
+        const subject = planCatalogue.subjects.find(item => item.id === subjectId);
+        const chapter = subject.chapters.find(item => item.id === chapterId);
+        if (!chapter?.id.startsWith('custom-chapter-')) return;
+        if (action === 'rename-chapter') editPlanChapter(subject, chapter);
+        else confirmPlanDelete({ subject_id: subjectId, chapter_id: chapterId }, chapter.title, chapter.tasks.length);
+      } else {
         planPages.set(subjectId, (planPages.get(subjectId) || 0) + (action === 'next' ? 1 : -1));
         renderPlans();
       }
@@ -1603,8 +1792,7 @@
       editPlanTask(task);
       $('plan-task-title').focus();
     } else if (action === 'remove') {
-      if (planEditing === task.task_id) closePlanEditor();
-      savePlan(window.StudyStore.plan.remove(planCatalogue, task.task_id), '已从计划删除。').catch(planError);
+      confirmPlanDelete({ task_id: task.task_id }, task.title);
     } else if (action === 'add' && !state.assignments.some(item => item.task_id === task.task_id)) {
       if (state.assignments.length >= window.StudyStore.MAX_TASKS) { planError(new Error('今日任务已达上限。')); return; }
       const subject = library.find(item => item.id === task.subject_id);
@@ -1777,13 +1965,35 @@
   });
   window.addEventListener('appinstalled', () => { installPrompt = null; $('install-button').hidden = true; });
   $('history-button').addEventListener('click', openHistory);
+  $('history-query-subject').addEventListener('change', loadHistoryChapters);
+  $('history-query-form').addEventListener('submit', event => {
+    event.preventDefault();
+    if (!state || actionBusy) return;
+    const values = [...new FormData(event.currentTarget)].filter(([, value]) => value.trim());
+    runHistoryQuery(new URLSearchParams(values));
+  });
+  $('clear-history-query').addEventListener('click', () => {
+    $('history-query-form').reset();
+    historyQuery = null;
+    historyRequest += 1;
+    loadHistoryChapters();
+    openHistory();
+  });
+  $('history-previous').addEventListener('click', () => {
+    if (historyQuery && !actionBusy) runHistoryQuery(historyQuery.query, Math.max(0, historyQuery.offset - historyQuery.limit));
+  });
+  $('history-next').addEventListener('click', () => {
+    if (historyQuery && !actionBusy && historyQuery.offset + historyQuery.limit < historyQuery.total) {
+      runHistoryQuery(historyQuery.query, historyQuery.offset + historyQuery.limit);
+    }
+  });
   $('history-list').addEventListener('click', (event) => {
     const button = event.target.closest('[data-history-date]');
     if (button) selectHistoryDate(button.dataset.historyDate);
   });
   $('history-content').addEventListener('click', (event) => { if (event.target.closest('#retry-history') && historyDate) selectHistoryDate(historyDate); });
   $('export-button').addEventListener('click', () => exportDay(state.date, true));
-  $('export-history-button').addEventListener('click', () => { if (historyDate) exportDay(historyDate, false); });
+  $('export-history-button').addEventListener('click', () => { if (historyDate) exportDay(historyDate, historyDate === state.date); });
   $('retry-button').addEventListener('click', async () => {
     if (!errorRetry) return;
     $('retry-button').disabled = true;
@@ -1799,8 +2009,14 @@
       if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
     });
     dialog.addEventListener('close', () => {
-      if (dialog.id === 'history-dialog') historyRequest += 1;
+      if (dialog.id === 'history-dialog') {
+        historyRequest += 1;
+        historyFacetRequest += 1;
+        historyQuery = null;
+        historyRecord = null;
+      }
       if (dialog.id === 'completion-dialog') completionDraft = null;
+      if (dialog.id === 'plan-delete-dialog') planDeleteDraft = null;
       if (dialog.contains($('toast'))) {
         $('toast').hidden = true;
         $('toast').classList.remove('toast-in-dialog');

@@ -17,6 +17,7 @@
   const MAX_ARCHIVES = 36525;
   const copy = (value) => JSON.parse(JSON.stringify(value));
   const models = () => root.StudyModels || (typeof module === 'object' && module.exports ? require('./learning-model.js') : null);
+  const studyTime = () => root.StudyTime || (typeof module === 'object' && module.exports ? require('./study-time.js') : null);
 
   function copyLearningInfo(row, item, section = null) {
     const annotation = models().splitRemark(item.remarks);
@@ -227,9 +228,37 @@
     }))));
   }
 
-  function putPlanTask(next, entry) {
-    const subject = next.subjects.find(item => item.id === entry.subject_id);
+  function planSubject(catalogue, id) {
+    const subject = catalogue.subjects.find(item => item.id === id);
     if (!subject) throw new StoreError('请选择有效的学科。');
+    return subject;
+  }
+
+  function isCustomChapter(id) {
+    return typeof id === 'string' && /^custom-chapter-[\w-]{1,185}$/.test(id);
+  }
+
+  function updatePlanChapter(catalogue, { id, subject_id, title, phase }) {
+    if (!isCustomChapter(id)) throw new StoreError('请选择自定义章节。');
+    const name = typeof title === 'string' ? title.trim() : '';
+    if (!name || name.length > 400) throw new StoreError('请填写有效的章节名称。');
+    const next = copy(catalogue);
+    const subject = planSubject(next, subject_id);
+    const chapter = subject.chapters.find(item => item.id === id);
+    const selectedPhase = phase ?? chapter?.phase ?? '';
+    if (selectedPhase !== '' && !subject.chapters.some(item => item.phase === selectedPhase)) {
+      throw new StoreError('请选择此学科已有的学习阶段。');
+    }
+    if (subject.chapters.some(item => item.id !== id && (item.phase || '') === selectedPhase && item.title.trim() === name)) {
+      throw new StoreError('该阶段已有同名章节。');
+    }
+    if (chapter) Object.assign(chapter, { title: name, phase: selectedPhase });
+    else subject.chapters.push({ id, title: name, phase: selectedPhase, tasks: [] });
+    return validateCatalogue(next);
+  }
+
+  function putPlanTask(next, entry) {
+    const subject = planSubject(next, entry.subject_id);
     let definition;
     let originalChapter;
     let originalPosition;
@@ -239,6 +268,7 @@
       chapter.tasks = chapter.tasks.filter(task => task.id !== entry.task_id);
     }
     let chapter = subject.chapters.find(item => item.id === entry.chapter_id);
+    if (!chapter && isCustomChapter(entry.chapter_id)) throw new StoreError('这个章节已不存在，请重新选择。');
     if (!chapter && entry.chapter_id === undefined && originalChapter && subject.chapters.includes(originalChapter)) chapter = originalChapter;
     if (!chapter) {
       chapter = subject.chapters.find(item => item.id === `personal-${subject.id}`);
@@ -279,7 +309,7 @@
       for (const chapter of subject.chapters) {
         const tasks = chapter.tasks.filter(task => !ids.has(task.id) && !retired.has(task.id));
         tasks.forEach(task => ids.add(task.id));
-        if (!tasks.length) continue;
+        if (!tasks.length && !isCustomChapter(chapter.id)) continue;
         let destination = target.chapters.find(item => item.id === chapter.id);
         if (!destination) { destination = { ...copy(chapter), tasks: [] }; target.chapters.push(destination); }
         destination.tasks.push(...copy(tasks));
@@ -305,7 +335,7 @@
   function refreshDefaultPlan(base, record) {
     const previous = record.plan_library;
     const known = id => base.index.has(id) || base.index.retired.has(id);
-    const hasExtraTasks = previous.subjects.some(subject => subject.chapters.some(chapter => chapter.tasks.some(task => !known(task.id))));
+    const hasExtraTasks = previous.subjects.some(subject => subject.chapters.some(chapter => isCustomChapter(chapter.id) || chapter.tasks.some(task => !known(task.id))));
     const hasExtraRetiredIds = previous.metadata?.retired_tasks?.some(task => !known(task.id));
     const catalogue = hasExtraTasks || hasExtraRetiredIds ? mergeCatalogues(base.library, previous) : base.library;
     return { ...record, plan_library: catalogue, revision: record.revision + 1 };
@@ -404,6 +434,148 @@
   function checkRevision(record, payload) {
     if (!payload || !Number.isSafeInteger(payload.revision) || payload.revision < 1 || payload.revision !== record.revision || payload.date !== record.current.date) throw new StoreError('内容已在另一个页面更新，请刷新后再试。', 409);
     if (record.revision >= Number.MAX_SAFE_INTEGER) throw new StoreError('记录版本已达上限，请导出备份。');
+  }
+
+  function historyQuery(search) {
+    const params = new URLSearchParams(search);
+    const subjectId = params.get('subject_id') || '';
+    const chapterId = params.get('chapter_id') || '';
+    const status = params.get('status') || '';
+    const mode = params.get('task_mode') || '';
+    const actual = params.get('actual') || '';
+    const query = (params.get('q') || '').trim();
+    if (subjectId && !SUBJECT_ORDER.includes(subjectId)) throw new StoreError('请选择有效的学科。');
+    if (chapterId.length > 200) throw new StoreError('章节筛选条件无效。');
+    if (!['', 'done', 'pending'].includes(status) || !['', 'single-day', 'multi-day'].includes(mode) ||
+        !['', 'recorded', 'unrecorded'].includes(actual)) throw new StoreError('请选择有效的记录筛选条件。');
+    if (query.length > 120) throw new StoreError('关键词最多填写 120 个字符。');
+    const pageNumber = (key, fallback, minimum, maximum) => {
+      const raw = params.get(key);
+      if (!raw) return fallback;
+      const value = Number(raw);
+      if (!/^\d+$/.test(raw) || !Number.isSafeInteger(value) || value < minimum || value > maximum) throw new StoreError('查询分页参数不正确。');
+      return value;
+    };
+    return {
+      subjectId, chapterId, status, mode, actual,
+      words: query.toLowerCase().split(/\s+/).filter(Boolean),
+      limit: pageNumber('limit', 20, 1, 100), offset: pageNumber('offset', 0, 0, Number.MAX_SAFE_INTEGER),
+    };
+  }
+
+  function searchHistory(record, filters) {
+    const { subjectId, chapterId, status, mode, actual, words, limit, offset } = filters;
+    const time = studyTime();
+    const days = record.archives.filter(day => day.date < record.current.date && day.assignments.some(task => task.done === true));
+    days.sort((a, b) => b.date.localeCompare(a.date));
+    if (record.current.assignments.length) days.unshift(record.current);
+    const dates = [];
+    const chapters = new Map();
+    let total = 0;
+    for (const day of days) {
+      const onPage = total >= offset && dates.length < limit;
+      const assignments = [];
+      let hasMatch = false;
+      for (const task of day.assignments) {
+        if (subjectId && task.subject_id !== subjectId) continue;
+        if (task.chapter_id) {
+          const key = `${task.subject_id}:${task.chapter_id}`;
+          if (!chapters.has(key)) chapters.set(key, { id: task.chapter_id, subject_id: task.subject_id, title: task.chapter_title || task.chapter_id });
+        }
+        if (hasMatch && !onPage) continue;
+        if (chapterId && task.chapter_id !== chapterId) continue;
+        const done = task.done === true;
+        if (status && done !== (status === 'done')) continue;
+        const taskMode = (day === record.current ? record.task_modes?.[task.task_id] : null) || task.task_mode || 'single-day';
+        if (mode && taskMode !== mode) continue;
+        if (actual && (!done || time.validMinutes(task.actual_minutes) !== (actual === 'recorded'))) continue;
+        if (words.length) {
+          const text = [task.title, task.detail, task.chapter_title, task.section_name, task.remarks, task.reference].join(' ').toLowerCase();
+          if (!words.every(word => text.includes(word))) continue;
+        }
+        hasMatch = true;
+        if (onPage) assignments.push(taskMode === task.task_mode ? task : { ...task, task_mode: taskMode });
+      }
+      if (!hasMatch) continue;
+      if (onPage) {
+        dates.push({
+          date: day.date, total: assignments.length, completed: assignments.filter(task => task.done === true).length,
+          actual_minutes: time.summarizeActual(assignments).actualMinutes, assignments,
+        });
+      }
+      total += 1;
+    }
+    return { dates: copy(dates), total, offset, limit, chapters: [...chapters.values()] };
+  }
+
+  function deletePlanContent(record, payload, source) {
+    checkRevision(record, payload);
+    const byChapter = Object.hasOwn(payload, 'chapter_id');
+    if (byChapter === Object.hasOwn(payload, 'task_id')) throw new StoreError('请选择要删除的章节或任务。');
+    const catalogue = copy(source.library);
+    let deletedIds;
+    if (byChapter) {
+      if (!isCustomChapter(payload.chapter_id)) throw new StoreError('请选择自定义章节。');
+      const subject = planSubject(catalogue, payload.subject_id);
+      const chapter = subject.chapters.find(item => item.id === payload.chapter_id);
+      if (!chapter) throw new StoreError('这个章节已不存在。');
+      deletedIds = new Set(chapter.tasks.map(task => task.id));
+      subject.chapters = subject.chapters.filter(item => item !== chapter);
+    } else {
+      const entry = source.index.get(payload.task_id);
+      if (!entry) throw new StoreError('这项任务已不存在。');
+      const subject = planSubject(catalogue, entry.subject.id);
+      const chapter = subject.chapters.find(item => item.id === entry.chapter.id);
+      deletedIds = new Set([payload.task_id]);
+      chapter.tasks = chapter.tasks.filter(task => !deletedIds.has(task.id));
+    }
+
+    const subject_phases = Object.fromEntries(Object.entries(record.subject_phases || {}).map(([id, phase]) => [
+      id, catalogue.subjects.find(subject => subject.id === id)?.chapters.some(chapter => chapter.phase === phase) ? phase : '',
+    ]));
+    const next = { ...record, revision: record.revision + 1, plan_library: catalogue, plan_customized: true, subject_phases };
+    if (!deletedIds.size) return next;
+
+    const affectedSubjects = new Set();
+    for (const id of deletedIds) {
+      const { task, subject } = source.index.get(id);
+      affectedSubjects.add(subject.id);
+      for (const relatedId of source.index.groups.get(task.estimate_group || id) || []) {
+        affectedSubjects.add(source.index.get(relatedId).subject.id);
+      }
+    }
+    for (const day of [record.current, ...record.archives]) {
+      for (const task of day.assignments) if (deletedIds.has(task.task_id)) affectedSubjects.add(task.subject_id);
+    }
+    if (catalogue.metadata?.retired_tasks) {
+      catalogue.metadata.retired_tasks = catalogue.metadata.retired_tasks.filter(task => !deletedIds.has(task.id));
+    }
+    for (const subject of catalogue.subjects) {
+      for (const section of Object.values(subject.sections || {})) {
+        if (Array.isArray(section.learning_tasks)) section.learning_tasks = section.learning_tasks.filter(id => !deletedIds.has(id));
+      }
+    }
+
+    const cleanDay = day => {
+      const assignments = day.assignments.filter(task => !deletedIds.has(task.task_id));
+      const frozen = day.subject_stage_progress;
+      if (!frozen) return { ...day, assignments };
+      const subject_stage_progress = Object.fromEntries(Object.entries(frozen).filter(([id]) => !affectedSubjects.has(id)));
+      return { ...day, assignments, subject_stage_progress };
+    };
+    const archives = record.archives.flatMap(day => {
+      const cleaned = cleanDay(day);
+      return day.assignments.length && !cleaned.assignments.length ? [] : [cleaned];
+    });
+    return {
+      ...next,
+      current: cleanDay(record.current),
+      archives,
+      library_completed_ids: (record.library_completed_ids || []).filter(id => !deletedIds.has(id)),
+      library_reopened_ids: (record.library_reopened_ids || []).filter(id => !deletedIds.has(id)),
+      task_modes: Object.fromEntries(Object.entries(record.task_modes || {}).filter(([id]) => !deletedIds.has(id))),
+      plan_tasks: (record.plan_tasks || []).filter(task => !deletedIds.has(task.task_id)),
+    };
   }
 
   function subjectStageProgress(record, index, historicalDay = null) {
@@ -679,6 +851,10 @@
 
     async function request(path, options = {}) {
       const method = (options.method || 'GET').toUpperCase();
+      if (method === 'GET' && (path === '/api/history' || path.startsWith('/api/history?'))) {
+        const filters = historyQuery(path.slice('/api/history?'.length));
+        return transact(record => ({ result: searchHistory(record, filters) }), true);
+      }
       if (method === 'GET' && ['/api/library', '/api/state', '/api/day'].includes(path)) {
         const read = (record, base) => {
           const refresh = !record.plan_customized && record.plan_library?.version < DEFAULT_PLAN_VERSION && env.navigator?.onLine !== false;
@@ -735,6 +911,13 @@
           return { record: next, result: stateOf(next) };
         });
       }
+      if (path === '/api/plan' && method === 'DELETE') {
+        return transact(record => {
+          if (!record.plan_library) throw new StoreError('请重新打开学习计划后再删除。', 409);
+          const next = deletePlanContent(record, payload, recordLibrary(record));
+          return { record: next, result: stateOf(next) };
+        });
+      }
       if (path.startsWith('/api/history/') && method === 'GET') {
         let date;
         try { date = decodeURIComponent(path.slice('/api/history/'.length)); } catch { throw new StoreError('历史日期不正确。'); }
@@ -742,11 +925,12 @@
         return withLibraryFallback((record, base) => {
           const day = record.archives.find(item => item.date === date);
           if (!day) throw new StoreError('没有找到这一天的打卡记录。', 404);
-          if (day.subject_stage_progress) return { result: copy(day) };
+          const frozen = day.subject_stage_progress;
+          if (frozen && day.assignments.every(task => Object.hasOwn(frozen, task.subject_id))) return { result: copy(day) };
           if (!record.plan_library && !base) return { result: null };
           if (!record.plan_library && base.error) throw base.error;
           const subject_stage_progress = subjectStageProgress(record, recordLibrary(record, base).index, day);
-          return { result: copy({ ...day, subject_stage_progress }) };
+          return { result: copy({ ...day, subject_stage_progress: { ...subject_stage_progress, ...frozen } }) };
         }, true);
       }
       throw new StoreError('操作不存在。', 404);
@@ -792,6 +976,7 @@
     entries: planEntries,
     update: updatePlan,
     remove: removePlanTask,
+    updateChapter: updatePlanChapter,
     merge: mergeCatalogues,
     pack: catalogue => ({ format: PLAN_FORMAT, version: 2, catalogue: validateCatalogue(catalogue) }),
     unpack(value, base) {

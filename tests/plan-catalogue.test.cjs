@@ -171,3 +171,134 @@ test('removing tasks keeps historical IDs valid and rejects stale or malformed p
   await assert.rejects(putPlan(store, invalid));
   assert.deepEqual(record(), stable);
 });
+
+test('an empty custom chapter survives save, export and merge, and keeps its ID when renamed', async () => {
+  const chapter = { id: 'custom-chapter-review', subject_id: firstSubject.id, title: '  我的复习  ', phase: firstSubject.chapters[0].phase };
+  const { store } = fixture();
+  const catalogue = storage.plan.updateChapter(await store.request('/api/library'), chapter);
+  const findChapter = plan => plan.subjects[0].chapters.find(item => item.id === chapter.id);
+  assert.deepEqual(findChapter(catalogue), { id: chapter.id, title: '我的复习', phase: chapter.phase, tasks: [] });
+  assert.throws(() => storage.plan.updateChapter(catalogue, { ...chapter, phase: '不存在的阶段' }), /已有的学习阶段/);
+  assert.throws(() => storage.plan.updateChapter(catalogue, { ...chapter, id: firstSubject.chapters[0].id }), /自定义章节/);
+  assert.throws(() => storage.plan.updateChapter(catalogue, { ...chapter, id: 'custom-chapter-duplicate' }), /同名章节/);
+
+  await putPlan(store, catalogue);
+  const exported = storage.plan.pack(await store.request('/api/library'));
+  const imported = storage.plan.merge(library, storage.plan.unpack(exported));
+  assert.deepEqual(findChapter(imported), findChapter(catalogue));
+  const filled = storage.plan.update(imported, { task_id: 'custom-review', subject_id: chapter.subject_id, chapter_id: chapter.id, title: '复习笔记' });
+  const renamed = storage.plan.updateChapter(filled, { id: chapter.id, subject_id: chapter.subject_id, title: '复习章节' });
+  const task = storage.plan.entries(renamed).find(entry => entry.task_id === 'custom-review');
+  assert.equal(task.chapter_id, chapter.id);
+  assert.equal(task.chapter_title, '复习章节');
+  assert.equal(task.phase, chapter.phase);
+});
+
+test('deleting a plan chapter or task removes its check-ins and time without deleting unrelated records', async () => {
+  const chapter = { id: 'custom-chapter-delete', subject_id: firstSubject.id, title: '准备删除' };
+  const taskId = 'custom-task-in-chapter';
+  let catalogue = storage.plan.updateChapter(library, chapter);
+  catalogue = storage.plan.update(catalogue, { task_id: taskId, subject_id: chapter.subject_id, chapter_id: chapter.id, title: '准备删除的任务' });
+  const target = catalogue.subjects[0].chapters.find(item => item.id === chapter.id);
+  target.tasks[0].estimate_group = originalTask.estimate_group || originalTask.id;
+  const initial = storage.helpers.initialRecord('2026-11-07');
+  const saved = storage.helpers.saveRecord(initial, {
+    date: initial.current.date, revision: initial.revision,
+    assignments: [
+      { task_id: taskId, done: true, actual_minutes: 12 },
+      { task_id: originalTask.id, done: true, actual_minutes: 25 },
+    ],
+    library_completed_ids: [taskId, originalTask.id], library_reopened_ids: [taskId],
+    task_modes: { [taskId]: 'multi-day', [originalTask.id]: 'single-day' },
+  }, storage.helpers.libraryIndex(catalogue));
+  const [removed, kept] = saved.current.assignments;
+  const frozenOther = { phase: '', totalMinutes: 100, completedMinutes: 25, unknown: 0, percent: 25 };
+  saved.plan_library = catalogue;
+  saved.plan_tasks = [{ task_id: taskId, subject_id: chapter.subject_id, title: removed.title, detail: '' }];
+  saved.archives = [
+    { date: '2026-11-05', assignments: [removed] },
+    { date: '2026-11-06', assignments: [removed, kept], subject_stage_progress: { [chapter.subject_id]: frozenOther, calculus: frozenOther } },
+  ];
+  const { store, record } = fixture(saved);
+  const request = (selection, revision = saved.revision) => store.request('/api/plan', {
+    method: 'DELETE', body: JSON.stringify({ date: initial.current.date, revision, ...selection }),
+  });
+  const selection = { chapter_id: chapter.id, subject_id: chapter.subject_id };
+  await assert.rejects(request(selection, saved.revision - 1), error => error.status === 409);
+  await assert.rejects(request({ ...selection, chapter_id: firstSubject.chapters[0].id }), /自定义章节/);
+  assert.deepEqual(record(), saved);
+
+  const after = await request(selection);
+  assert.equal(after.revision, saved.revision + 1);
+  assert.deepEqual(after.assignments, [kept]);
+  assert.equal(after.task_progress[taskId], undefined);
+  assert.equal(after.task_progress[originalTask.id].actual_minutes, 50);
+  assert.deepEqual(after.library_completed_ids, [originalTask.id]);
+  assert.deepEqual(after.library_reopened_ids, []);
+  assert.deepEqual(after.task_modes, { [originalTask.id]: 'single-day' });
+  assert.deepEqual(record().archives.map(day => day.date), ['2026-11-06']);
+  assert.deepEqual(record().archives[0].subject_stage_progress, { calculus: frozenOther });
+  const history = await store.request('/api/history/2026-11-06');
+  assert.deepEqual(history.assignments, [kept]);
+  assert.deepEqual(history.subject_stage_progress.calculus, frozenOther);
+  assert(history.subject_stage_progress[chapter.subject_id]);
+  assert(!JSON.stringify(await store.exportBackup()).includes(taskId));
+  assert(!record().plan_library.subjects[0].chapters.some(item => item.id === chapter.id));
+
+  await request({ task_id: originalTask.id }, after.revision);
+  assert.deepEqual(record().current.assignments, []);
+  assert.deepEqual(record().archives, []);
+  assert(!storage.plan.entries(await store.request('/api/library')).some(entry => entry.task_id === originalTask.id));
+  assert(!record().plan_library.metadata.retired_tasks.some(task => task.id === originalTask.id));
+});
+
+test('advanced history filters real check-in fields and paginates dates without writing records', async () => {
+  const assignment = (task_id, fields = {}) => ({
+    task_id, subject_id: 'ds', chapter_id: 'custom-chapter-review', chapter_title: '递归练习',
+    title: 'DFS 复习', detail: '回顾树遍历', task_mode: 'single-day', done: true, ...fields,
+  });
+  const snapshot = {
+    ...storage.helpers.initialRecord('2026-11-07'),
+    current: { date: '2026-11-07', assignments: [assignment('pending-today', { done: false, chapter_id: 'today', chapter_title: '今天的章节' })] },
+    archives: [
+      { date: '2026-11-05', assignments: [assignment('missing-minutes', { task_mode: 'multi-day', remarks: '明天重做', actual_minutes: null })] },
+      { date: '2026-11-06', assignments: [
+        assignment('shared-short', { actual_minutes: 12, estimate_group: 'shared' }),
+        assignment('shared-long', { actual_minutes: 18, estimate_group: 'shared' }),
+        assignment('zero-minutes', { actual_minutes: 0, subject_id: 'os', chapter_id: 'legacy-os', chapter_title: '已下架章节' }),
+        assignment('pending-archive', { done: false }),
+      ] },
+      { date: '2026-11-04', assignments: [assignment('no-checkins', { done: false })] },
+      { date: '2026-11-07', assignments: [assignment('duplicate-today')] },
+    ],
+    task_modes: { 'pending-today': 'multi-day' },
+  };
+  const store = storage.createStore({
+    fetch: async () => { throw new Error('History search should use the record without loading the catalogue'); },
+  }, async (operation, readOnly) => {
+    assert.equal(readOnly, true);
+    const outcome = operation(structuredClone(snapshot));
+    assert.equal(outcome.record, undefined);
+    return outcome.result;
+  });
+
+  const firstPage = await store.request('/api/history?limit=1');
+  assert.equal(firstPage.total, 3);
+  assert.deepEqual(firstPage.dates.map(day => [day.date, day.total, day.completed, day.assignments[0].task_id]), [
+    ['2026-11-07', 1, 0, 'pending-today'],
+  ]);
+  assert(firstPage.chapters.some(chapter => chapter.title === '已下架章节'));
+  const nextPage = await store.request('/api/history?limit=1&offset=1&status=done');
+  assert.equal(nextPage.total, 2);
+  assert.equal(nextPage.dates[0].date, '2026-11-05');
+  const combined = await store.request('/api/history?subject_id=ds&chapter_id=custom-chapter-review&status=done&task_mode=multi-day&actual=unrecorded&q=dfs+重做');
+  assert.deepEqual(combined.dates.flatMap(day => day.assignments.map(task => task.task_id)), ['missing-minutes']);
+  assert(combined.chapters.some(chapter => chapter.id === 'today'));
+  const recorded = await store.request('/api/history?actual=recorded');
+  assert.deepEqual(recorded.dates.map(day => [day.total, day.completed, day.actual_minutes]), [[3, 3, 18]]);
+  assert(recorded.dates[0].assignments.some(task => task.task_id === 'zero-minutes'));
+  const pending = await store.request('/api/history?status=pending&task_mode=multi-day');
+  assert.deepEqual(pending.dates.flatMap(day => day.assignments.map(task => task.task_id)), ['pending-today']);
+  await assert.rejects(store.request('/api/history?subject_id=unknown'), /有效的学科/);
+  await assert.rejects(store.request('/api/history?limit=101'), /分页参数/);
+});
