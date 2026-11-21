@@ -55,6 +55,7 @@
   const dialogOpeners = new Map();
   const expandedSubjects = new Set();
   const expandedDailyPhases = new Set();
+  const closedDailyChapters = new Set();
   const closedDailyNotes = new Set();
   const studyPhaseKey = (subjectId, phase) => JSON.stringify([subjectId, phase]);
   const recordStore = () => cloudAccount?.store || window.StudyStore;
@@ -525,7 +526,7 @@
       const detail = detailText ? `<p class="card-detail">${escape(detailText)}</p>` : '';
       const metadata = presentation.metadata.filter(([label]) => !this.options.grouped || label === '任务量').map(([label, value]) => `${label}：${value}`);
       const tags = metadata.length ? `<div class="card-metadata">${metadata.map((text) => `<span>${escape(text)}</span>`).join('')}</div>` : '';
-      const remarks = this.options.grouped ? '' : presentation.remarks;
+      const remarks = this.options.grouped && !this.options.showGroupedNotes ? '' : presentation.remarks;
       const notes = remarks ? `<details class="card-notes" open><summary>学习备注${icon('chevron')}</summary><p>${escape(remarks)}</p></details>` : '';
       return detail || tags || notes ? `<div class="card-content">${detail}${tags}${notes}</div>` : '';
     }
@@ -744,8 +745,8 @@
     return progress;
   }
 
-  function taskCardsMarkup(tasks, CardView = DailyTaskCardView, grouped = false) {
-    return tasks.length ? `<ul class="task-list">${tasks.map(task => new CardView(task, { compact: true, chapter: !grouped, grouped }).render()).join('')}</ul>` : '';
+  function taskCardsMarkup(tasks, CardView = DailyTaskCardView, grouped = false, showGroupedNotes = false) {
+    return tasks.length ? `<ul class="task-list">${tasks.map(task => new CardView(task, { compact: true, chapter: !grouped, grouped, showGroupedNotes }).render()).join('')}</ul>` : '';
   }
 
   function chapterNotesMarkup(notes, key, { plan = false, closed = false } = {}) {
@@ -803,10 +804,9 @@
         ? `<button type="button" class="text-button" data-action="choose-phase" data-subject="${escape(this.subject.id)}" data-phase="${escape(this.phase)}">选择本章任务</button>` : '';
       const content = open ? `<div class="daily-phase-content">${choose}${[...chapters.values()].map(chapter => {
         const noteKey = studyPhaseKey(this.subject.id, chapter.id || chapter.title);
-        const noteTasks = chapter.tasks.map(task => /〔原图/.test(task.remarks || '')
-          ? { ...task, remarks: canonicalTask(task)?.remarks || task.remarks } : task);
-        const notes = chapterNotesMarkup(this.subject.chapterNotes({ ...chapter, tasks: noteTasks }), noteKey, { closed: !exporting && closedDailyNotes.has(noteKey) });
-        return `<section class="daily-chapter-group"><h4>${escape(chapter.title)}</h4>${notes}${taskCardsMarkup(chapter.tasks, DailyTaskCardView, true)}</section>`;
+        const notes = chapterNotesMarkup(this.subject.chapterNotes({ ...chapter, tasks: chapter.tasks.map(task => ({ ...task, remarks: '' })) }), noteKey, { closed: !exporting && closedDailyNotes.has(noteKey) });
+        const chapterOpen = exporting || !closedDailyChapters.has(noteKey);
+        return `<details class="daily-chapter-group" data-daily-chapter-key="${escape(noteKey)}" ${chapterOpen ? 'open' : ''}><summary class="daily-chapter-summary"><span>${escape(chapter.title)}</span>${icon('chevron')}</summary>${notes}${taskCardsMarkup(chapter.tasks, DailyTaskCardView, true, true)}</details>`;
       }).join('') || '<p class="plan-board-empty">今日暂无任务</p>'}</div>` : '';
       return this.render(open, count, content);
     }
@@ -1918,6 +1918,17 @@
 
   $('daily-tbody').addEventListener('click', (event) => {
     if (actionBusy || !state) return;
+    const chapterSummary = event.target.closest('.daily-chapter-group > .daily-chapter-summary');
+    if (chapterSummary) {
+      event.preventDefault();
+      const chapterPanel = chapterSummary.parentElement;
+      const key = chapterPanel.dataset.dailyChapterKey;
+      if (chapterPanel.open) closedDailyChapters.add(key);
+      else closedDailyChapters.delete(key);
+      renderDay();
+      [...$('daily-tbody').querySelectorAll('[data-daily-chapter-key]')].find(panel => panel.dataset.dailyChapterKey === key)?.querySelector(':scope > summary').focus({ preventScroll: true });
+      return;
+    }
     const summary = event.target.closest('.daily-phase-panel > summary');
     if (summary) {
       event.preventDefault();
