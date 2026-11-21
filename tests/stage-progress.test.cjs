@@ -101,8 +101,8 @@ test('daily and exported subject layouts omit the completed frame and hide summa
   assert.equal((context.main.match(/class="subject-stage-summary"/g)||[]).length,1);
   assert(context.opened.includes('class="subject-stage-summary" hidden'));
   assert(!context.opened.match(/id="subject-body-ds"[^>]* hidden/));
-  assert(context.planOnly.includes('class="daily-phase-panel"'));
-  assert(context.planOnly.includes('data-study-phase="二轮"'));
+  assert(!context.planOnly.includes('class="daily-phase-panel"'));
+  assert(!context.planOnly.includes('data-study-phase="二轮"'));
   assert(!context.planOnly.includes('data-card-key'));
   assert(context.image.includes('旧阶段'));
   assert(context.image.includes('subject-stage-value">25%</strong>'));
