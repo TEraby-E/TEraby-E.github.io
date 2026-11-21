@@ -833,7 +833,10 @@
     }
     const planned = StudyPhaseView.groupChapters(model);
     for (const [phase, group] of phases) if (!planned.has(phase)) planned.set(phase, [...group.chapters.values()]);
-    return [...planned].filter(([phase]) => !exporting || phases.has(phase)).map(([phase, chapters]) => {
+    // The journal is a view of today's assignments, not the full plan catalogue.
+    // Keep catalogue-only phases for the plan board and picker, but don't show
+    // them in the daily card until at least one task from that phase is scheduled.
+    return [...planned].filter(([phase]) => phases.has(phase)).map(([phase, chapters]) => {
       const group = phases.get(phase) || { chapters: new Map(), tasks: [] };
       return new DailyPhaseView(model, phase, chapters).renderChecklist(group, exporting);
     }).join('');
