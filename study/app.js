@@ -808,7 +808,7 @@
           ? { ...task, remarks: canonicalTask(task)?.remarks || task.remarks } : task);
         const notes = chapterNotesMarkup(this.subject.chapterNotes({ ...chapter, tasks: noteTasks }), noteKey, { closed: !exporting && closedDailyNotes.has(noteKey) });
         const chapterOpen = exporting || !closedDailyChapters.has(noteKey);
-        return `<details class="daily-chapter-group" data-daily-chapter-key="${escape(noteKey)}" ${chapterOpen ? 'open' : ''}><summary class="daily-chapter-summary"><span>${escape(chapter.title)}</span>${icon('chevron')}</summary>${notes}${taskCardsMarkup(chapter.tasks, DailyTaskCardView, true)}</details>`;
+        return `<details class="daily-chapter-group" data-daily-chapter-key="${escape(noteKey)}" ${chapterOpen ? 'open' : ''}><summary class="daily-chapter-summary"><span>${escape(chapter.title)}</span>${icon('chevron')}</summary>${taskCardsMarkup(chapter.tasks, DailyTaskCardView, true)}${notes}</details>`;
       }).join('') || '<p class="plan-board-empty">今日暂无任务</p>'}</div>` : '';
       return this.render(open, count, content);
     }
