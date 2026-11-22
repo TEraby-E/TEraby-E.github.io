@@ -755,6 +755,11 @@
     return `<details class="${plan ? 'plan-chapter-notes' : 'study-chapter-notes'}" data-notes-key="${escape(key)}" ${closed ? '' : 'open'}><summary>学习备注${icon('chevron')}</summary>${notes.map(note => `<p>${escape(note)}</p>`).join('')}</details>`;
   }
 
+  function dailyLearningNotesMarkup(notes) {
+    if (!notes.length) return '';
+    return `<div class="daily-learning-notes">${notes.map(note => `<p>${escape(note)}</p>`).join('')}</div>`;
+  }
+
   function rememberChapterNotes(event, closedNotes) {
     const notes = event.target.closest('details[data-notes-key] > summary')?.parentElement;
     if (!notes) return false;
@@ -814,7 +819,10 @@
         const chapterNotes = chapterNotesMarkup(this.subject.chapterNotes({ ...chapter, tasks: [] }), chapterKey, { closed: !exporting && closedDailyNotes.has(chapterKey) });
         const sections = [...sectionGroups].map(([sectionName, sectionTasks]) => {
           const sectionKey = studyPhaseKey(this.subject.id, `${chapter.id || chapter.title}::${sectionName || '未分小节'}`);
-          const notes = chapterNotesMarkup(this.subject.chapterNotes({ ...chapter, remarks: '', tasks: sectionTasks.map(task => ({ ...task, remarks: '' })) }), sectionKey, { closed: !exporting && closedDailyNotes.has(sectionKey) });
+          const taskNotes = new Set(sectionTasks.map(task => new DailyTaskCardView(task).presentation.remarks.trim().replace(/\s+/g, ' ')).filter(Boolean));
+          const sectionNotes = this.subject.chapterNotes({ ...chapter, remarks: '', tasks: sectionTasks.map(task => ({ ...task, remarks: '' })) })
+            .filter(note => !taskNotes.has(note.trim().replace(/\s+/g, ' ')));
+          const notes = dailyLearningNotesMarkup(sectionNotes);
           const cards = taskCardsMarkup(sectionTasks, DailyTaskCardView, true, true);
           if (!sectionName) return `${notes}${cards}`;
           const sectionOpen = exporting || !closedDailySections.has(sectionKey);
